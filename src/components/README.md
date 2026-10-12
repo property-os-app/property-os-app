@@ -124,7 +124,7 @@ Page layouts.
 
 **`src/lib/cn.ts`**: `cn(...classes)` merges class lists (clsx + tailwind-merge, taught our custom classes). Use it for every `className`.
 
-**`src/lib/format.ts`**: `formatCurrency`, `formatCompactCurrency`, `formatPercent`, `formatDate`, `formatRelative`, `leaseCountdown`, `initials`, `EMPTY`. See known gaps below before using.
+**`src/lib/format.ts`**: `formatCurrency`, `formatCompactCurrency`, `formatPercent`, `formatDate`, `formatRelative`, `leaseCountdown`, `initials`, `EMPTY`, plus our `toCents`, `centsToAmount`, `todayISO`, `currentMonth`. Takes API money strings and "YYYY-MM-DD" dates; details in [src/lib/README.md](../lib/README.md).
 
 ---
 
@@ -150,13 +150,10 @@ Based on docs/BRIEF.md (admin portal: login, Properties, Units, Tenants, Leases,
 
 ## Known gaps for our backend
 
-Facts seen in the code. Nothing fixed yet.
+Facts seen in the code. Fixed gaps are removed from this list and logged in "Changes we made".
 
 | File | Gap |
 | --- | --- |
-| `lib/format.ts` | `formatCurrency` and `formatCompactCurrency` take a `number`; the API sends money as strings ("1200.00", "-150.00"). |
-| `lib/format.ts` | `formatDate` does `new Date(string)`, so "YYYY-MM-DD" shows the previous day in US time zones. |
-| `lib/format.ts` | `leaseCountdown` has the same `new Date(string)` problem, and does float math on milliseconds. |
 | `molecules/StatusBadge.tsx` | Statuses are display words ("Paid", "Late", "Month-to-Month", "Under Renovation"), not our enums. Missing: rent UNPAID, NOT_BILLED; lease ENDED, TERMINATED; unit RESERVED, UNDER_MAINTENANCE. Unknown values fall back to neutral and show the raw text. |
 | `atoms/Input.tsx` (`CurrencyInput`) | Keeps several dots ("1.2.3" → `NaN`), no 2-decimal limit, no negative values. |
 | `organisms/Panels.tsx` (`RentCollectionHero`) | Takes numbers and computes the rate with float math; needs `unitsBilled`, `paymentsReceived`, `lateCount`, which our rent-roll summary doesn't have (it has `collectionRate`, `overdueCount`). |
@@ -177,4 +174,5 @@ Facts seen in the code. Nothing fixed yet.
 
 | Date | File | What changed | Why |
 | --- | --- | --- | --- |
-| | | | |
+| 2026-10-12 | `eslint.config.js` (override for `src/components/**`) | Turned off `react-refresh/only-export-components`, `react-hooks/immutability`, `react-hooks/set-state-in-effect` for design system files only. No component file edited. | Newer lint rules (react-hooks 7, react-refresh 0.5) flagged 19 errors in code written before them; editing 8 component files was riskier than a scoped override. |
+| 2026-10-12 | `lib/format.ts` | Money functions accept API strings (and null/undefined/"" -> "-"); added `toCents`, `centsToAmount`, `MoneyInput`. `formatDate` and `leaseCountdown` parse "YYYY-MM-DD" by parts and count calendar days. Added `todayISO`, `currentMonth`; comment on `formatRelative`. Export names unchanged. | API sends money as strings; `new Date("YYYY-MM-DD")` showed the previous day in US time zones; money math must use integer cents. |

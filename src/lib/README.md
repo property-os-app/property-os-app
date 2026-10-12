@@ -1,0 +1,35 @@
+# src/lib
+
+Plain TypeScript helpers with no UI: env, Firebase, the API client, and the design system's `cn` and `format` helpers.
+
+## env.ts
+- `env`: typed, trimmed values of the 5 `VITE_*` variables (API URL without trailing slash).
+- `missingEnv`: names of missing or empty variables; `main.tsx` shows them on the page.
+- `Env`: type of `env`.
+
+## firebase.ts
+- `app`: the Firebase app from env.
+- `auth`: Firebase Auth instance.
+- `authReady`: promise that resolves with the user (or null) once Firebase has restored the session. Await it before reading `auth.currentUser`.
+
+## api.ts
+- `apiFetch<T>(path, { method, body, query, signal })`: calls `VITE_API_URL + path`, adds `Authorization: Bearer <token>` when signed in, sends `body` as JSON, builds the query string (skips undefined, null, ""), returns `undefined` for 204 or empty bodies.
+- `ApiError`: thrown on error responses: `status`, `messages: string[]` (backend message is a string or an array), `error`. `status` 0 means the server could not be reached.
+- `errorText(err)`: one display text for any error.
+- `ApiFetchOptions`: options type.
+
+## format.ts (design system file, adapted to our API)
+- `formatCurrency(value)`: "1200.00" -> "$1,200.00", "-150.00" -> "-$150.00"; empty -> "-". Numbers still work.
+- `formatCompactCurrency(value)`: "$128.4K" / "$24.6M" for KPIs.
+- `formatPercent(value, digits)`: "94.2%", accepts strings.
+- `toCents(value)`: money string -> integer cents with no float math. Do all sums and comparisons in cents.
+- `centsToAmount(cents)`: cents -> number with max 2 decimals, for sending to the API.
+- `formatDate(date)`: "Nov 1, 2026" from "YYYY-MM-DD", a full ISO string or a Date. Never uses `new Date("YYYY-MM-DD")`.
+- `formatRelative(date)`: "2h ago"; only for full timestamps like createdAt.
+- `leaseCountdown(end)`: "Expires in 23 days" + tone, counted in calendar days.
+- `todayISO()` / `currentMonth()`: local "YYYY-MM-DD" / "YYYY-MM" (not UTC).
+- `initials(name)`: "Jordan Blake" -> "JB".
+- `EMPTY`: "-". `MoneyInput`: money input type.
+
+## cn.ts (design system file)
+- `cn(...classes)`: merges Tailwind class lists (clsx + tailwind-merge).

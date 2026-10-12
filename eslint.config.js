@@ -19,4 +19,14 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Design system (propos-ui) was written before these rules existed. Turned off here only,
+    // so we don't edit its files; our own code keeps the full rule set.
+    files: ['src/components/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+      'react-hooks/immutability': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+    },
+  },
 ])
