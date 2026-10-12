@@ -19,13 +19,16 @@ export class ApiError extends Error {
   readonly messages: string[];
   /** Backend "error" field, e.g. "Bad Request". */
   readonly error?: string;
+  /** Backend "code" field. Only the 5 auth errors have one (see AuthErrorCode in types/auth.ts). */
+  readonly code?: string;
 
-  constructor(status: number, messages: string[], error?: string) {
+  constructor(status: number, messages: string[], error?: string, code?: string) {
     super(messages.join(" ") || error || `Request failed (${status})`);
     this.name = "ApiError";
     this.status = status;
     this.messages = messages;
     this.error = error;
+    this.code = code;
   }
 }
 
@@ -88,9 +91,14 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   }
 
   if (!res.ok) {
-    const obj = typeof data === "object" && data !== null ? (data as { message?: unknown; error?: unknown }) : {};
+    const obj = typeof data === "object" && data !== null ? (data as { message?: unknown; error?: unknown; code?: unknown }) : {};
     const messages = typeof data === "string" ? toMessages(data) : toMessages(obj.message);
-    throw new ApiError(res.status, messages, typeof obj.error === "string" ? obj.error : res.statusText || undefined);
+    throw new ApiError(
+      res.status,
+      messages,
+      typeof obj.error === "string" ? obj.error : res.statusText || undefined,
+      typeof obj.code === "string" ? obj.code : undefined,
+    );
   }
 
   return data as T;

@@ -1,0 +1,83 @@
+import { Link, Outlet, useMatches } from "react-router";
+import { LogOut } from "lucide-react";
+import { defaultNavGroups, type ModuleKey, type NavGroup, type NavItem, type SidebarProps } from "@/components/organisms";
+import { WorkspaceShell } from "@/components/templates";
+import { useDocumentTitle } from "@/lib/useDocumentTitle";
+import { useAuth } from "@/features/auth/authContext";
+import { roleLabel, toSidebarRole } from "@/features/auth/permissions";
+import { ScopeProvider } from "@/features/scope/ScopeProvider";
+import { useScope } from "@/features/scope/scopeContext";
+
+/** Put on each route as `handle`: the page title (Topbar + tab) and the Sidebar item to highlight. */
+export interface RouteHandle {
+  title: string;
+  nav?: ModuleKey;
+}
+
+// Reuse the design system's nav items (and icons), keeping only the modules we built.
+const navItems = new Map(defaultNavGroups.flatMap((g) => g.items).map((item) => [item.key, item]));
+const pick = (keys: ModuleKey[]): NavItem[] => keys.flatMap((key) => navItems.get(key) ?? []);
+
+const navGroups: NavGroup[] = [
+  { label: "Leasing", items: pick(["properties", "units", "tenants", "leases"]) },
+  { label: "Money", items: pick(["rentroll"]) },
+];
+
+const renderLink: SidebarProps["renderLink"] = (href, props) => <Link to={href} {...props} />;
+
+/** The handle of the deepest matched route that has one. */
+function useRouteHandle(): RouteHandle {
+  const matches = useMatches();
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const handle = matches[i].handle as RouteHandle | undefined;
+    if (handle?.title) return handle;
+  }
+  return { title: "PropertyOS" };
+}
+
+/** Signed-in layout: WorkspaceShell (Sidebar + Topbar) around the current page. */
+export function AppLayout() {
+  return (
+    <ScopeProvider>
+      <AppShell />
+    </ScopeProvider>
+  );
+}
+
+function AppShell() {
+  const { me, signOut } = useAuth();
+  const { label, openPicker } = useScope();
+  const handle = useRouteHandle();
+  useDocumentTitle(handle.title);
+
+  // RequireAuth renders this layout only when status is "ready", so me is set.
+  if (!me) return null;
+
+  return (
+    <WorkspaceShell
+      sidebar={{
+        role: toSidebarRole(me.role),
+        // "dashboard" is not in our groups, so pages without a nav key highlight nothing.
+        active: handle.nav ?? "dashboard",
+        user: { name: me.name, roleLabel: roleLabel(me.role) },
+        scope: label,
+        onScopeClick: openPicker,
+        groups: navGroups,
+        brand: "PropertyOS",
+        renderLink,
+      }}
+      topbar={{
+        title: handle.title,
+        scope: label,
+        user: { name: me.name },
+        showAi: false,
+        profileMenu: [
+          { label: me.email, disabled: true, onSelect: () => {} },
+          { label: "Sign out", icon: <LogOut strokeWidth={1.5} />, onSelect: () => void signOut() },
+        ],
+      }}
+    >
+      <Outlet />
+    </WorkspaceShell>
+  );
+}

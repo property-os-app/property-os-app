@@ -62,7 +62,7 @@ Atoms combined to do one job.
 | `Stepper` | Horizontal numbered steps | `steps`, `current` | Multi-step modals. |
 | `StatusTracker` | Vertical steps | `steps`, `current` | Renter ticket progress. |
 | `FileDropzone` | Drag-and-drop upload list | `files`, `onFiles`, `onRemove` | File uploads. |
-| `KebabMenu` | "⋮" row actions menu | `items` (label, icon, onSelect, destructive) | Row actions in tables. |
+| `KebabMenu` | "⋮" row actions menu | `items` (label, icon, onSelect, destructive, disabled), `trigger` (custom opener, e.g. an Avatar) | Row actions in tables; Topbar profile menu. |
 | `AiActionItem`, `AiHeading` | AI finding row / AI card header | `finding`, `reason`, `onAction` | AI surfaces. |
 | `TimelineItem`, `TimelineDay` | Activity row / day header | `icon`, `tone`, `meta` | Activity feeds. |
 | `ChatBubble` | Message bubble | `mine`, `meta` | Chat. |
@@ -73,8 +73,8 @@ Page sections. They own no data.
 
 | Component | What it does | Main props | When to use |
 | --- | --- | --- | --- |
-| `Sidebar` | Left nav, filtered by role | `role`, `active`, `user`, `scope`, `onScopeClick`, `groups`, `renderLink`, `badges`, `collapsed` | Inside `WorkspaceShell`. |
-| `Topbar` | 64px top bar: title, scope chip, search, AI, bell, quick add, avatar | `title`, `scope`, `user`, `showAi`, `onQuickAdd`, `onProfile`, `onSearch` | Inside `WorkspaceShell`. |
+| `Sidebar` | Left nav, filtered by role | `role`, `active`, `user`, `scope`, `onScopeClick`, `groups`, `brand`, `renderLink`, `badges`, `collapsed` | Inside `WorkspaceShell`. |
+| `Topbar` | 64px top bar: title, scope chip, avatar; search, bell and quick add only when their handler is passed | `title`, `scope`, `user`, `showAi`, `onSearch`, `onNotifications`, `onQuickAdd`, `profileMenu` (or `onProfile`) | Inside `WorkspaceShell`. |
 | `PageHeader` | Page title, description, actions | `title`, `description`, `actions`, `breadcrumb` | Top of every page. Primary action last. |
 | `Toolbar` | Wrapping row | `children` | Search + filters above a table. |
 | `KpiRow` | Grid of up to 4 cards | `children` | Row of `KpiCard`s. |
@@ -157,8 +157,8 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | `molecules/StatusBadge.tsx` | Statuses are display words ("Paid", "Late", "Month-to-Month", "Under Renovation"), not our enums. Missing: rent UNPAID, NOT_BILLED; lease ENDED, TERMINATED; unit RESERVED, UNDER_MAINTENANCE. Unknown values fall back to neutral and show the raw text. |
 | `atoms/Input.tsx` (`CurrencyInput`) | Keeps several dots ("1.2.3" → `NaN`), no 2-decimal limit, no negative values. |
 | `organisms/Panels.tsx` (`RentCollectionHero`) | Takes numbers and computes the rate with float math; needs `unitsBilled`, `paymentsReceived`, `lateCount`, which our rent-roll summary doesn't have (it has `collectionRate`, `overdueCount`). |
-| `organisms/Sidebar.tsx` | `Role` is admin/manager/leasing/maintenance/accountant (we map OWNER → admin, PROPERTY_MANAGER → manager). Default groups list out-of-scope modules; we must pass our own `groups`. Brand text is "PropOS", not "PropertyOS". Avatar always shows the online dot. |
-| `organisms/Topbar.tsx` | Search, bell, quick-add (a second primary button) and avatar always render; `showAi` defaults to `true`. No sign-out or profile menu, only an `onProfile` callback. Search placeholder mentions tickets. |
+| `organisms/Sidebar.tsx` | `Role` is admin/manager/leasing/maintenance/accountant (we map OWNER → admin, PROPERTY_MANAGER → manager). Default groups list out-of-scope modules; we must pass our own `groups`. Avatar always shows the online dot. |
+| `organisms/Topbar.tsx` | `showAi` defaults to `true` (we pass `false`). Search placeholder mentions tickets (we don't pass `onSearch`, so it's hidden). |
 | `templates/Shells.tsx` (`WorkspaceShell`) | Sidebar is hidden under 768px and there is no mobile nav in its place. |
 | `organisms/Overlays.tsx` (`ConfirmDialog`) | `onConfirm` is sync and the dialog closes at once: no pending state, no error display. No field for a reason (Void needs `reason`, max 300). |
 | `organisms/Overlays.tsx` (`Drawer`) | Uses `animate-in` / `animate-out` classes from a Tailwind plugin that isn't installed, so they do nothing. |
@@ -176,3 +176,6 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | --- | --- | --- | --- |
 | 2026-10-12 | `eslint.config.js` (override for `src/components/**`) | Turned off `react-refresh/only-export-components`, `react-hooks/immutability`, `react-hooks/set-state-in-effect` for design system files only. No component file edited. | Newer lint rules (react-hooks 7, react-refresh 0.5) flagged 19 errors in code written before them; editing 8 component files was riskier than a scoped override. |
 | 2026-10-12 | `lib/format.ts` | Money functions accept API strings (and null/undefined/"" -> "-"); added `toCents`, `centsToAmount`, `MoneyInput`. `formatDate` and `leaseCountdown` parse "YYYY-MM-DD" by parts and count calendar days. Added `todayISO`, `currentMonth`; comment on `formatRelative`. Export names unchanged. | API sends money as strings; `new Date("YYYY-MM-DD")` showed the previous day in US time zones; money math must use integer cents. |
+| 2026-10-13 | `organisms/Topbar.tsx` | Search box renders only when `onSearch` is passed, bell only with `onNotifications`, quick add only with `onQuickAdd`. New optional `profileMenu` (MenuItem[]): the avatar opens a KebabMenu with those items; without it the old `onProfile` button stays. | Our Topbar has no search, bell or quick add; users need the email and Sign out from the avatar. |
+| 2026-10-13 | `molecules/Menu.tsx` (`KebabMenu`) | Optional `trigger` prop: custom content for the opening button instead of the "⋮" icon. | Reuse the same menu panel for the Topbar profile menu instead of a second menu. |
+| 2026-10-13 | `organisms/Sidebar.tsx` | Optional `brand` prop, default "PropOS". | We show "PropertyOS". |

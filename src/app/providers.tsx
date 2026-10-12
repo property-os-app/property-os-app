@@ -3,13 +3,16 @@ import { RouterProvider } from "react-router/dom";
 import { Toaster } from "@/components/molecules";
 import { queryClient } from "@/app/queryClient";
 import { router } from "@/app/router";
+import { AuthProvider } from "@/features/auth/AuthProvider";
 
-/** App root: query cache, toasts and the router. */
+/** App root: query cache, auth state, toasts and the router. */
 export function Providers() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Toaster />
-      <RouterProvider router={router} />
+      <AuthProvider>
+        <Toaster />
+        <RouterProvider router={router} />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

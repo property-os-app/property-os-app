@@ -1,6 +1,6 @@
 # src/lib
 
-Plain TypeScript helpers with no UI: env, Firebase, the API client, and the design system's `cn` and `format` helpers.
+Plain TypeScript helpers with no UI: env, Firebase, the API client, one small hook, and the design system's `cn` and `format` helpers.
 
 ## env.ts
 - `env`: typed, trimmed values of the 5 `VITE_*` variables (API URL without trailing slash).
@@ -14,9 +14,12 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, and the desi
 
 ## api.ts
 - `apiFetch<T>(path, { method, body, query, signal })`: calls `VITE_API_URL + path`, adds `Authorization: Bearer <token>` when signed in, sends `body` as JSON, builds the query string (skips undefined, null, ""), returns `undefined` for 204 or empty bodies.
-- `ApiError`: thrown on error responses: `status`, `messages: string[]` (backend message is a string or an array), `error`. `status` 0 means the server could not be reached.
+- `ApiError`: thrown on error responses: `status`, `messages: string[]` (backend message is a string or an array), `error`, `code` (only on the 5 auth errors, e.g. `INVALID_TOKEN`; switch on it, never on message text). `status` 0 means the server could not be reached.
 - `errorText(err)`: one display text for any error.
 - `ApiFetchOptions`: options type.
+
+## useDocumentTitle.ts
+- `useDocumentTitle(title)`: sets the browser tab to "<title> · PropertyOS Admin".
 
 ## format.ts (design system file, adapted to our API)
 - `formatCurrency(value)`: "1200.00" -> "$1,200.00", "-150.00" -> "-$150.00"; empty -> "-". Numbers still work.

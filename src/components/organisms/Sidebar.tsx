@@ -83,12 +83,14 @@ export interface SidebarProps {
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
   groups?: NavGroup[];
+  /** Brand text next to the logo. Default "PropOS". */
+  brand?: string;
   /** Render links with your router: (href, props) => <Link to={href} {...props} /> */
   renderLink?: (href: string, props: React.AnchorHTMLAttributes<HTMLAnchorElement> & { children: React.ReactNode }) => React.ReactNode;
   className?: string;
 }
 
-export function Sidebar({ role, active, user, scope, onScopeClick, badges = {}, collapsed = false, onToggleCollapsed, groups = defaultNavGroups, renderLink, className }: SidebarProps) {
+export function Sidebar({ role, active, user, scope, onScopeClick, badges = {}, collapsed = false, onToggleCollapsed, groups = defaultNavGroups, brand = "PropOS", renderLink, className }: SidebarProps) {
   const allowed = roleModules[role];
   const link = renderLink ?? ((href, props) => <a href={href} {...props} />);
   return (
@@ -98,7 +100,7 @@ export function Sidebar({ role, active, user, scope, onScopeClick, badges = {}, 
     >
       <div className={cn("flex h-topbar items-center gap-2.5", collapsed ? "justify-center" : "px-5")}>
         <div className="flex size-7 items-center justify-center rounded-control bg-success text-body font-extrabold text-success-fg">P</div>
-        {!collapsed && <div className="text-h3 font-extrabold tracking-tight">PropOS</div>}
+        {!collapsed && <div className="text-h3 font-extrabold tracking-tight">{brand}</div>}
       </div>
 
       <button
