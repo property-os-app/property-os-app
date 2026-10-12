@@ -1,0 +1,16 @@
+# CLAUDE.md
+- Read docs/BRIEF.md and docs/design-system.md before working.
+- Keep explanations short and plain. Explain each file you create or change in one line.
+- Inspect first, then explain your plan, then wait for the user's OK before big changes.
+- Never run git commands that change anything (commit, push, merge, switch, reset, stash). Read-only status, diff and log are allowed.
+- Never write secrets to any file. Only .env.example with empty placeholders. Never touch .env.local.
+- Build UI only from the design system in src/components. Do not install shadcn or another UI library. Change a design system component only when needed, and say why.
+- Use the real API. Never invent endpoints or fields. If something is missing, stop and write a "BACKEND REQUEST" for the user.
+- Money from the API is a string: format with lib/format.ts, never float math. Dates are "YYYY-MM-DD": never new Date("YYYY-MM-DD").
+- Every list handles loading, empty and error states. Every form shows backend errors (message can be a string or an array).
+- After each step: run npm run build and npm run lint, fix errors, list changed files, give a short browser test checklist, then stop.
+- Commands for the user: Windows PowerShell, shortest form, one short line under each command saying what it does.
+- At the end of each step, suggest one commit message like: feat(area): short summary. Never commit.
+- Real API response samples live in docs/api-samples/. Read them before writing types in src/types. If one is missing, ask for it. Never guess a response shape.
+- docs/reference/ holds example pages from the design system. Never edit or import them. They wrap themselves in WorkspaceShell; our pages never do (the layout route renders the shell once).
+- Every change to src/components, src/styles, src/tokens or src/lib/format.ts gets one line in docs/design-system-changes.md: file, what changed, why.
