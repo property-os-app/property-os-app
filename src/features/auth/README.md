@@ -58,4 +58,4 @@ Sign-in and who is signed in: the auth state, the route guards, the auth screens
 - `Action`: the actions the UI checks (`property.create`, `entry.void`, ...).
 - `can(role, action)`: OWNER can do everything; PROPERTY_MANAGER can't create/edit/delete properties, assign managers, delete units or tenants, or void entries. Hide what's not allowed (never disable).
 - `toSidebarRole(role)`: OWNER → "admin", PROPERTY_MANAGER → "manager".
-- `roleLabel(role)`: "Owner", "Property Manager".
+- `roleLabel(role)`: "Owner", "Property Manager" (from `lib/labels.ts`).

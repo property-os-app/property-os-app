@@ -1,0 +1,233 @@
+import { useMemo, useState, type ReactNode } from "react";
+import { Building2, LayoutGrid, List, Plus, SearchX } from "lucide-react";
+import { Button, Select, Skeleton } from "@/components/atoms";
+import { Card, EmptyState, InlineError, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
+import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
+import { errorText } from "@/lib/api";
+import { centsToAmount, formatCompactCurrency, formatPercent } from "@/lib/format";
+import { labelOptions, plural, propertyTypeLabels } from "@/lib/labels";
+import { useClientTable, type SortColumn } from "@/lib/useClientTable";
+import { useAuth } from "@/features/auth/authContext";
+import { can } from "@/features/auth/permissions";
+import { useLeases } from "@/features/leases/hooks";
+import { useManagers, useProperties, usePropertyManagersMap } from "@/features/properties/hooks";
+import { PropertiesTable } from "@/features/properties/PropertiesTable";
+import { PropertyCard, PropertyCardSkeleton, type PropertyRow } from "@/features/properties/PropertyCard";
+import { PropertyFormModal } from "@/features/properties/PropertyFormModal";
+import {
+  activeRentCentsByProperty,
+  countUnits,
+  emptyCounts,
+  occupancy,
+  sumCents,
+  typeBreakdown,
+  unitCountsByProperty,
+  unitStatusNote,
+} from "@/features/properties/stats";
+import { useUnits } from "@/features/units/hooks";
+
+type View = "cards" | "table";
+type Filters = { type: string; manager: string };
+
+const VIEW_KEY = "propertyos.properties.view";
+const initialFilters: Filters = { type: "all", manager: "all" };
+
+/** The saved Cards / Table choice. Storage can throw (private mode, blocked site data). */
+function readView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === "table" ? "table" : "cards";
+  } catch {
+    return "cards";
+  }
+}
+
+function saveView(view: View) {
+  try {
+    localStorage.setItem(VIEW_KEY, view);
+  } catch {
+    // Not saved: the choice still works for this visit.
+  }
+}
+
+const searchText = (r: PropertyRow) => [r.property.name, r.property.street, r.property.city, r.property.state, r.property.zip];
+
+const matchFilters = (r: PropertyRow, f: Filters) =>
+  (f.type === "all" || r.property.propertyType === f.type) &&
+  (f.manager === "all" || Boolean(r.managers?.some((m) => m.id === f.manager)));
+
+const sorts: Record<string, SortColumn<PropertyRow>> = {
+  name: { kind: "text", value: (r) => r.property.name },
+  units: { kind: "number", value: (r) => r.counts.total },
+  occupancy: { kind: "number", value: (r) => r.occupancy },
+  value: { kind: "money", value: (r) => r.property.propertyValue },
+};
+
+/** /properties: KPIs, toolbar and the Cards or Table view. Ignores the sidebar property scope on purpose. */
+export function PropertiesPage() {
+  const { me } = useAuth();
+  const role = me!.role;
+  const isOwner = role === "OWNER";
+  const canCreate = can(role, "property.create");
+
+  const properties = useProperties();
+  const units = useUnits();
+  const leases = useLeases({ status: "ACTIVE" });
+  const managers = useManagers();
+  const ids = useMemo(() => properties.data?.map((p) => p.id) ?? [], [properties.data]);
+  const managersMap = usePropertyManagersMap(ids);
+
+  const [view, setView] = useState<View>(readView);
+  const [formOpen, setFormOpen] = useState(false);
+
+  const countsByProperty = useMemo(() => unitCountsByProperty(units.data ?? []), [units.data]);
+  const rentByProperty = useMemo(() => activeRentCentsByProperty(leases.data ?? []), [leases.data]);
+  const rows = useMemo<PropertyRow[] | undefined>(
+    () =>
+      properties.data?.map((property) => {
+        const counts = countsByProperty.get(property.id) ?? emptyCounts;
+        return {
+          property,
+          counts,
+          occupancy: occupancy(counts),
+          rentCents: rentByProperty.get(property.id) ?? 0,
+          managers: managersMap.byProperty.get(property.id) ?? (managersMap.isPending ? undefined : []),
+        };
+      }),
+    [properties.data, countsByProperty, rentByProperty, managersMap.byProperty, managersMap.isPending],
+  );
+
+  const table = useClientTable<PropertyRow, Filters>({ rows, searchText, initialFilters, matchFilters, sorts });
+
+  const failed = [properties, units, leases].find((q) => q.isError);
+  const isLoading = !failed && (properties.isPending || units.isPending || leases.isPending);
+  const retry = () => {
+    for (const q of [properties, units, leases]) if (q.isError) void q.refetch();
+  };
+
+  const allUnits = useMemo(() => countUnits(units.data ?? []), [units.data]);
+  const totalValueCents = useMemo(() => sumCents(properties.data?.map((p) => p.propertyValue) ?? []), [properties.data]);
+  const ready = !isLoading && !failed;
+  const kpi = (value: ReactNode) => (ready ? value : <Skeleton className="h-10 w-24" />);
+
+  const state: "loading" | "error" | "empty" | "ideal" = failed
+    ? "error"
+    : isLoading
+      ? "loading"
+      : table.total === 0
+        ? "empty"
+        : "ideal";
+  const noProperties = (properties.data?.length ?? 0) === 0;
+
+  const addButton = (variant: "primary" | "secondary") =>
+    canCreate ? (
+      <Button variant={variant} icon={<Plus size={16} strokeWidth={1.5} />} onClick={() => setFormOpen(true)}>
+        Add Property
+      </Button>
+    ) : undefined;
+
+  const empty = noProperties
+    ? isOwner
+      ? { title: "No properties yet", description: "Add your first property to start tracking units and leases.", action: addButton("secondary") }
+      : { title: "No properties yet", description: "No properties are assigned to you yet." }
+    : {
+        title: "No properties match your filters",
+        description: "Try another search or filter.",
+        action: <Button onClick={table.clearFilters}>Clear filters</Button>,
+      };
+  const error = { title: "Couldn't load properties", description: failed ? errorText(failed.error) : undefined, onRetry: retry };
+  const pagination = table.showPagination ? (
+    <Pagination page={table.page} pageCount={table.pageCount} onPageChange={table.setPage} summary={table.summary} />
+  ) : undefined;
+
+  return (
+    <>
+      <PageHeader
+        title="Properties"
+        description={ready ? `${plural(properties.data?.length ?? 0, "property", "properties")}, ${plural(allUnits.total, "unit")}.` : undefined}
+        actions={addButton("primary")}
+      />
+
+      <KpiRow>
+        <KpiCard label="Total properties" value={kpi(properties.data?.length ?? 0)} note={ready ? typeBreakdown(properties.data ?? []) : undefined} />
+        <KpiCard label="Total units" value={kpi(allUnits.total)} note={ready ? unitStatusNote(allUnits) : undefined} />
+        <KpiCard
+          label="Occupancy"
+          value={kpi(formatPercent(occupancy(allUnits)))}
+          note={ready ? `${allUnits.OCCUPIED} of ${plural(allUnits.total, "unit")}` : undefined}
+        />
+        <KpiCard
+          label="Portfolio value"
+          value={kpi(formatCompactCurrency(centsToAmount(totalValueCents)))}
+          note={ready ? "Total property value" : undefined}
+        />
+      </KpiRow>
+
+      <Toolbar>
+        <SegmentedControl<View>
+          aria-label="View"
+          value={view}
+          onChange={(v) => {
+            setView(v);
+            saveView(v);
+          }}
+          segments={[
+            { value: "cards", label: "Cards", icon: <LayoutGrid size={16} strokeWidth={1.5} /> },
+            { value: "table", label: "Table", icon: <List size={16} strokeWidth={1.5} /> },
+          ]}
+        />
+        <SearchInput placeholder="Search properties" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />
+        <div className="w-44">
+          <Select aria-label="Type" value={table.filters.type} onChange={(e) => table.setFilter("type", e.target.value)}>
+            <option value="all">All types</option>
+            {labelOptions(propertyTypeLabels).map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+        {isOwner && (
+          <div className="w-52">
+            <Select aria-label="Manager" value={table.filters.manager} onChange={(e) => table.setFilter("manager", e.target.value)}>
+              <option value="all">All managers</option>
+              {managers.data?.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
+      </Toolbar>
+
+      {view === "table" ? (
+        <PropertiesTable
+          rows={table.pageRows}
+          state={state}
+          sort={table.sort}
+          onSortChange={table.setSort}
+          empty={empty}
+          error={error}
+          footer={pagination}
+        />
+      ) : state === "error" ? (
+        <InlineError {...error} />
+      ) : state === "empty" ? (
+        <Card padding="none">
+          <EmptyState icon={noProperties ? <Building2 strokeWidth={1.5} /> : <SearchX strokeWidth={1.5} />} {...empty} />
+        </Card>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {state === "loading"
+              ? Array.from({ length: 4 }).map((_, i) => <PropertyCardSkeleton key={i} />)
+              : table.pageRows.map((row) => <PropertyCard key={row.property.id} row={row} />)}
+          </div>
+          {pagination && <div className="flex items-center justify-between text-small text-text-secondary">{pagination}</div>}
+        </>
+      )}
+
+      {formOpen && <PropertyFormModal onClose={() => setFormOpen(false)} />}
+    </>
+  );
+}

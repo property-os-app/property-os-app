@@ -77,9 +77,11 @@ export function CurrencyInput({ value, onChange, symbol = "$", invalid, classNam
         value={text}
         onFocus={(e) => { setEditing(true); setText(value === "" ? "" : String(value)); onFocus?.(e); }}
         onChange={(e) => {
-          const raw = e.target.value.replace(/[^0-9.]/g, "");
+          // Digits and one dot only, max 2 decimals; never report NaN ("" and "." count as empty).
+          const [whole = "", ...rest] = e.target.value.replace(/[^0-9.]/g, "").split(".");
+          const raw = rest.length > 0 ? `${whole}.${rest.join("").slice(0, 2)}` : whole;
           setText(raw);
-          onChange(raw === "" ? "" : Number(raw));
+          onChange(raw === "" || raw === "." ? "" : Number(raw));
         }}
         onBlur={(e) => { setEditing(false); onBlur?.(e); }}
         {...props}

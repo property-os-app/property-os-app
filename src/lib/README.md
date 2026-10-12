@@ -1,6 +1,6 @@
 # src/lib
 
-Plain TypeScript helpers with no UI: env, Firebase, the API client, one small hook, and the design system's `cn` and `format` helpers.
+Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form and table helpers, and the design system's `cn` and `format` helpers.
 
 ## env.ts
 - `env`: typed, trimmed values of the 5 `VITE_*` variables (API URL without trailing slash).
@@ -36,3 +36,15 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, one small ho
 
 ## cn.ts (design system file)
 - `cn(...classes)`: merges Tailwind class lists (clsx + tailwind-merge).
+
+## labels.ts
+- One `...Labels` map per enum in docs/API.md section 2 (`propertyTypeLabels`, `unitTypeLabels` "1 BR", `paymentMethodLabels` "Credit card", ...). Status labels come from the design system `statusLabel`.
+- `labelOptions(labels)`: `[{ value, label }]` for a Select.
+- `plural(count, singular, plural?)`: "1 unit" / "3 units".
+
+## forms.ts
+- `applyServerError(setError, error, fieldNames)`: backend messages starting with a field name go under that field; returns the others for an InlineError at the top. Works with string or array messages.
+
+## useClientTable.ts
+- `useClientTable({ rows, searchText, initialFilters, matchFilters, sorts, initialSort, pageSize })`: search, filters, sort (text / number / money via `toCents` / "YYYY-MM-DD" date) and 25-row pages in memory. Back to page 1 on search or filter change. Returns `pageRows`, `showPagination`, `summary`, `clearFilters`, `isFiltered`...
+- `SortKind`, `SortColumn`: sort column types.

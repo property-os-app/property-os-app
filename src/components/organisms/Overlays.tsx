@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/atoms/Button";
 import { H2 } from "@/components/atoms/Typography";
+import { InlineError } from "@/components/molecules/Feedback";
 
 /* Radix Dialog gives focus trapping, Escape to close, scroll lock and focus return for free. */
 
@@ -118,24 +119,41 @@ export interface ConfirmDialogProps {
   destructive?: boolean;
   /** For property, lease and user deletion: the user must type this name. */
   typeToConfirm?: string;
+  /**
+   * Optional async mode. When `busy` or `error` is passed, the dialog stays open after Confirm:
+   * the caller closes it on success. `busy` disables the buttons; `error` shows an InlineError.
+   */
+  busy?: boolean;
+  error?: string | null;
 }
 
-export function ConfirmDialog({ open, onOpenChange, title, consequence, confirmLabel, onConfirm, destructive, typeToConfirm }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, onOpenChange, title, consequence, confirmLabel, onConfirm, destructive, typeToConfirm, busy, error }: ConfirmDialogProps) {
   const [typed, setTyped] = React.useState("");
   const ready = !typeToConfirm || typed === typeToConfirm;
+  const asyncMode = busy !== undefined || error !== undefined;
+  // The caller may close the dialog itself (async mode): clear the typed name then too.
+  React.useEffect(() => { if (!open) setTyped(""); }, [open]);
   return (
     <Modal
       open={open}
-      onOpenChange={(o) => { setTyped(""); onOpenChange(o); }}
+      onOpenChange={(o) => { if (busy) return; setTyped(""); onOpenChange(o); }}
       title={title}
       footer={
         <>
-          <Button onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button variant={destructive ? "danger" : "primary"} disabled={!ready} onClick={() => { onConfirm(); onOpenChange(false); }}>{confirmLabel}</Button>
+          <Button disabled={busy} onClick={() => { setTyped(""); onOpenChange(false); }}>Cancel</Button>
+          <Button
+            variant={destructive ? "danger" : "primary"}
+            disabled={!ready || busy}
+            aria-busy={busy || undefined}
+            onClick={() => { onConfirm(); if (!asyncMode) { setTyped(""); onOpenChange(false); } }}
+          >
+            {busy ? "Working..." : confirmLabel}
+          </Button>
         </>
       }
     >
       <p className="m-0 text-body">{consequence}</p>
+      {error && <InlineError title={error} />}
       {typeToConfirm && (
         <label className="flex flex-col gap-1.5 text-small text-text-secondary">
           Type <strong className="text-text-primary">{typeToConfirm}</strong> to confirm

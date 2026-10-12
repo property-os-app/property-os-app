@@ -26,7 +26,7 @@ Small building blocks with no domain knowledge.
 | `Dash` | Muted "-" | - | Any empty value (never "N/A"). |
 | `Input`, `Textarea` | Text fields | `invalid`, `mobile` (Input) | Form fields, inside `FormField`. |
 | `Select` | Native select with chevron | `invalid`, `<option>` children | Single choice from a short list. |
-| `CurrencyInput` | "$" prefix, right-aligned, formats on blur | `value: number \| ""`, `onChange(number \| "")` | Money inputs (rent, deposit, payment). |
+| `CurrencyInput` | "$" prefix, right-aligned, formats on blur; digits and one dot, max 2 decimals, never `NaN` | `value: number \| ""`, `onChange(number \| "")` | Money inputs (rent, deposit, payment). Use with react-hook-form `Controller`. |
 | `Checkbox` | Styled checkbox with label | `label`, native checkbox props | Yes/no inside a form. |
 | `Toggle` | 40×22 switch | `checked`, `onChange(boolean)`, needs `aria-label` | On/off settings (auto-renew). |
 | `Kbd` | Keyboard hint (⌘K) | - | Shortcut hints. |
@@ -43,7 +43,7 @@ Atoms combined to do one job.
 
 | Component | What it does | Main props | When to use |
 | --- | --- | --- | --- |
-| `StatusBadge` | Maps a domain status to a tone | `domain` rent/lease/esign/ticket/priority/unit/insurance/approval, `status`, `children` (label override) | Every status in a table or drawer. |
+| `StatusBadge` | Maps a domain status to a tone and a friendly label | `domain` rent/lease/esign/ticket/priority/unit/insurance/approval, `status` (API enum for rent/lease/esign/unit, e.g. `UNDER_MAINTENANCE`; lease also takes UI-only `EXPIRING`), `children` (label override). `statusLabel` holds the labels. | Every status in a table or drawer. |
 | `FormField` | Label, control, help or error text | `label`, `htmlFor`, `required`, `help`, `error`, `action` | Wrap every form control. |
 | `SearchInput` | Input with a search icon | Input props, `shortcut` | Toolbar search. |
 | `SegmentedControl` | Button group with counts | `value`, `onChange`, `segments`, `aria-label` | Status filter (Rent Roll). |
@@ -82,7 +82,7 @@ Page sections. They own no data.
 | `Pagination` | Page number buttons | `page`, `pageCount`, `onPageChange`, `summary` | In `DataTable` `footer`. |
 | `Drawer` | Right side panel (480/640/800) | `open`, `onOpenChange`, `title`, `status`, `tabs`, `footer`, `size`, `confirmClose` | One record from a list. Never stack. |
 | `Modal` | Centered dialog (480/640) | `open`, `onOpenChange`, `title`, `footer`, `size`, `confirmClose` | Create/edit forms; may open over a drawer. |
-| `ConfirmDialog` | Confirm modal, optional type-to-confirm | `title`, `consequence`, `confirmLabel`, `onConfirm`, `destructive`, `typeToConfirm` | Every destructive action. |
+| `ConfirmDialog` | Confirm modal, optional type-to-confirm | `title`, `consequence`, `confirmLabel`, `onConfirm`, `destructive`, `typeToConfirm`, `busy`, `error` (with either, the dialog stays open and the caller closes it on success) | Every destructive action. |
 | `RentCollectionHero` | 3 hero stats + collection bar | `period`, `totalDue`, `collected`, `outstanding`, counts | Dashboard rent block. |
 | `IncomeExpenseChart`, `DonutChart`, `HBarList` | Simple SVG/CSS charts | `data` / `slices` / `items`, `format` | Finance charts. |
 | `KanbanBoard` | 4-column ticket board | `tickets`, `onOpen`, `onMove` | Maintenance tickets. |
@@ -154,13 +154,12 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 
 | File | Gap |
 | --- | --- |
-| `molecules/StatusBadge.tsx` | Statuses are display words ("Paid", "Late", "Month-to-Month", "Under Renovation"), not our enums. Missing: rent UNPAID, NOT_BILLED; lease ENDED, TERMINATED; unit RESERVED, UNDER_MAINTENANCE. Unknown values fall back to neutral and show the raw text. |
-| `atoms/Input.tsx` (`CurrencyInput`) | Keeps several dots ("1.2.3" → `NaN`), no 2-decimal limit, no negative values. |
+| `atoms/Input.tsx` (`CurrencyInput`) | No negative values. Not a forwardRef, so react-hook-form can't focus it on error. |
 | `organisms/Panels.tsx` (`RentCollectionHero`) | Takes numbers and computes the rate with float math; needs `unitsBilled`, `paymentsReceived`, `lateCount`, which our rent-roll summary doesn't have (it has `collectionRate`, `overdueCount`). |
 | `organisms/Sidebar.tsx` | `Role` is admin/manager/leasing/maintenance/accountant (we map OWNER → admin, PROPERTY_MANAGER → manager). Default groups list out-of-scope modules; we must pass our own `groups`. Avatar always shows the online dot. |
 | `organisms/Topbar.tsx` | `showAi` defaults to `true` (we pass `false`). Search placeholder mentions tickets (we don't pass `onSearch`, so it's hidden). |
 | `templates/Shells.tsx` (`WorkspaceShell`) | Sidebar is hidden under 768px and there is no mobile nav in its place. |
-| `organisms/Overlays.tsx` (`ConfirmDialog`) | `onConfirm` is sync and the dialog closes at once: no pending state, no error display. No field for a reason (Void needs `reason`, max 300). |
+| `organisms/Overlays.tsx` (`ConfirmDialog`) | No field for a reason (Void needs `reason`, max 300). |
 | `organisms/Overlays.tsx` (`Drawer`) | Uses `animate-in` / `animate-out` classes from a Tailwind plugin that isn't installed, so they do nothing. |
 | `organisms/DataTable.tsx` (`Pagination`) | Shows at most 8 page buttons, no previous/next. Paging is up to the caller (the API has no pagination). |
 | `organisms/DataTable.tsx` | Empty and error states render only if the `empty` / `error` props are passed. |
@@ -179,3 +178,6 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | 2026-10-13 | `organisms/Topbar.tsx` | Search box renders only when `onSearch` is passed, bell only with `onNotifications`, quick add only with `onQuickAdd`. New optional `profileMenu` (MenuItem[]): the avatar opens a KebabMenu with those items; without it the old `onProfile` button stays. | Our Topbar has no search, bell or quick add; users need the email and Sign out from the avatar. |
 | 2026-10-13 | `molecules/Menu.tsx` (`KebabMenu`) | Optional `trigger` prop: custom content for the opening button instead of the "⋮" icon. | Reuse the same menu panel for the Topbar profile menu instead of a second menu. |
 | 2026-10-13 | `organisms/Sidebar.tsx` | Optional `brand` prop, default "PropOS". | We show "PropertyOS". |
+| 2026-10-13 | `molecules/StatusBadge.tsx` | rent, lease, esign and unit domains now use the backend enums as keys (PAID, NOT_BILLED, DRAFT, ENDED, TERMINATED, NOT_SENT, RESERVED, UNDER_MAINTENANCE...) plus the UI-only lease `EXPIRING`. New `statusLabel` map shows friendly labels ("Not billed", "Under maintenance"). Other domains unchanged. | Feature code passes API values straight in; the UI never shows a raw enum. |
+| 2026-10-13 | `atoms/Input.tsx` (`CurrencyInput`) | Keeps only digits and one dot, max 2 decimals; "" and "." report `""`, so `onChange` never gets `NaN`. | "1.2.3" gave `NaN`; the API rejects more than 2 decimals. |
+| 2026-10-13 | `organisms/Overlays.tsx` (`ConfirmDialog`) | Optional `busy` (buttons disabled, "Working...", can't close) and `error` (InlineError in the dialog). With either prop the dialog stays open after Confirm and the caller closes it on success. The typed name resets whenever it closes. Without them it works as before. | Delete property and Remove manager must show the backend 409/400 message in the dialog. |

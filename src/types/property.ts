@@ -21,3 +21,23 @@ export interface Property {
   /** ISO timestamp. */
   updatedAt: string;
 }
+
+/** POST /properties body. Money is a JSON number (max 2 decimals); acquisitionDate is "YYYY-MM-DD". */
+export interface PropertyCreateBody {
+  name: string;
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
+  propertyType: PropertyType;
+  propertyValue: number;
+  acquisitionDate: string;
+  description?: string;
+  /** Create only; each must be an existing PROPERTY_MANAGER. */
+  managerIds?: string[];
+}
+
+/** PATCH /properties/:id body: any subset. Only description may be null (clears it). managerIds is not accepted. */
+export type PropertyUpdateBody = Partial<Omit<PropertyCreateBody, "managerIds" | "description">> & {
+  description?: string | null;
+};

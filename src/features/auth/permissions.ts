@@ -1,4 +1,5 @@
 import type { Role } from "@/components/organisms";
+import { userRoleLabels } from "@/lib/labels";
 import type { UserRole } from "@/types/auth";
 
 /** Things a role may do. The UI hides what a role can't do (never disables). The backend is the real guard. */
@@ -41,13 +42,7 @@ export function toSidebarRole(role: UserRole): Role {
   return role === "OWNER" ? "admin" : "manager";
 }
 
-const LABELS: Record<UserRole, string> = {
-  OWNER: "Owner",
-  PROPERTY_MANAGER: "Property Manager",
-  TENANT: "Tenant",
-};
-
 /** Display name of a role. */
 export function roleLabel(role: UserRole): string {
-  return LABELS[role];
+  return userRoleLabels[role];
 }

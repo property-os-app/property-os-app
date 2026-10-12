@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Link, Outlet, useMatches } from "react-router";
 import { LogOut } from "lucide-react";
 import { defaultNavGroups, type ModuleKey, type NavGroup, type NavItem, type SidebarProps } from "@/components/organisms";
 import { WorkspaceShell } from "@/components/templates";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
+import { PageTitleContext } from "@/app/pageTitle";
 import { useAuth } from "@/features/auth/authContext";
 import { roleLabel, toSidebarRole } from "@/features/auth/permissions";
 import { ScopeProvider } from "@/features/scope/ScopeProvider";
@@ -48,7 +50,10 @@ function AppShell() {
   const { me, signOut } = useAuth();
   const { label, openPicker } = useScope();
   const handle = useRouteHandle();
-  useDocumentTitle(handle.title);
+  // A page may replace the route title (usePageTitle), e.g. the property detail shows the property name.
+  const [pageTitle, setPageTitle] = useState<string | null>(null);
+  const title = pageTitle ?? handle.title;
+  useDocumentTitle(title);
 
   // RequireAuth renders this layout only when status is "ready", so me is set.
   if (!me) return null;
@@ -67,7 +72,7 @@ function AppShell() {
         renderLink,
       }}
       topbar={{
-        title: handle.title,
+        title,
         scope: label,
         user: { name: me.name },
         showAi: false,
@@ -77,7 +82,9 @@ function AppShell() {
         ],
       }}
     >
-      <Outlet />
+      <PageTitleContext value={setPageTitle}>
+        <Outlet />
+      </PageTitleContext>
     </WorkspaceShell>
   );
 }

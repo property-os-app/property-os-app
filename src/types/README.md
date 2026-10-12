@@ -10,3 +10,17 @@ TypeScript types for API responses. Each one is copied from docs/API.md (and che
 ## property.ts
 - `PropertyType`: `RESIDENTIAL | COMMERCIAL | MIXED_USE`.
 - `Property`: one row from GET /properties (`propertyValue` is a money string, `acquisitionDate` is a full timestamp).
+- `PropertyCreateBody`: POST /properties body. `PropertyUpdateBody`: PATCH body (any subset, `description` may be null).
+
+## manager.ts
+- `ManagerSummary`: `{ id, email, name }` (property managers list, assign / unassign answers).
+- `ManagerListItem`: `ManagerSummary` + `assignedPropertyCount` (GET /managers).
+
+## unit.ts
+- `UnitType`, `UnitStatus`: unit enums.
+- `Unit`: one row from GET /units (`monthlyRent` is a money string, `floorArea` a number).
+
+## lease.ts
+- `LeaseStatus`, `SignatureStatus`, `PaymentFrequency`: lease enums.
+- `LeaseTenant`: one tenant on a lease (`isPrimary`).
+- `Lease`: one row from GET /leases (dates "YYYY-MM-DD", money strings, `endingSoon`, `balance`).
