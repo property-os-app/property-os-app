@@ -1,0 +1,201 @@
+/* PropOS design tokens for Tailwind v4 (CSS-first).
+ * Light theme is the default. Add class="dark" (or data-theme="dark") to <html> to switch.
+ * Import this file once, before any component styles:  @import "./styles/theme.css";
+ */
+@import "tailwindcss";
+
+/* ---------- 1. Raw theme values (switchable at runtime) ---------- */
+:root {
+  --bg: #f7f7f9;
+  --surface-1: #ffffff;
+  --surface-2: #f1f1f4;
+  --surface-3: #e9e9ee;
+  --overlay: #ffffff;
+  --border-subtle: #e4e4ea;
+  --border-strong: #cfcfd8;
+  --text-primary: #0b0b0f;
+  --text-secondary: #52525e;
+  --text-muted: #6f6f7c;
+
+  --success: #059669;
+  --success-dark: #047857;
+  --success-soft: rgba(5, 150, 105, 0.12);
+  --success-fg: #04130d; /* text on a solid success fill, never white */
+  --danger: #e11d48;
+  --danger-soft: rgba(225, 29, 72, 0.12);
+  --warning: #b45309;
+  --warning-soft: rgba(180, 83, 9, 0.12);
+  --info: #0284c7;
+  --info-soft: rgba(2, 132, 199, 0.12);
+  --ai: #7c3aed;
+  --ai-soft: rgba(124, 58, 237, 0.12);
+
+  --scrim: rgba(11, 11, 15, 0.5);
+  --shadow-overlay: 0 16px 48px rgba(11, 11, 15, 0.18);
+  --focus-ring: rgba(5, 150, 105, 0.4);
+}
+
+.dark,
+[data-theme="dark"] {
+  --bg: #0b0b0f;
+  --surface-1: #121218;
+  --surface-2: #181820;
+  --surface-3: #1f1f29;
+  --overlay: #23232e;
+  --border-subtle: #24242f;
+  --border-strong: #33333f;
+  --text-primary: #f4f4f6;
+  --text-secondary: #a1a1ad;
+  --text-muted: #6b6b78;
+
+  --success: #10b981;
+  --success-dark: #0a8f63;
+  --success-soft: rgba(16, 185, 129, 0.12);
+  --success-fg: #04130d;
+  --danger: #f43f5e;
+  --danger-soft: rgba(244, 63, 94, 0.12);
+  --warning: #f59e0b;
+  --warning-soft: rgba(245, 158, 11, 0.12);
+  --info: #38bdf8;
+  --info-soft: rgba(56, 189, 248, 0.12);
+  --ai: #8b5cf6;
+  --ai-soft: rgba(139, 92, 246, 0.12);
+
+  --scrim: rgba(0, 0, 0, 0.6);
+  --shadow-overlay: 0 16px 48px rgba(0, 0, 0, 0.5);
+  --focus-ring: rgba(16, 185, 129, 0.4);
+}
+
+/* ---------- 2. Tailwind theme (generates utilities) ---------- */
+@theme inline {
+  /* Colors: bg-bg, bg-surface-1, text-text-primary, border-border-subtle, bg-success-soft ... */
+  --color-bg: var(--bg);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-overlay: var(--overlay);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-success: var(--success);
+  --color-success-dark: var(--success-dark);
+  --color-success-soft: var(--success-soft);
+  --color-success-fg: var(--success-fg);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-ai: var(--ai);
+  --color-ai-soft: var(--ai-soft);
+  --color-scrim: var(--scrim);
+
+  /* Typography: font-sans, text-hero, text-display, text-h1 ... text-overline */
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  --text-hero: 48px;
+  --text-hero--line-height: 56px;
+  --text-hero--font-weight: 800;
+  --text-hero--letter-spacing: -0.02em;
+  --text-display: 32px;
+  --text-display--line-height: 40px;
+  --text-display--font-weight: 800;
+  --text-display--letter-spacing: -0.02em;
+  --text-h1: 24px;
+  --text-h1--line-height: 32px;
+  --text-h1--font-weight: 700;
+  --text-h2: 20px;
+  --text-h2--line-height: 28px;
+  --text-h2--font-weight: 700;
+  --text-h3: 16px;
+  --text-h3--line-height: 24px;
+  --text-h3--font-weight: 600;
+  --text-body: 14px;
+  --text-body--line-height: 20px;
+  --text-body--font-weight: 500;
+  --text-body-lg: 16px; /* Renter Portal body on mobile */
+  --text-body-lg--line-height: 24px;
+  --text-body-lg--font-weight: 500;
+  --text-small: 13px;
+  --text-small--line-height: 18px;
+  --text-small--font-weight: 500;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-caption--font-weight: 500;
+  --text-overline: 11px;
+  --text-overline--line-height: 16px;
+  --text-overline--font-weight: 600;
+  --text-overline--letter-spacing: 0.06em;
+
+  /* Radius: rounded-badge, rounded-control, rounded-card, rounded-overlay, rounded-pill */
+  --radius-badge: 6px;
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-overlay: 16px;
+  --radius-pill: 999px;
+
+  /* Elevation: shadow-overlay */
+  --shadow-overlay: var(--shadow-overlay);
+
+  /* Layout: w-sidebar, w-sidebar-collapsed, h-topbar, w-drawer, w-drawer-lg, w-drawer-xl, max-w-content */
+  --spacing-sidebar: 264px;
+  --spacing-sidebar-collapsed: 72px;
+  --spacing-topbar: 64px;
+  --spacing-drawer: 480px;
+  --spacing-drawer-lg: 640px;
+  --spacing-drawer-xl: 800px;
+  --spacing-modal: 480px;
+  --spacing-modal-lg: 640px;
+  --container-content: 1440px;
+
+  /* Motion: ease-overlay (durations are @utility blocks below, since Tailwind has no duration namespace) */
+  --ease-overlay: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Animations: animate-hazard, animate-shimmer */
+  --animate-hazard: hazard 2.4s linear infinite;
+  --animate-shimmer: shimmer 1.4s linear infinite;
+  @keyframes hazard {
+    from { background-position: 0 0; }
+    to { background-position: 34px 0; }
+  }
+  @keyframes shimmer {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
+  }
+}
+
+/* ---------- 3. Base ---------- */
+@layer base {
+  html { font-family: var(--font-sans); }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 500;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Every number in PropOS uses tabular figures. */
+  .tabular, table, [data-numeric] { font-variant-numeric: tabular-nums; }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-hazard, .animate-shimmer { animation: none; }
+    * { transition-duration: 100ms !important; }
+  }
+}
+
+/* ---------- 4. Utilities that need raw CSS ---------- */
+/* Motion durations from the guideline: 120ms hover/press, 240ms drawer/modal, 600ms chart draw. */
+@utility duration-fast { transition-duration: 120ms; }
+@utility duration-overlay { transition-duration: 240ms; }
+@utility duration-draw { transition-duration: 600ms; }
+@utility hazard-fill {
+  background-image: repeating-linear-gradient(45deg, var(--success) 0 12px, var(--success-dark) 12px 24px);
+  background-size: 34px 34px;
+}
+@utility focus-ring {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
