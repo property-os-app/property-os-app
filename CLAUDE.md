@@ -13,4 +13,12 @@
 - At the end of each step, suggest one commit message like: feat(area): short summary. Never commit.
 - Real API response samples live in docs/api-samples/. Read them before writing types in src/types. If one is missing, ask for it. Never guess a response shape.
 - docs/reference/ holds example pages from the design system. Never edit or import them. They wrap themselves in WorkspaceShell; our pages never do (the layout route renders the shell once).
-- Every change to src/components, src/styles, src/tokens or src/lib/format.ts gets one line in docs/design-system-changes.md: file, what changed, why.
+- Every change to src/components, src/styles, src/tokens or src/lib/format.ts gets one line in src/components/README.md (file, what changed, why). Do not use docs/design-system-changes.md. If a prompt mentions docs/design-system-changes.md, use src/components/README.md instead.
+
+## Documentation pattern
+- Every folder WE write under src/ (src/app, src/lib, src/types, src/features/<area> and their subfolders) has a README.md explaining:
+  1. What the folder is responsible for.
+  2. A short section per file: what it does, and a one-line explanation of each exported function, hook or component.
+- Keep it short and readable, not verbose. Create or update it automatically whenever you add or change a file in that folder.
+- The design system folders (src/components and its subfolders, src/styles, src/tokens) do NOT get a README per folder. Instead, src/components/README.md is the design system catalog: read it before building any page, and keep it up to date.
+- When a folder gets its README.md, delete its .gitkeep.
