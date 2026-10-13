@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { Building2, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { Building2, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import { Avatar, Button, Caption, Dash, H1, Num, Overline, Skeleton, Small } from "@/components/atoms";
 import { Card, CardHeader, EmptyState, InlineError, KebabMenu, KeyValueList, Tabs, toast } from "@/components/molecules";
 import { ConfirmDialog } from "@/components/organisms";
@@ -19,6 +19,8 @@ import { PropertyManagersCard } from "@/features/properties/PropertyManagersCard
 import { PropertyUnitsTable } from "@/features/properties/PropertyUnitsTable";
 import { activeRentCentsByProperty, buildUnitRows, countUnits, formatAddress, needsAttention, occupancy } from "@/features/properties/stats";
 import { useUnits } from "@/features/units/hooks";
+import { UnitDrawer } from "@/features/units/UnitDrawer";
+import { UnitFormModal } from "@/features/units/UnitFormModal";
 import type { Property } from "@/types/property";
 
 type Tab = "overview" | "units";
@@ -112,6 +114,10 @@ function PropertyDetail({ property }: { property: Property }) {
   const [tab, setTab] = useState<Tab>("overview");
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [addingUnit, setAddingUnit] = useState(false);
+  const [openUnitId, setOpenUnitId] = useState<string | null>(null);
+  const openUnit = units.data?.find((u) => u.id === openUnitId);
+  const canAddUnit = can(role, "unit.create");
 
   const rows = useMemo(() => buildUnitRows(units.data ?? [], leases.data ?? []), [units.data, leases.data]);
   const attention = useMemo(() => rows.filter(needsAttention), [rows]);
@@ -159,11 +165,18 @@ function PropertyDetail({ property }: { property: Property }) {
                   {formatAddress(property)} · Acquired {acquired} · {unitsLoading ? "…" : plural(counts.total, "unit")}
                 </Small>
               </div>
-              {can(role, "property.edit") && (
+              {(can(role, "property.edit") || canAddUnit) && (
                 <div className="flex shrink-0 items-center gap-2">
-                  <Button icon={<Pencil size={16} strokeWidth={1.5} />} onClick={() => setEditing(true)}>
-                    Edit
-                  </Button>
+                  {can(role, "property.edit") && (
+                    <Button icon={<Pencil size={16} strokeWidth={1.5} />} onClick={() => setEditing(true)}>
+                      Edit
+                    </Button>
+                  )}
+                  {canAddUnit && (
+                    <Button variant="primary" icon={<Plus size={16} strokeWidth={1.5} />} onClick={() => setAddingUnit(true)}>
+                      Add unit
+                    </Button>
+                  )}
                   {can(role, "property.delete") && (
                     <KebabMenu
                       label="Property actions"
@@ -248,6 +261,7 @@ function PropertyDetail({ property }: { property: Property }) {
             <PropertyUnitsTable
               caption="Units needing attention"
               rows={attention}
+              onRowClick={(r) => setOpenUnitId(r.unit.id)}
               state={tableState}
               error={tableError}
               empty={
@@ -279,6 +293,7 @@ function PropertyDetail({ property }: { property: Property }) {
           <PropertyUnitsTable
             caption="Units"
             rows={rows}
+            onRowClick={(r) => setOpenUnitId(r.unit.id)}
             state={tableState}
             error={tableError}
             empty={{ title: "No units yet", description: "This property has no units." }}
@@ -287,6 +302,8 @@ function PropertyDetail({ property }: { property: Property }) {
       )}
 
       {editing && <PropertyFormModal property={property} onClose={() => setEditing(false)} />}
+      {addingUnit && <UnitFormModal defaultPropertyId={property.id} onClose={() => setAddingUnit(false)} />}
+      {openUnit && <UnitDrawer unit={openUnit} propertyName={property.name} onClose={() => setOpenUnitId(null)} />}
 
       <ConfirmDialog
         open={deleting}

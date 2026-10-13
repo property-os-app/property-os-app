@@ -42,16 +42,17 @@ const columns: Column<UnitRow>[] = [
   },
 ];
 
-type Props = Pick<DataTableProps<UnitRow>, "state" | "empty" | "error"> & { rows: UnitRow[]; caption: string };
+type Props = Pick<DataTableProps<UnitRow>, "state" | "empty" | "error" | "onRowClick"> & { rows: UnitRow[]; caption: string };
 
-/** Units of one property with their lease (Overview "Units needing attention" and the Units tab). 25 per page. */
-export function PropertyUnitsTable({ rows, state, empty, error, caption }: Props) {
+/** Units of one property with their lease (Overview "Units needing attention" and the Units tab). 25 per page. Row click opens the unit drawer. */
+export function PropertyUnitsTable({ rows, state, empty, error, caption, onRowClick }: Props) {
   const table = useClientTable({ rows });
   return (
     <DataTable
       columns={columns}
       rows={table.pageRows}
       rowKey={(r) => r.unit.id}
+      onRowClick={onRowClick}
       state={state === "ideal" && rows.length === 0 ? "empty" : state}
       empty={empty}
       error={error}

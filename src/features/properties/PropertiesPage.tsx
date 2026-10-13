@@ -25,6 +25,7 @@ import {
   unitStatusNote,
 } from "@/features/properties/stats";
 import { useUnits } from "@/features/units/hooks";
+import { UnitFormModal } from "@/features/units/UnitFormModal";
 
 type View = "cards" | "table";
 type Filters = { type: string; manager: string };
@@ -78,6 +79,8 @@ export function PropertiesPage() {
 
   const [view, setView] = useState<View>(readView);
   const [formOpen, setFormOpen] = useState(false);
+  // "Add unit {index} of {total}" after creating a property with a number of units. null = no chain.
+  const [chain, setChain] = useState<{ propertyId: string; index: number; total: number } | null>(null);
 
   const countsByProperty = useMemo(() => unitCountsByProperty(units.data ?? []), [units.data]);
   const rentByProperty = useMemo(() => activeRentCentsByProperty(leases.data ?? []), [leases.data]);
@@ -227,7 +230,24 @@ export function PropertiesPage() {
         </>
       )}
 
-      {formOpen && <PropertyFormModal onClose={() => setFormOpen(false)} />}
+      {formOpen && (
+        <PropertyFormModal
+          onClose={() => setFormOpen(false)}
+          onCreated={(property, unitCount) => {
+            if (unitCount > 0) setChain({ propertyId: property.id, index: 1, total: unitCount });
+          }}
+        />
+      )}
+      {chain && (
+        <UnitFormModal
+          // A new key per step gives each unit a fresh form.
+          key={chain.index}
+          defaultPropertyId={chain.propertyId}
+          step={{ index: chain.index, total: chain.total }}
+          onSaved={() => setChain((c) => (c && c.index < c.total ? { ...c, index: c.index + 1 } : null))}
+          onClose={() => setChain(null)}
+        />
+      )}
     </>
   );
 }

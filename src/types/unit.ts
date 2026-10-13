@@ -25,3 +25,23 @@ export interface Unit {
   /** ISO timestamp. */
   updatedAt: string;
 }
+
+/** POST /units body (docs/API.md section 5). Money is a JSON number (max 2 decimals). OCCUPIED is never sent. */
+export interface UnitCreateBody {
+  propertyId: string;
+  unitNumber: string;
+  unitType: UnitType;
+  floorArea: number;
+  monthlyRent: number;
+  floor?: number;
+  bathrooms?: number;
+  status?: Exclude<UnitStatus, "OCCUPIED">;
+  description?: string;
+}
+
+/** PATCH /units/:id body: any subset, never propertyId. Only floor, bathrooms and description may be null (clears them). */
+export type UnitUpdateBody = Partial<Omit<UnitCreateBody, "propertyId" | "floor" | "bathrooms" | "description">> & {
+  floor?: number | null;
+  bathrooms?: number | null;
+  description?: string | null;
+};

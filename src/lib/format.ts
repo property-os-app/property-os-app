@@ -131,6 +131,19 @@ export function todayISO(now = new Date()): string {
   return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
 }
 
+/** Today as UTC "YYYY-MM-DD": the backend's "today" (overdue, endingSoon). */
+export function todayUTC(now = new Date()): string {
+  return now.toISOString().slice(0, 10);
+}
+
+/** Calendar days from today (local) to a "YYYY-MM-DD" date: 0 today, negative in the past. null when invalid. */
+export function daysUntil(date: string | null | undefined, now = new Date()): number | null {
+  if (!date) return null;
+  const target = toYmd(date);
+  const today = toYmd(now);
+  return target && today ? dayNumber(target) - dayNumber(today) : null;
+}
+
 /** This month as local "YYYY-MM", for the Rent Roll month and periodMonth. */
 export function currentMonth(now = new Date()): string {
   return todayISO(now).slice(0, 7);

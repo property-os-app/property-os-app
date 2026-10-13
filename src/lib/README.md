@@ -31,6 +31,8 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - `formatRelative(date)`: "2h ago"; only for full timestamps like createdAt.
 - `leaseCountdown(end)`: "Expires in 23 days" + tone, counted in calendar days.
 - `todayISO()` / `currentMonth()`: local "YYYY-MM-DD" / "YYYY-MM" (not UTC).
+- `todayUTC()`: UTC "YYYY-MM-DD", the backend's "today" (overdue, endingSoon).
+- `daysUntil(date)`: calendar days from local today to a "YYYY-MM-DD" date (negative in the past, null if invalid).
 - `initials(name)`: "Jordan Blake" -> "JB".
 - `EMPTY`: "-". `MoneyInput`: money input type.
 
@@ -41,6 +43,10 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - One `...Labels` map per enum in docs/API.md section 2 (`propertyTypeLabels`, `unitTypeLabels` "1 BR", `paymentMethodLabels` "Credit card", ...). Status labels come from the design system `statusLabel`.
 - `labelOptions(labels)`: `[{ value, label }]` for a Select.
 - `plural(count, singular, plural?)`: "1 unit" / "3 units".
+- `unitLayout(unitType, bathrooms)`: "1 bd / 1 ba", "Studio / 1 ba", or "3 bd" when bathrooms is null.
+
+## sort.ts
+- `compareNatural(a, b)`: numeric-aware, case-insensitive compare ("2" before "10"). Used for every unit number sort and by `useClientTable` text columns.
 
 ## forms.ts
 - `applyServerError(setError, error, fieldNames)`: backend messages starting with a field name go under that field; returns the others for an InlineError at the top. Works with string or array messages.

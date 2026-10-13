@@ -29,6 +29,21 @@ export const unitTypeLabels: Record<UnitType, string> = {
   FOUR_BED: "4 BR",
 };
 
+/** Short bedroom label for layouts: "Studio", "1 bd" ... "4 bd". */
+const unitBedLabels: Record<UnitType, string> = {
+  STUDIO: "Studio",
+  ONE_BED: "1 bd",
+  TWO_BED: "2 bd",
+  THREE_BED: "3 bd",
+  FOUR_BED: "4 bd",
+};
+
+/** Unit layout: "1 bd / 1 ba", "Studio / 1 ba", or "3 bd" when bathrooms is null. */
+export function unitLayout(unitType: UnitType, bathrooms: number | null): string {
+  const beds = unitBedLabels[unitType];
+  return bathrooms === null ? beds : `${beds} / ${bathrooms} ba`;
+}
+
 export const unitStatusLabels: Record<UnitStatus, string> = statusLabel.unit;
 
 export const tenantTypeLabels: Record<"INDIVIDUAL" | "COMPANY", string> = {

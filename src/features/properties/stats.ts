@@ -2,6 +2,7 @@
 import type { Tone } from "@/components/atoms";
 import { toCents } from "@/lib/format";
 import { propertyTypeLabels, unitStatusLabels } from "@/lib/labels";
+import { compareNatural } from "@/lib/sort";
 import type { Lease } from "@/types/lease";
 import type { Property } from "@/types/property";
 import type { Unit, UnitStatus } from "@/types/unit";
@@ -89,12 +90,10 @@ export interface UnitRow {
   draft?: Lease;
 }
 
-const unitCollator = new Intl.Collator("en-US", { numeric: true, sensitivity: "base" });
-
 /** Units sorted by number ("2" before "10"), each with its active and newest draft lease. */
 export function buildUnitRows(units: Unit[], leases: Lease[]): UnitRow[] {
   return [...units]
-    .sort((a, b) => unitCollator.compare(a.unitNumber, b.unitNumber))
+    .sort((a, b) => compareNatural(a.unitNumber, b.unitNumber))
     .map((unit) => ({
       unit,
       active: leases.find((l) => l.unitId === unit.id && l.status === "ACTIVE"),

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { SortState } from "@/components/organisms";
 import { toCents } from "@/lib/format";
+import { compareNatural } from "@/lib/sort";
 
 /** How a column sorts: text (A→Z, "2" before "10"), number, money (API string, via toCents) or a "YYYY-MM-DD" date (as a string). */
 export type SortKind = "text" | "number" | "money" | "date";
@@ -24,13 +25,11 @@ export interface ClientTableOptions<Row, F extends Record<string, string>> {
   pageSize?: number;
 }
 
-const collator = new Intl.Collator("en-US", { numeric: true, sensitivity: "base" });
-
 function compare(kind: SortKind, a: string | number, b: string | number): number {
   if (kind === "number") return Number(a) - Number(b);
   if (kind === "money") return toCents(a) - toCents(b);
   if (kind === "date") return String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0;
-  return collator.compare(String(a), String(b));
+  return compareNatural(String(a), String(b));
 }
 
 /**

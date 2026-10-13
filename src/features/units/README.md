@@ -1,9 +1,35 @@
 # src/features/units
 
-Units. For now only the data hook (the Units page comes in its own step).
+Units: the /units list, the unit drawer (also opened from the property detail page), the add / edit modal and delete. The list follows the sidebar property scope.
 
 ## keys.ts
-- `unitKeys`: `all`, `list({ propertyId? })`.
+- `unitKeys`: `all`, `lists` (prefix of every list), `list({ propertyId? })`.
 
 ## hooks.ts
 - `useUnits({ propertyId? })`: GET /units (OWNER all, manager assigned). An unknown propertyId gives `[]`.
+- `useCreateUnit()`: POST /units. Adds the new unit to the cached lists at once (the next step of an Add unit chain sees it for the duplicate check), then refreshes.
+- `useUpdateUnit()`: PATCH /units/:id. Refreshes units and leases (leases embed the unit number).
+- `useDeleteUnit()`: DELETE /units/:id (OWNER). 409 while the unit has leases or related records.
+
+## stats.ts
+- `UnitListRow`, `buildUnitListRows(units, activeLeases, propertyNames)`: rows with the ACTIVE lease and property name, sorted vacant / maintenance, reserved, occupied, then property name, then unit number.
+- `maintenanceNote(rows)`: "Unit 4B, Maple Court" / "3 units" / "None".
+- `unitSearchText(row)`: unit number, property, tenant names for the search box.
+- `unitSummary(unit)`: drawer description "1 bd / 1 ba · 750 sq ft · Floor 3 · Listed rent $1,450.00".
+- `DueState`, `dueState(lease)`: credit / nothing owed / overdue / due today / next due, from `balance` and `oldestUnpaidDueDate` against UTC today (the backend's rule).
+- `dueNote(state)`, `rentDiffNote(leaseRent, listedRent)`, `leaseEndsNote(lease)`: notes for the drawer's 3 small cards.
+
+## UnitsPage.tsx
+- `UnitsPage`: /units. PageHeader with "Add Unit", 4 KPIs, toolbar (search, Property select bound to the scope, status segments with counts), table with all states, drawer, add / edit modals and delete dialog.
+
+## UnitsTable.tsx
+- `UnitsTable`: the list DataTable (Unit, Listed rent, Current rent sortable; kebab with Edit / Delete when allowed). Row click calls `onOpen`.
+
+## UnitDrawer.tsx
+- `UnitDrawer`: lg drawer for one unit. Tenant tab (active lease card with Overdue / Due today / lease badge, Current rent / Balance / Lease ends cards, or "No active lease"; Details list) and Lease history tab (GET /leases?unitId=). Footer: Delete (OWNER) and Edit unit. Closes itself after a delete.
+
+## UnitFormModal.tsx
+- `UnitFormModal`: add / edit modal (react-hook-form + zod, rules.md Units). Blocks a duplicate unit number in the same property. Edit: property read-only, status read-only when OCCUPIED, PATCH with only changed fields (null when floor, bathrooms or description are cleared). Chain mode via `step` ("Add unit 1 of N", "Skip the rest", "Save & add next" / "Save") and `onSaved`. Mount it only while open.
+
+## UnitDeleteDialog.tsx
+- `UnitDeleteDialog`: ConfirmDialog for DELETE /units/:id with busy state and the backend's 409 shown inside; toast "Unit 4B deleted" and `onDeleted` on success.

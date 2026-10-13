@@ -19,6 +19,7 @@ TypeScript types for API responses. Each one is copied from docs/API.md (and che
 ## unit.ts
 - `UnitType`, `UnitStatus`: unit enums.
 - `Unit`: one row from GET /units (`monthlyRent` is a money string, `floorArea` a number).
+- `UnitCreateBody`: POST /units body (never `OCCUPIED`). `UnitUpdateBody`: PATCH body (no `propertyId`; `floor`, `bathrooms`, `description` may be null).
 
 ## lease.ts
 - `LeaseStatus`, `SignatureStatus`, `PaymentFrequency`: lease enums.

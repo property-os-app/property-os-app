@@ -22,10 +22,10 @@ Numbers the frontend computes (money in integer cents).
 - `unitStatusNote`, `typeBreakdown`: KPI notes ("75 occupied, 4 vacant", "3 residential, 1 mixed use").
 - `activeRentCentsByProperty(leases)`: rent of ACTIVE leases per property.
 - `sumCents`, `formatAddress`, `propertyStatus` (the card badge).
-- `buildUnitRows`, `UnitRow`, `needsAttention`, `primaryTenantName`: units of one property with their active / draft lease.
+- `buildUnitRows`, `UnitRow`, `needsAttention`, `primaryTenantName`: units of one property with their active / draft lease (sorted with `compareNatural`).
 
 ## PropertiesPage.tsx
-- `PropertiesPage`: /properties. PageHeader, 4 KPIs, toolbar (Cards/Table saved in localStorage, search, Type, Manager for OWNER), loading / empty / error / no-results states, client paging.
+- `PropertiesPage`: /properties. PageHeader, 4 KPIs, toolbar (Cards/Table saved in localStorage, search, Type, Manager for OWNER), loading / empty / error / no-results states, client paging. After Add Property with a "Number of units", runs the "Add unit 1 of N" chain (`UnitFormModal` with a new key per step).
 
 ## PropertyCard.tsx
 - `PropertyCard`: the clickable card of the Cards view. `PropertyCardSkeleton`: its loading shape.
@@ -36,13 +36,13 @@ Numbers the frontend computes (money in integer cents).
 - `PropertiesTable`: the Table view (DataTable; Name, Units, Occupancy, Value sortable; row opens the detail).
 
 ## PropertyDetailPage.tsx
-- `PropertyDetailPage`: /properties/:id. Breadcrumb, header card (KPI tiles, managers, tabs), Overview (units needing attention, Details, Managers) and Units tabs, Edit / Delete for OWNER, "Property not found" on 404. Sets the page title to the property name.
+- `PropertyDetailPage`: /properties/:id. Breadcrumb, header card (KPI tiles, managers, tabs), Overview (units needing attention, Details, Managers) and Units tabs, Edit / Delete for OWNER, "Add unit" (primary, `unit.create`), unit rows open the `UnitDrawer`, "Property not found" on 404. Sets the page title to the property name.
 
 ## PropertyUnitsTable.tsx
-- `PropertyUnitsTable`: units with tenant, rent, lease and status (expiring leases show "Expiring"); 25 per page.
+- `PropertyUnitsTable`: units with tenant, rent, lease and status (expiring leases show "Expiring"); 25 per page; optional `onRowClick`.
 
 ## PropertyManagersCard.tsx
 - `PropertyManagersCard`: assigned managers; OWNER can Remove (ConfirmDialog) and Assign from GET /managers. Shows backend 400 / 409 messages.
 
 ## PropertyFormModal.tsx
-- `PropertyFormModal`: add / edit modal (react-hook-form + zod). Trims text, US state / ZIP format (on edit only when changed), PATCH sends only changed fields (`description: null` when cleared), managers on create only, server errors under fields or at the top, "Discard changes?" on close. Mount it only while open.
+- `PropertyFormModal`: add / edit modal (react-hook-form + zod). Trims text, US state / ZIP format (on edit only when changed), PATCH sends only changed fields (`description: null` when cleared), managers and "Number of units" (0–200, not sent) on create only, `onCreated(property, unitCount)`, server errors under fields or at the top, "Discard changes?" on close. Mount it only while open.

@@ -17,6 +17,8 @@ const PROPERTY_TYPES = Object.keys(propertyTypeLabels) as [PropertyType, ...Prop
 const MAX_VALUE_CENTS = 999_999_999_999;
 const STATE_RE = /^[A-Z]{2}$/;
 const ZIP_RE = /^\d{5}(-\d{4})?$/;
+/** "Number of units" on create: the Add Unit chain opens this many times. */
+const MAX_UNIT_COUNT = 200;
 
 const FIELDS = ["name", "street", "city", "state", "zip", "propertyType", "propertyValue", "acquisitionDate", "description", "managerIds"] as const;
 
@@ -46,6 +48,12 @@ function makeSchema(original?: Property) {
     acquisitionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter the acquisition date."),
     description: z.string().trim(),
     managerIds: z.array(z.string()),
+    // Create only, never sent to the API.
+    unitCount: z
+      .string()
+      .trim()
+      .refine((v) => v === "" || (/^\d+$/.test(v) && Number(v) <= MAX_UNIT_COUNT), `Use a whole number from 0 to ${MAX_UNIT_COUNT}.`)
+      .transform((v) => (v === "" ? 0 : Number(v))),
   });
 }
 
@@ -65,6 +73,7 @@ function defaults(p?: Property): FormInput {
     acquisitionDate: p?.acquisitionDate.slice(0, 10) ?? "",
     description: p?.description ?? "",
     managerIds: [],
+    unitCount: "",
   };
 }
 
@@ -87,10 +96,12 @@ export interface PropertyFormModalProps {
   /** Edit this property; without it the modal creates one. */
   property?: Property;
   onClose: () => void;
+  /** Create only: called with the new property and the "Number of units" (0 when empty), before onClose. */
+  onCreated?: (property: Property, unitCount: number) => void;
 }
 
 /** Add / edit property modal (OWNER). Mount it only while open, so each opening starts with a fresh form. */
-export function PropertyFormModal({ property, onClose }: PropertyFormModalProps) {
+export function PropertyFormModal({ property, onClose, onCreated }: PropertyFormModalProps) {
   const isEdit = Boolean(property);
   const { me } = useAuth();
   const showManagers = !isEdit && me?.role === "OWNER";
@@ -141,6 +152,7 @@ export function PropertyFormModal({ property, onClose }: PropertyFormModalProps)
         };
         const saved = await create.mutateAsync(body);
         toast.success(`Property ${saved.name} created`);
+        onCreated?.(saved, v.unitCount);
       }
       onClose();
     } catch (err) {
@@ -206,6 +218,16 @@ export function PropertyFormModal({ property, onClose }: PropertyFormModalProps)
         <FormField label="Acquisition date" htmlFor="pf-date" required error={errors.acquisitionDate?.message}>
           <Input id="pf-date" type="date" {...register("acquisitionDate")} />
         </FormField>
+        {!isEdit && (
+          <FormField
+            label="Number of units"
+            htmlFor="pf-units"
+            error={errors.unitCount?.message}
+            help="Optional. After saving, Add unit opens this many times."
+          >
+            <Input id="pf-units" inputMode="numeric" {...register("unitCount")} />
+          </FormField>
+        )}
         <FormField label="Description" htmlFor="pf-description" error={errors.description?.message} className="md:col-span-2">
           <Textarea id="pf-description" {...register("description")} />
         </FormField>

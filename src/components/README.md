@@ -124,7 +124,7 @@ Page layouts.
 
 **`src/lib/cn.ts`**: `cn(...classes)` merges class lists (clsx + tailwind-merge, taught our custom classes). Use it for every `className`.
 
-**`src/lib/format.ts`**: `formatCurrency`, `formatCompactCurrency`, `formatPercent`, `formatDate`, `formatRelative`, `leaseCountdown`, `initials`, `EMPTY`, plus our `toCents`, `centsToAmount`, `todayISO`, `currentMonth`. Takes API money strings and "YYYY-MM-DD" dates; details in [src/lib/README.md](../lib/README.md).
+**`src/lib/format.ts`**: `formatCurrency`, `formatCompactCurrency`, `formatPercent`, `formatDate`, `formatRelative`, `leaseCountdown`, `initials`, `EMPTY`, plus our `toCents`, `centsToAmount`, `todayISO`, `todayUTC`, `daysUntil`, `currentMonth`. Takes API money strings and "YYYY-MM-DD" dates; details in [src/lib/README.md](../lib/README.md).
 
 ---
 
@@ -133,7 +133,7 @@ Page layouts.
 Based on docs/BRIEF.md (admin portal: login, Properties, Units, Tenants, Leases, Rent Roll; Dashboard is a bonus).
 
 **Used**
-- Atoms: Button, LinkButton, Badge, Tag, Count, Typography (H1-H3, Body, Small, Caption, Overline, Display, Num, Dash), Input, Textarea, Select, CurrencyInput, Checkbox, Toggle, Avatar, Skeleton, Divider, CollectionProgress, Bar
+- Atoms: Button, LinkButton, Badge, Tag, Count, Delta, Typography (H1-H3, Body, Small, Caption, Overline, Display, Num, Dash), Input, Textarea, Select, CurrencyInput, Checkbox, Toggle, Avatar, Skeleton, Divider, CollectionProgress, Bar
 - Molecules: StatusBadge, FormField, SearchInput, SegmentedControl, Tabs, FilterChip, Card, CardHeader, KpiCard, HeroStatCard, KeyValueList, EmptyState, InlineError, Toaster + toast, KebabMenu
 - Organisms: Sidebar, Topbar, PageHeader, Toolbar, KpiRow, DataTable, Pagination, Drawer, Modal, ConfirmDialog
 - Templates: WorkspaceShell, AuthLayout
@@ -144,7 +144,7 @@ Based on docs/BRIEF.md (admin portal: login, Properties, Units, Tenants, Leases,
 - Charts: IncomeExpenseChart, DonutChart, HBarList
 - Maintenance / chat / activity: KanbanBoard, StatusTracker, ChatBubble, TimelineItem, TimelineDay, ActivityTimeline, ThreePaneLayout
 - Other portals: RenterTabBar, OwnerNav, RenterShell, OwnerShell
-- Other: FileDropzone (no uploads), SettingsLayout (no settings), InternalNote, Banner, Stepper, Kbd, Delta (no comparison data in the API)
+- Other: FileDropzone (no uploads), SettingsLayout (no settings), InternalNote, Banner, Stepper, Kbd
 
 ---
 
@@ -181,3 +181,4 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | 2026-10-13 | `molecules/StatusBadge.tsx` | rent, lease, esign and unit domains now use the backend enums as keys (PAID, NOT_BILLED, DRAFT, ENDED, TERMINATED, NOT_SENT, RESERVED, UNDER_MAINTENANCE...) plus the UI-only lease `EXPIRING`. New `statusLabel` map shows friendly labels ("Not billed", "Under maintenance"). Other domains unchanged. | Feature code passes API values straight in; the UI never shows a raw enum. |
 | 2026-10-13 | `atoms/Input.tsx` (`CurrencyInput`) | Keeps only digits and one dot, max 2 decimals; "" and "." report `""`, so `onChange` never gets `NaN`. | "1.2.3" gave `NaN`; the API rejects more than 2 decimals. |
 | 2026-10-13 | `organisms/Overlays.tsx` (`ConfirmDialog`) | Optional `busy` (buttons disabled, "Working...", can't close) and `error` (InlineError in the dialog). With either prop the dialog stays open after Confirm and the caller closes it on success. The typed name resets whenever it closes. Without them it works as before. | Delete property and Remove manager must show the backend 409/400 message in the dialog. |
+| 2026-10-13 | `lib/format.ts` | Added `todayUTC()` (UTC "YYYY-MM-DD") and `daysUntil(date)` (calendar days from local today). Nothing else changed. | The unit drawer compares `oldestUnpaidDueDate` with the backend's UTC today, and shows "{n} days left" without `new Date("YYYY-MM-DD")`. |

@@ -6,6 +6,7 @@
 - Never write secrets to any file. Only .env.example with empty placeholders. Never touch .env.local.
 - Build UI only from the design system in src/components. Do not install shadcn or another UI library. Change a design system component only when needed, and say why.
 - Use the real API. Never invent endpoints or fields. If something is missing, stop and write a "BACKEND REQUEST" for the user.
+- Colors: only use the design system theme classes (for example bg-bg, bg-surface-1, text-text-primary, text-text-secondary, border-border-subtle, text-success, bg-warning-soft). Never hard-coded colors (bg-white, text-gray-500, #hex), so the dark theme (class 'dark' on <html>) keeps working.
 - Money from the API is a string: format with lib/format.ts, never float math. Dates are "YYYY-MM-DD": never new Date("YYYY-MM-DD").
 - Every list handles loading, empty and error states. Every form shows backend errors (message can be a string or an array).
 - After each step: run npm run build and npm run lint, fix errors, list changed files, give a short browser test checklist, then stop.
