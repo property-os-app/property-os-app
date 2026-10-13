@@ -1,6 +1,6 @@
 # src/types
 
-TypeScript types for API responses. Each one is copied from docs/API.md (and checked against docs/api-samples when samples exist). No logic here.
+TypeScript types for API responses. Each one is copied from docs/API.md section 4. docs/api-samples is still empty (samples come later from the backend's capture script): when they arrive, check these types against them. No logic here.
 
 ## auth.ts
 - `UserRole`: `OWNER | PROPERTY_MANAGER | TENANT`.
@@ -20,6 +20,13 @@ TypeScript types for API responses. Each one is copied from docs/API.md (and che
 - `UnitType`, `UnitStatus`: unit enums.
 - `Unit`: one row from GET /units (`monthlyRent` is a money string, `floorArea` a number).
 - `UnitCreateBody`: POST /units body (never `OCCUPIED`). `UnitUpdateBody`: PATCH body (no `propertyId`; `floor`, `bathrooms`, `description` may be null).
+
+## tenant.ts
+- `TenantType`, `ContactMethod`: tenant enums.
+- `Tenant`: POST / PATCH answer (no `createdBy`; `moveInDate` is a full timestamp).
+- `TenantCreatedBy`, `TenantDetail`: GET /tenants/:id (with `idNumber` and `createdBy`).
+- `TenantListItem`: one row of GET /tenants (no `idNumber`).
+- `TenantCreateBody`: POST body. `TenantUpdateBody`: PATCH body (`idNumber`, `address`, `moveInDate`, `notes` may be null).
 
 ## lease.ts
 - `LeaseStatus`, `SignatureStatus`, `PaymentFrequency`: lease enums.

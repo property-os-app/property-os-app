@@ -1,49 +1,27 @@
 import { useState } from "react";
 import { FileText } from "lucide-react";
-import { Avatar, Badge, Button, Caption, Dash, H2, H3, Num, Overline, Skeleton } from "@/components/atoms";
+import { Avatar, Badge, Button, Caption, Dash, H3, Num, Skeleton } from "@/components/atoms";
 import { Card, EmptyState, InlineError, KeyValueList, StatusBadge, Tabs } from "@/components/molecules";
 import { DataTable, Drawer, type Column } from "@/components/organisms";
 import { errorText } from "@/lib/api";
-import { cn } from "@/lib/cn";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { unitStatusLabels, unitTypeLabels } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { useLeases } from "@/features/leases/hooks";
+import { LeaseBadge, StatCard } from "@/features/leases/LeaseParts";
+import { dueNote, dueState, leaseEndsNote, leasePeriod } from "@/features/leases/stats";
 import { primaryTenantName } from "@/features/properties/stats";
 import { UnitDeleteDialog } from "@/features/units/UnitDeleteDialog";
 import { UnitFormModal } from "@/features/units/UnitFormModal";
-import { dueNote, dueState, leaseEndsNote, rentDiffNote, unitSummary } from "@/features/units/stats";
+import { rentDiffNote, unitSummary } from "@/features/units/stats";
 import type { Lease } from "@/types/lease";
 import type { Unit } from "@/types/unit";
 
 type Tab = "tenant" | "history";
 
-/** Lease badge: "Expiring" (warning) for an ACTIVE lease ending soon, else the lease status. */
-function LeaseBadge({ lease }: { lease: Lease }) {
-  return <StatusBadge domain="lease" status={lease.endingSoon ? "EXPIRING" : lease.status} />;
-}
-
-/** "Nov 1, 2026 to Oct 31, 2027"; a missing date shows a dash. */
-function period(lease: Lease) {
-  return lease.startDate || lease.endDate ? `${formatDate(lease.startDate)} to ${formatDate(lease.endDate)}` : null;
-}
-
-/** Small stat card: Overline label, H2 tabular value, Caption note. */
-function StatCard({ label, value, note, className }: { label: string; value: string; note: string; className?: string }) {
-  return (
-    <Card padding="compact" className="flex flex-col gap-1">
-      <Overline>{label}</Overline>
-      <H2 as="div" className={cn("tabular", className)}>
-        {value}
-      </H2>
-      <Caption>{note}</Caption>
-    </Card>
-  );
-}
-
 const historyColumns: Column<Lease>[] = [
-  { key: "period", header: "Period", cell: (l) => period(l) ?? <Dash /> },
+  { key: "period", header: "Period", cell: (l) => leasePeriod(l) ?? <Dash /> },
   { key: "tenant", header: "Tenant", cell: (l) => primaryTenantName(l) ?? <Dash /> },
   { key: "rent", header: "Rent", align: "right", cell: (l) => <Num>{formatCurrency(l.rent)}</Num> },
   { key: "status", header: "Status", cell: (l) => <LeaseBadge lease={l} /> },
@@ -167,7 +145,7 @@ export function UnitDrawer({ unit, propertyName, onClose }: UnitDrawerProps) {
 function ActiveLease({ lease, unit }: { lease: Lease; unit: Unit }) {
   const tenant = lease.tenants.find((t) => t.isPrimary) ?? lease.tenants[0];
   const due = dueState(lease);
-  const leasePeriod = period(lease);
+  const period = leasePeriod(lease);
 
   return (
     <div className="flex flex-col gap-3">
@@ -176,7 +154,7 @@ function ActiveLease({ lease, unit }: { lease: Lease; unit: Unit }) {
         <div className="min-w-0 flex-1">
           <div className="truncate font-semibold text-text-primary">{tenant?.fullName ?? "No primary tenant"}</div>
           <Caption className="block truncate">
-            {[`Lease ${lease.leaseNumber}`, leasePeriod, tenant?.email].filter(Boolean).join(" · ")}
+            {[`Lease ${lease.leaseNumber}`, period, tenant?.email].filter(Boolean).join(" · ")}
           </Caption>
         </div>
         {due.kind === "overdue" ? (

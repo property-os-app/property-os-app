@@ -45,6 +45,9 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - `plural(count, singular, plural?)`: "1 unit" / "3 units".
 - `unitLayout(unitType, bathrooms)`: "1 bd / 1 ba", "Studio / 1 ba", or "3 bd" when bathrooms is null.
 
+## useStoredView.ts
+- `useStoredView(key, values, fallback)`: a view choice ("cards" / "table") kept in localStorage; falls back to `fallback` when storage is blocked or the saved value is unknown. Used by Properties and Tenants.
+
 ## sort.ts
 - `compareNatural(a, b)`: numeric-aware, case-insensitive compare ("2" before "10"). Used for every unit number sort and by `useClientTable` text columns.
 

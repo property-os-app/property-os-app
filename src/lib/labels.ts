@@ -7,6 +7,7 @@ import { statusLabel } from "@/components/molecules/StatusBadge";
 import type { UserRole } from "@/types/auth";
 import type { LeaseStatus, PaymentFrequency, SignatureStatus } from "@/types/lease";
 import type { PropertyType } from "@/types/property";
+import type { ContactMethod, TenantType } from "@/types/tenant";
 import type { UnitStatus, UnitType } from "@/types/unit";
 
 export const userRoleLabels: Record<UserRole, string> = {
@@ -46,12 +47,12 @@ export function unitLayout(unitType: UnitType, bathrooms: number | null): string
 
 export const unitStatusLabels: Record<UnitStatus, string> = statusLabel.unit;
 
-export const tenantTypeLabels: Record<"INDIVIDUAL" | "COMPANY", string> = {
+export const tenantTypeLabels: Record<TenantType, string> = {
   INDIVIDUAL: "Individual",
   COMPANY: "Company",
 };
 
-export const contactMethodLabels: Record<"EMAIL" | "PHONE" | "SMS", string> = {
+export const contactMethodLabels: Record<ContactMethod, string> = {
   EMAIL: "Email",
   PHONE: "Phone",
   SMS: "SMS",

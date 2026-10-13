@@ -7,6 +7,7 @@ import { errorText } from "@/lib/api";
 import { centsToAmount, formatCompactCurrency, formatPercent } from "@/lib/format";
 import { labelOptions, plural, propertyTypeLabels } from "@/lib/labels";
 import { useClientTable, type SortColumn } from "@/lib/useClientTable";
+import { useStoredView } from "@/lib/useStoredView";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { useLeases } from "@/features/leases/hooks";
@@ -31,24 +32,8 @@ type View = "cards" | "table";
 type Filters = { type: string; manager: string };
 
 const VIEW_KEY = "propertyos.properties.view";
+const VIEWS = ["cards", "table"] as const;
 const initialFilters: Filters = { type: "all", manager: "all" };
-
-/** The saved Cards / Table choice. Storage can throw (private mode, blocked site data). */
-function readView(): View {
-  try {
-    return localStorage.getItem(VIEW_KEY) === "table" ? "table" : "cards";
-  } catch {
-    return "cards";
-  }
-}
-
-function saveView(view: View) {
-  try {
-    localStorage.setItem(VIEW_KEY, view);
-  } catch {
-    // Not saved: the choice still works for this visit.
-  }
-}
 
 const searchText = (r: PropertyRow) => [r.property.name, r.property.street, r.property.city, r.property.state, r.property.zip];
 
@@ -77,7 +62,7 @@ export function PropertiesPage() {
   const ids = useMemo(() => properties.data?.map((p) => p.id) ?? [], [properties.data]);
   const managersMap = usePropertyManagersMap(ids);
 
-  const [view, setView] = useState<View>(readView);
+  const [view, setView] = useStoredView<View>(VIEW_KEY, VIEWS, "cards");
   const [formOpen, setFormOpen] = useState(false);
   // "Add unit {index} of {total}" after creating a property with a number of units. null = no chain.
   const [chain, setChain] = useState<{ propertyId: string; index: number; total: number } | null>(null);
@@ -169,10 +154,7 @@ export function PropertiesPage() {
         <SegmentedControl<View>
           aria-label="View"
           value={view}
-          onChange={(v) => {
-            setView(v);
-            saveView(v);
-          }}
+          onChange={setView}
           segments={[
             { value: "cards", label: "Cards", icon: <LayoutGrid size={16} strokeWidth={1.5} /> },
             { value: "table", label: "Table", icon: <List size={16} strokeWidth={1.5} /> },

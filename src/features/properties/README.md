@@ -25,7 +25,7 @@ Numbers the frontend computes (money in integer cents).
 - `buildUnitRows`, `UnitRow`, `needsAttention`, `primaryTenantName`: units of one property with their active / draft lease (sorted with `compareNatural`).
 
 ## PropertiesPage.tsx
-- `PropertiesPage`: /properties. PageHeader, 4 KPIs, toolbar (Cards/Table saved in localStorage, search, Type, Manager for OWNER), loading / empty / error / no-results states, client paging. After Add Property with a "Number of units", runs the "Add unit 1 of N" chain (`UnitFormModal` with a new key per step).
+- `PropertiesPage`: /properties. PageHeader, 4 KPIs, toolbar (Cards/Table saved with `useStoredView`, search, Type, Manager for OWNER), loading / empty / error / no-results states, client paging. After Add Property with a "Number of units", runs the "Add unit 1 of N" chain (`UnitFormModal` with a new key per step).
 
 ## PropertyCard.tsx
 - `PropertyCard`: the clickable card of the Cards view. `PropertyCardSkeleton`: its loading shape.

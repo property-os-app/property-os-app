@@ -16,8 +16,7 @@ Units: the /units list, the unit drawer (also opened from the property detail pa
 - `maintenanceNote(rows)`: "Unit 4B, Maple Court" / "3 units" / "None".
 - `unitSearchText(row)`: unit number, property, tenant names for the search box.
 - `unitSummary(unit)`: drawer description "1 bd / 1 ba · 750 sq ft · Floor 3 · Listed rent $1,450.00".
-- `DueState`, `dueState(lease)`: credit / nothing owed / overdue / due today / next due, from `balance` and `oldestUnpaidDueDate` against UTC today (the backend's rule).
-- `dueNote(state)`, `rentDiffNote(leaseRent, listedRent)`, `leaseEndsNote(lease)`: notes for the drawer's 3 small cards.
+- `rentDiffNote(leaseRent, listedRent)`: "Current rent" card note. The other drawer helpers (`dueState`, `dueNote`, `leaseEndsNote`, `leasePeriod`, `LeaseBadge`, `StatCard`) live in `features/leases`.
 
 ## UnitsPage.tsx
 - `UnitsPage`: /units. PageHeader with "Add Unit", 4 KPIs, toolbar (search, Property select bound to the scope, status segments with counts), table with all states, drawer, add / edit modals and delete dialog.

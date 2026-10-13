@@ -13,7 +13,7 @@
 - Commands for the user: Windows PowerShell, shortest form, one short line under each command saying what it does.
 - At the end of each step, suggest one commit message like: feat(area): short summary. Never commit.
 - docs/API.md and docs/rules.md are the backend API reference, copied from the backend repo and generated from its code. Read the sections you need before writing types, hooks or forms. Never guess a field or rule. If they disagree with a sample in docs/api-samples, tell the user.
-- Real API response samples live in docs/api-samples/. Read them before writing types in src/types. If one is missing, ask for it. Never guess a response shape.
+- docs/API.md and docs/rules.md are the source of truth for types and rules. JSON samples in docs/api-samples will come later from the backend's capture script; until they exist, use API.md and do not ask for samples. When samples arrive, check the types against them. Never guess a response shape.
 - docs/reference/ holds example pages from the design system. Never edit or import them. They wrap themselves in WorkspaceShell; our pages never do (the layout route renders the shell once).
 - Every change to src/components, src/styles, src/tokens or src/lib/format.ts gets one line in src/components/README.md (file, what changed, why). Do not use docs/design-system-changes.md. If a prompt mentions docs/design-system-changes.md, use src/components/README.md instead.
 
