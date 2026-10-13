@@ -69,8 +69,8 @@ function defaults(p?: Property): FormInput {
     zip: p?.zip ?? "",
     propertyType: p?.propertyType ?? "",
     propertyValue: p ? centsToAmount(toCents(p.propertyValue)) : "",
-    // acquisitionDate is a full timestamp: keep only "YYYY-MM-DD" (never new Date()).
-    acquisitionDate: p?.acquisitionDate.slice(0, 10) ?? "",
+    // "YYYY-MM-DD" in and out, kept as it is (never new Date()).
+    acquisitionDate: p?.acquisitionDate ?? "",
     description: p?.description ?? "",
     managerIds: [],
     unitCount: "",
@@ -87,7 +87,7 @@ function changedFields(v: FormOutput, p: Property): PropertyUpdateBody {
   if (v.zip !== p.zip) body.zip = v.zip;
   if (v.propertyType !== p.propertyType) body.propertyType = v.propertyType;
   if (toCents(v.propertyValue) !== toCents(p.propertyValue)) body.propertyValue = v.propertyValue;
-  if (v.acquisitionDate !== p.acquisitionDate.slice(0, 10)) body.acquisitionDate = v.acquisitionDate;
+  if (v.acquisitionDate !== p.acquisitionDate) body.acquisitionDate = v.acquisitionDate;
   if (v.description !== (p.description ?? "")) body.description = v.description === "" ? null : v.description;
   return body;
 }

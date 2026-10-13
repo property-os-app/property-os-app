@@ -69,17 +69,29 @@ export function formatPercent(value: number | string | null | undefined, digits 
 
 /* ---------- Dates (never new Date("YYYY-MM-DD"): it is UTC and shows the day before in US time zones) ---------- */
 
-type Ymd = { y: number; m: number; d: number };
+/** A calendar day as plain numbers (m is 1-12). No time zone. */
+export type Ymd = { y: number; m: number; d: number };
 
-/** Year/month/day from the first 10 characters of a string, or the local calendar day of a Date. */
-function toYmd(date: Date | string): Ymd | null {
-  if (date instanceof Date) {
-    return Number.isNaN(date.getTime()) ? null : { y: date.getFullYear(), m: date.getMonth() + 1, d: date.getDate() };
-  }
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date.slice(0, 10));
+/**
+ * The one parser for date-only API values: exactly "YYYY-MM-DD" and a real calendar day ("2026-02-30" -> null).
+ * Never throws and never goes through the browser's time zone. Anything else (timestamps, "", null) -> null.
+ */
+export function parseDateOnly(value: unknown): Ymd | null {
+  if (typeof value !== "string") return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return null;
   const [y, m, d] = [Number(match[1]), Number(match[2]), Number(match[3])];
-  return m >= 1 && m <= 12 && d >= 1 && d <= 31 ? { y, m, d } : null;
+  return m >= 1 && m <= 12 && d >= 1 && d <= daysInMonth(y, m) ? { y, m, d } : null;
+}
+
+/** The local calendar day of a Date (for "today" and timestamps). null when invalid. */
+function localYmd(date: Date): Ymd | null {
+  return Number.isNaN(date.getTime()) ? null : { y: date.getFullYear(), m: date.getMonth() + 1, d: date.getDate() };
+}
+
+/** A Date gives its local day; a string must be a date-only "YYYY-MM-DD". */
+function toYmd(date: Date | string): Ymd | null {
+  return date instanceof Date ? localYmd(date) : parseDateOnly(date);
 }
 
 /** Whole-day number for a calendar date (no time zone involved), so day differences are exact. */
@@ -89,11 +101,23 @@ function dayNumber({ y, m, d }: Ymd): number {
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
-/** "Nov 1, 2026" in tables. Works for "2026-11-01", "2026-11-01T00:00:00.000Z" and Date. Empty or invalid -> "-". */
+const ymdLabel = (p: Ymd) => `${MONTHS[p.m - 1]} ${p.d}, ${p.y}`;
+
+/**
+ * "Nov 1, 2026" for date-only values ("YYYY-MM-DD", via parseDateOnly) or a Date (its local day).
+ * Empty or invalid (including full timestamps: use formatTimestampDate) -> "-". Never throws.
+ */
 export function formatDate(date: Date | string | null | undefined): string {
   if (date === null || date === undefined || date === "") return EMPTY;
   const p = toYmd(date);
-  return p ? `${MONTHS[p.m - 1]} ${p.d}, ${p.y}` : EMPTY;
+  return p ? ymdLabel(p) : EMPTY;
+}
+
+/** "Oct 12, 2026": the LOCAL day of an ISO timestamp (createdAt, updatedAt, voidedAt). Empty or invalid -> "-". */
+export function formatTimestampDate(timestamp: string | null | undefined): string {
+  if (!timestamp) return EMPTY;
+  const p = localYmd(new Date(timestamp));
+  return p ? ymdLabel(p) : EMPTY;
 }
 
 /**
@@ -131,9 +155,9 @@ export function todayISO(now = new Date()): string {
   return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
 }
 
-/** Today as UTC "YYYY-MM-DD": the backend's "today" (overdue, endingSoon). */
+/** Today as UTC "YYYY-MM-DD" from the UTC parts: the backend's "today" (overdue, endingSoon). */
 export function todayUTC(now = new Date()): string {
-  return now.toISOString().slice(0, 10);
+  return `${now.getUTCFullYear()}-${pad2(now.getUTCMonth() + 1)}-${pad2(now.getUTCDate())}`;
 }
 
 /** Calendar days from today (local) to a "YYYY-MM-DD" date: 0 today, negative in the past. null when invalid. */

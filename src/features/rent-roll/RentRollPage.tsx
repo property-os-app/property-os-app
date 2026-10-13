@@ -17,7 +17,7 @@ import { GenerateRentModal } from "@/features/rent-roll/GenerateRentModal";
 import { useRentRoll } from "@/features/rent-roll/hooks";
 import { LedgerDrawer } from "@/features/rent-roll/LedgerDrawer";
 import { RentRollTable } from "@/features/rent-roll/RentRollTable";
-import { monthFromParam, owingCount, paymentTargets, rowSearchText, STATUS_FILTERS, statusCounts, type StatusFilter } from "@/features/rent-roll/stats";
+import { canGenerateRent, lastGeneratableMonth, monthFromParam, owingCount, paymentTargets, rowSearchText, STATUS_FILTERS, statusCounts, type StatusFilter } from "@/features/rent-roll/stats";
 import { useScope } from "@/features/scope/scopeContext";
 import type { RentRollRow } from "@/types/rentRoll";
 
@@ -95,14 +95,25 @@ export function RentRollPage() {
         };
   const error = { title: "Couldn't load the rent roll", description: rentRoll.isError ? errorText(rentRoll.error) : undefined, onRetry: () => void rentRoll.refetch() };
 
-  const generateButton = canCharge ? <Button onClick={() => setGenerating(true)}>Generate rent</Button> : null;
+  // The backend only bills up to next month (UTC); later months keep the button disabled with a note.
+  const generateAllowed = canGenerateRent(month);
+  const generateLimitNote = `You can generate rent up to ${formatMonth(lastGeneratableMonth())}.`;
+  const generateButton = canCharge ? (
+    <Button disabled={!generateAllowed} title={generateAllowed ? undefined : generateLimitNote} onClick={() => setGenerating(true)}>
+      Generate rent
+    </Button>
+  ) : null;
   const isCurrent = month === currentMonthUTC();
 
   return (
     <>
       <PageHeader
         title="Rent Roll"
-        description={`Unit-by-unit payment ledger for the ${monthLabel} collection period.`}
+        description={
+          canCharge && !generateAllowed
+            ? `Unit-by-unit payment ledger for the ${monthLabel} collection period. ${generateLimitNote}`
+            : `Unit-by-unit payment ledger for the ${monthLabel} collection period.`
+        }
         actions={
           <>
             <div className="flex items-center gap-1">
@@ -179,7 +190,11 @@ export function RentRollPage() {
         <Card padding="compact" className="flex flex-wrap items-center justify-between gap-3 border-warning/40 bg-warning-soft">
           <div className="flex flex-col">
             <span className="font-semibold text-warning">Rent for {monthLabel} hasn't been generated yet.</span>
-            {canCharge && <Caption className="text-text-primary">Generating bills every property you can see, not only the one selected.</Caption>}
+            {canCharge && (
+              <Caption className="text-text-primary">
+                {generateAllowed ? "Generating bills every property you can see, not only the one selected." : generateLimitNote}
+              </Caption>
+            )}
           </div>
           {generateButton}
         </Card>

@@ -1,5 +1,5 @@
 /** Numbers and labels the frontend computes for tenants from GET /tenants + GET /leases. Money math in integer cents. */
-import { daysUntil, todayISO, toCents } from "@/lib/format";
+import { daysUntil, parseDateOnly, todayISO, toCents } from "@/lib/format";
 import { compareNatural } from "@/lib/sort";
 import { dueState } from "@/features/leases/stats";
 import type { Lease } from "@/types/lease";
@@ -104,10 +104,10 @@ function quarterOf(date: string): string {
   return `${date.slice(0, 4)}-Q${Math.floor((Number(date.slice(5, 7)) - 1) / 3) + 1}`;
 }
 
-/** Tenants whose moveInDate (first 10 characters) is in the current calendar quarter (local date). */
+/** Tenants whose moveInDate ("YYYY-MM-DD") is in the current calendar quarter (local date). */
 export function movedInThisQuarter(rows: TenantRow[], today = todayISO()): number {
   const q = quarterOf(today);
-  return rows.filter((r) => r.tenant.moveInDate && quarterOf(r.tenant.moveInDate.slice(0, 10)) === q).length;
+  return rows.filter((r) => r.tenant.moveInDate && parseDateOnly(r.tenant.moveInDate) && quarterOf(r.tenant.moveInDate) === q).length;
 }
 
 /** Tenants on an ACTIVE lease (their current lease is ACTIVE). */

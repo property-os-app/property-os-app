@@ -11,6 +11,7 @@ The /rent-roll page: the month's rows per lease, KPIs from the summary, Generate
 
 ## stats.ts
 - `monthFromParam(param)`: the ?month= value, or the current UTC month when missing or invalid.
+- `lastGeneratableMonth()`: next UTC month, the latest month POST /rent-roll/generate accepts. `canGenerateRent(month)`: true up to that month.
 - `STATUS_FILTERS`, `StatusFilter`, `statusCounts(rows)`: the segments and their counts.
 - `rowSearchText(row)`: lease number, unit, primary tenant (rows don't carry co-tenants).
 - `owingCount(rows)`: rows with balance > 0. `rowTotals(rows)`: billed count and rent / paid / balance sums in cents.
@@ -18,7 +19,7 @@ The /rent-roll page: the month's rows per lease, KPIs from the summary, Generate
 - `rowLabel(row)`, `paymentTargets(rows)`: Record Payment choices.
 
 ## RentRollPage.tsx
-- `RentRollPage`: header with the month switcher (prev, current month, next; kept in ?month=), Generate rent and Record Payment; 4 KPIs; status segments, search and Property (scope); "not generated yet" banner; the table; drawer and modals.
+- `RentRollPage`: header with the month switcher (prev, current month, next; kept in ?month=), Generate rent (disabled after next UTC month, with "You can generate rent up to {Month YYYY}." in the header and the banner) and Record Payment; 4 KPIs; status segments, search and Property (scope); "not generated yet" banner; the table; drawer and modals.
 
 ## RentRollTable.tsx
 - `RentRollTable`: columns (tenant + lease number + Ended/Terminated badge, unit, property, rent, paid, balance, status, status date), kebab (Open ledger, Record payment, Add charge) and the totals row over all filtered rows.

@@ -41,8 +41,8 @@ function defaults(t?: TenantDetail): FormInput {
     idNumber: t?.idNumber ?? "",
     address: t?.address ?? "",
     tenantType: t?.tenantType ?? "INDIVIDUAL",
-    // The API sends a full timestamp ("2026-03-01T00:00:00.000Z"): keep the date part.
-    moveInDate: t?.moveInDate?.slice(0, 10) ?? "",
+    // "YYYY-MM-DD" in and out, kept as it is.
+    moveInDate: t?.moveInDate ?? "",
     preferredContactMethod: t?.preferredContactMethod ?? "EMAIL",
     notes: t?.notes ?? "",
   };

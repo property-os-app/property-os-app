@@ -1,4 +1,4 @@
-import { currentMonthUTC, daysUntil, formatDate, isMonth, toCents } from "@/lib/format";
+import { addMonthsYM, currentMonthUTC, daysUntil, formatDate, isMonth, toCents } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import type { PaymentTarget } from "@/features/ledger/RecordPaymentModal";
 import type { RentRollRow, RentRollStatus } from "@/types/rentRoll";
@@ -11,6 +11,16 @@ export const STATUS_FILTERS: StatusFilter[] = ["all", "PAID", "PARTIAL", "UNPAID
 /** The ?month= value when it is a valid "YYYY-MM", else the current UTC month (the backend's default). */
 export function monthFromParam(param: string | null): string {
   return isMonth(param) ? param : currentMonthUTC();
+}
+
+/** The latest month the backend lets you generate rent for: next month (UTC). */
+export function lastGeneratableMonth(): string {
+  return addMonthsYM(currentMonthUTC(), 1);
+}
+
+/** Past months, the current month and next month (UTC). Later months get a 400 from POST /rent-roll/generate. */
+export function canGenerateRent(month: string): boolean {
+  return isMonth(month) && month <= lastGeneratableMonth();
 }
 
 /** Rows per segment (all rows of the month, before search). */

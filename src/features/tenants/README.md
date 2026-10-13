@@ -21,7 +21,7 @@ Tenants: one directory page (/tenants) with Cards / Table views, the tenant draw
 - `RentStatus`, `rentStatus(lease)`: overdue / today / ok for an ACTIVE lease (UTC today, backend rule); null otherwise.
 - `unitLine(lease)`: "Unit 4B, Maple Court".
 - `tenantSearchText(row)`: name, email, phone, unit number, property name.
-- KPIs: `movedInThisQuarter`, `activeLeaseCount`, `outstanding` (count + total, each lease once), `recentMoveOuts` (last 30 days).
+- KPIs: `movedInThisQuarter` (valid "YYYY-MM-DD" move-in dates in the current local quarter), `activeLeaseCount`, `outstanding` (count + total, each lease once), `recentMoveOuts` (last 30 days).
 
 ## TenantParts.tsx
 - `TenantLeaseBadge`: current lease badge or neutral "No lease".
@@ -38,7 +38,7 @@ Tenants: one directory page (/tenants) with Cards / Table views, the tenant draw
 - `TenantsTable`: the Table view (Tenant and Balance sortable; kebab with Edit / Delete when allowed). Row click calls `onOpen`.
 
 ## TenantDrawer.tsx
-- `TenantDrawer`: lg drawer. Overview (current ACTIVE lease card + Rent / Balance / Lease ends cards; Details with the ID number) and Leases tab (lease, unit, period, rent, status, Primary / Co-tenant; "Add lease" opens the lease wizard with this tenant as primary, with `lease.create`). Footer: Delete (OWNER) and Edit tenant. "Tenant not found" on 404. Closes itself after a delete.
+- `TenantDrawer`: lg drawer. Overview (current ACTIVE lease card + Rent / Balance / Lease ends cards; Details with the ID number) and Leases tab (lease, unit, period, rent, status, Primary / Co-tenant; "Add lease" opens the lease wizard with this tenant as primary, with `lease.create`). Move-in date via `formatDate` (Dash when missing or invalid); "Added on" is the local day of `createdAt` (`formatTimestampDate`). Footer: Delete (OWNER) and Edit tenant. "Tenant not found" on 404. Closes itself after a delete.
 
 ## TenantFormModal.tsx
 - `TenantFormModal`: add / edit modal (react-hook-form + zod, ../property-os-api/docs/frontend-handoff/rules.md Tenants). Trims text, keeps the move-in date as "YYYY-MM-DD", PATCH sends only changed fields (null when ID number, address, move-in date or notes are cleared), 409 duplicate email under Email, "Discard changes?" on close. Edit mode loads GET /tenants/:id first. Optional `onSaved(tenant)` runs after a save (the lease wizard selects the new tenant). Mount it only while open.

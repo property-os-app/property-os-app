@@ -5,6 +5,7 @@ import { z } from "zod";
 import { Button, CurrencyInput, Input, Select, Textarea } from "@/components/atoms";
 import { FormField, InlineError, toast } from "@/components/molecules";
 import { Modal } from "@/components/organisms";
+import { ApiError } from "@/lib/api";
 import { applyServerError } from "@/lib/forms";
 import { centsToAmount, toCents } from "@/lib/format";
 import { labelOptions, unitStatusLabels, unitTypeLabels } from "@/lib/labels";
@@ -31,8 +32,8 @@ const WHOLE_RE = /^\d+$/;
 const toIntOrNull = (v: string) => (v === "" ? null : Number(v));
 
 /**
- * Rules from ../property-os-api/docs/frontend-handoff/rules.md (Units). The backend doesn't check duplicate unit numbers yet,
- * so the form blocks a number that already exists in the chosen property (trimmed, case-insensitive).
+ * Rules from ../property-os-api/docs/frontend-handoff/rules.md (Units). Unit numbers are unique per property ignoring case
+ * (backend 409); the form checks the same first (trimmed, case-insensitive, same property, never the unit itself).
  */
 function makeSchema(units: Unit[], propertyName: (id: string) => string, editing?: Unit) {
   return z
@@ -181,6 +182,11 @@ export function UnitFormModal({ unit, defaultPropertyId, step, onSaved, onClose 
       }
       (onSaved ?? onClose)(saved);
     } catch (err) {
+      // 409 "Unit {n} already exists in this property." belongs under the number (it doesn't start with a field name).
+      if (err instanceof ApiError && err.status === 409) {
+        setError("unitNumber", { type: "server", message: err.messages.join(" ") }, { shouldFocus: true });
+        return;
+      }
       setFormErrors(applyServerError(setError, err, FIELDS));
     }
   });

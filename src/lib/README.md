@@ -27,11 +27,13 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - `formatPercent(value, digits)`: "94.2%", accepts strings.
 - `toCents(value)`: money string -> integer cents with no float math. Do all sums and comparisons in cents.
 - `centsToAmount(cents)`: cents -> number with max 2 decimals, for sending to the API.
-- `formatDate(date)`: "Nov 1, 2026" from "YYYY-MM-DD", a full ISO string or a Date. Never uses `new Date("YYYY-MM-DD")`.
+- `parseDateOnly(value)`: the one parser for date-only values: exactly "YYYY-MM-DD" and a real calendar day -> `{ y, m, d }`, else null. Never throws, no time zone. `Ymd`: its type.
+- `formatDate(date)`: "Nov 1, 2026" from a date-only "YYYY-MM-DD" (via `parseDateOnly`) or a Date (its local day). Invalid or a full timestamp -> "-". Never uses `new Date("YYYY-MM-DD")`.
+- `formatTimestampDate(ts)`: "Oct 12, 2026", the LOCAL day of an ISO timestamp (createdAt, updatedAt, voidedAt). Invalid -> "-".
 - `formatRelative(date)`: "2h ago"; only for full timestamps like createdAt.
 - `leaseCountdown(end)`: "Expires in 23 days" + tone, counted in calendar days.
 - `todayISO()` / `currentMonth()`: local "YYYY-MM-DD" / "YYYY-MM" (not UTC).
-- `todayUTC()`: UTC "YYYY-MM-DD", the backend's "today" (overdue, endingSoon).
+- `todayUTC()`: UTC "YYYY-MM-DD" from the UTC parts, the backend's "today" (overdue, endingSoon).
 - `daysUntil(date)`: calendar days from local today to a "YYYY-MM-DD" date (negative in the past, null if invalid).
 - `addMonthsISO(date, n)`: "YYYY-MM-DD" + n months on year/month/day numbers; the day is clamped to the month's last day.
 - `addDaysISO(date, n)`: "YYYY-MM-DD" + n days (no time zone math).

@@ -4,7 +4,7 @@ import { Button, Caption, Dash, H3, Num, Skeleton } from "@/components/atoms";
 import { Card, EmptyState, InlineError, KeyValueList, Tabs } from "@/components/molecules";
 import { DataTable, Drawer, type Column } from "@/components/organisms";
 import { ApiError, errorText } from "@/lib/api";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatTimestampDate, parseDateOnly } from "@/lib/format";
 import { contactMethodLabels, paymentFrequencyLabels, tenantTypeLabels } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
 import { can, roleLabel } from "@/features/auth/permissions";
@@ -159,11 +159,11 @@ function Details({ tenant }: { tenant: TenantDetail }) {
         { label: "ID / passport number", value: orDash(tenant.idNumber) },
         { label: "Address", value: orDash(tenant.address) },
         { label: "Tenant type", value: tenantTypeLabels[tenant.tenantType] },
-        { label: "Move-in date", value: tenant.moveInDate ? formatDate(tenant.moveInDate) : <Dash /> },
+        { label: "Move-in date", value: parseDateOnly(tenant.moveInDate) ? formatDate(tenant.moveInDate) : <Dash /> },
         { label: "Preferred contact", value: contactMethodLabels[tenant.preferredContactMethod] },
         { label: "Notes", value: tenant.notes ? <span className="whitespace-pre-line">{tenant.notes}</span> : <Dash /> },
         { label: "Added by", value: `${tenant.createdBy.email} (${roleLabel(tenant.createdBy.role)})` },
-        { label: "Added on", value: formatDate(tenant.createdAt) },
+        { label: "Added on", value: formatTimestampDate(tenant.createdAt) },
       ]}
     />
   );
