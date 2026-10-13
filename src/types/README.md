@@ -43,5 +43,5 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 
 ## rentRoll.ts
 - `RentRollStatus`: `PAID | PARTIAL | UNPAID | OVERDUE | NOT_BILLED`.
-- `RentRollRow`, `RentRollResponse`: GET /rent-roll (rows plus a summary that ignores status and search).
+- `RentRollRow`, `RentRollResponse`: GET /rent-roll (rows with `openingBalance`, `charged`, `paid`, `balance`, plus a summary that ignores status and search).
 - `GenerateRentResponse`: POST /rent-roll/generate counts.

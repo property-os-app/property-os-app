@@ -5,7 +5,7 @@ import { Button, Caption, Select, Skeleton } from "@/components/atoms";
 import { Card, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
 import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
-import { addMonthsYM, currentMonthUTC, formatCompactCurrency, formatPercent, formatMonth, toCents } from "@/lib/format";
+import { addMonthsYM, currentMonthUTC, formatCompactCurrency, formatPercent, formatMonth } from "@/lib/format";
 import { plural, rentStatusLabels } from "@/lib/labels";
 import { useClientTable, type SortColumn } from "@/lib/useClientTable";
 import { useAuth } from "@/features/auth/authContext";
@@ -17,7 +17,18 @@ import { GenerateRentModal } from "@/features/rent-roll/GenerateRentModal";
 import { useRentRoll } from "@/features/rent-roll/hooks";
 import { LedgerDrawer } from "@/features/rent-roll/LedgerDrawer";
 import { RentRollTable } from "@/features/rent-roll/RentRollTable";
-import { canGenerateRent, lastGeneratableMonth, monthFromParam, owingCount, paymentTargets, rowSearchText, STATUS_FILTERS, statusCounts, type StatusFilter } from "@/features/rent-roll/stats";
+import {
+  canGenerateRent,
+  isPastMonth,
+  lastGeneratableMonth,
+  monthFromParam,
+  owingCount,
+  paymentTargets,
+  rowSearchText,
+  STATUS_FILTERS,
+  statusCounts,
+  type StatusFilter,
+} from "@/features/rent-roll/stats";
 import { useScope } from "@/features/scope/scopeContext";
 import type { RentRollRow } from "@/types/rentRoll";
 
@@ -29,6 +40,7 @@ const matchFilters = (r: RentRollRow, f: Filters) => f.status === "all" || r.sta
 const sorts: Record<string, SortColumn<RentRollRow>> = {
   tenant: { kind: "text", value: (r) => r.primaryTenant?.fullName },
   unit: { kind: "text", value: (r) => r.unit.unitNumber },
+  opening: { kind: "money", value: (r) => r.openingBalance },
   paid: { kind: "money", value: (r) => r.paid },
   balance: { kind: "money", value: (r) => r.balance },
 };
@@ -79,7 +91,11 @@ export function RentRollPage() {
   const ready = rentRoll.isSuccess;
   const kpi = (value: ReactNode) => (ready ? value : <Skeleton className="h-10 w-24" />);
   const state: "loading" | "error" | "empty" | "ideal" = rentRoll.isError ? "error" : rentRoll.isPending ? "loading" : table.total === 0 ? "empty" : "ideal";
-  const notGenerated = ready && allRows.length > 0 && toCents(summary?.totalRentDue) === 0;
+  // Banner by NOT_BILLED rows: all of them -> "not generated", some -> "partly billed", none -> no banner.
+  const notBilled = counts.NOT_BILLED;
+  const notGenerated = ready && notBilled > 0 && notBilled === allRows.length;
+  const partlyBilled = ready && notBilled > 0 && notBilled < allRows.length;
+  const pastMonth = isPastMonth(month);
 
   const empty =
     allRows.length === 0
@@ -161,7 +177,7 @@ export function RentRollPage() {
         <KpiCard
           label="Deposits held"
           value={kpi(formatCompactCurrency(summary?.securityDepositsHeld))}
-          note={ready ? plural(summary?.activeDepositCount ?? 0, "active lease") : undefined}
+          note={ready ? `${plural(summary?.activeDepositCount ?? 0, "active lease")}${isCurrent ? "" : ", as of today"}` : undefined}
         />
       </KpiRow>
 
@@ -200,7 +216,28 @@ export function RentRollPage() {
         </Card>
       )}
 
+      {partlyBilled && (
+        <Card padding="compact" className="flex flex-wrap items-center justify-between gap-3 border-warning/40 bg-warning-soft">
+          <div className="flex flex-col">
+            <span className="font-semibold text-warning">
+              <button type="button" className="cursor-pointer underline underline-offset-2 focus-ring rounded-badge" onClick={() => table.setFilter("status", "NOT_BILLED")}>
+                {plural(notBilled, "lease")}
+              </button>{" "}
+              {notBilled === 1 ? "isn't" : "aren't"} billed for {monthLabel} yet. Generating again skips leases that are already billed.
+            </span>
+            {canCharge && (
+              <Caption className="text-text-primary">
+                Leases that generate skips (not monthly, or starting after their due date) can be billed by hand with Add charge, Rent.
+              </Caption>
+            )}
+          </div>
+          {generateAllowed && generateButton}
+        </Card>
+      )}
+
       <RentRollTable
+        showProperty={!scope}
+        pastMonth={pastMonth}
         rows={table.pageRows}
         totalRows={table.filteredRows}
         state={state}

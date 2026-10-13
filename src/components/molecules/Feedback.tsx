@@ -156,11 +156,11 @@ export function ChatBubble({ mine, children, meta, className }: { mine?: boolean
 }
 
 /* ---------- Toasts (Sonner) ---------- */
-/** Mount once near the app root. Bottom right on desktop, top on mobile. */
-export function Toaster() {
+/** Mount once near the app root. Bottom right by default; pass `position` to move it (e.g. "top-center" so drawer and modal footers stay clear). */
+export function Toaster({ position = "bottom-right" }: { position?: React.ComponentProps<typeof SonnerToaster>["position"] }) {
   return (
     <SonnerToaster
-      position="bottom-right"
+      position={position}
       duration={4000}
       toastOptions={{
         unstyled: true,

@@ -12,7 +12,8 @@ export function Providers() {
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <Toaster />
+          {/* Top center: bottom-right toasts covered the drawer and modal footer buttons. */}
+          <Toaster position="top-center" />
           <RouterProvider router={router} />
         </AuthProvider>
       </QueryClientProvider>

@@ -4,11 +4,14 @@ import type { LeaseStatus } from "@/types/lease";
 /** Row status (not a DB enum). */
 export type RentRollStatus = "PAID" | "PARTIAL" | "UNPAID" | "OVERDUE" | "NOT_BILLED";
 
-/** One lease in the month: ACTIVE leases overlapping it, plus ENDED / TERMINATED leases with a balance > 0. */
+/**
+ * One lease in the month: ACTIVE and overlapping it, or owing at month end, or with a charge due or a payment dated in it.
+ * Always, in cents: openingBalance + charged - paid = balance.
+ */
 export interface RentRollRow {
   leaseId: string;
   leaseNumber: string;
-  /** Never DRAFT. */
+  /** Never DRAFT. ENDED / TERMINATED rows are never NOT_BILLED. */
   leaseStatus: Exclude<LeaseStatus, "DRAFT">;
   unit: { id: string; unitNumber: string; property: { id: string; name: string } };
   primaryTenant: { id: string; fullName: string } | null;
@@ -17,6 +20,10 @@ export interface RentRollRow {
   depositHeld: string | null;
   /** rentDueDay in this month, clamped to the last day. */
   dueDate: string | null;
+  /** Balance at the end of the previous month; negative = credit. */
+  openingBalance: string;
+  /** Non-voided charges of any type due in the month. */
+  charged: string;
   /** Non-voided payments dated in the month. */
   paid: string;
   /** As of the month's last day; negative = credit. */

@@ -1,26 +1,52 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Eye, Plus, Wallet } from "lucide-react";
 import { Avatar, Badge, Caption, Dash, Num } from "@/components/atoms";
 import { KebabMenu, StatusBadge, type MenuItem } from "@/components/molecules";
 import { DataTable, type Column, type DataTableProps } from "@/components/organisms";
 import { cn } from "@/lib/cn";
-import { centsToAmount, formatCurrency } from "@/lib/format";
+import { centsToAmount, formatCurrency, toCents, type MoneyInput } from "@/lib/format";
 import { leaseStatusLabels } from "@/lib/labels";
 import { BalanceText } from "@/features/ledger/LedgerParts";
-import { rowTotals, statusDate } from "@/features/rent-roll/stats";
+import { balanceText } from "@/features/ledger/balance";
+import { paidCaption, rowTotals, statusDate } from "@/features/rent-roll/stats";
 import type { RentRollRow } from "@/types/rentRoll";
 
 type Props = Pick<DataTableProps<RentRollRow>, "rows" | "state" | "sort" | "onSortChange" | "empty" | "error" | "footer" | "caption"> & {
   /** Rows the totals row sums (all filtered rows, not only this page). */
   totalRows: RentRollRow[];
+  /** false hides the Property column (one property picked in the scope). */
+  showProperty: boolean;
+  /** A month before the current UTC month: OVERDUE rows say "Unpaid at month end". */
+  pastMonth: boolean;
   onOpen: (row: RentRollRow) => void;
   /** Omit to hide the item (role can't do it). */
   onRecordPayment?: (row: RentRollRow) => void;
   onAddCharge?: (row: RentRollRow) => void;
 };
 
-/** The Rent Roll table: tenant, unit, property, rent, paid, balance, status, status date, kebab, and the totals row. */
-export function RentRollTable({ totalRows, onOpen, onRecordPayment, onAddCharge, ...props }: Props) {
+/** Previous balance: Dash at 0, plain when owed, "Credit $X" in success color when negative. */
+function PreviousBalance({ value }: { value: MoneyInput }) {
+  const cents = toCents(value);
+  if (cents === 0) return <Dash />;
+  return <Num className={cn(cents < 0 && "text-success")}>{balanceText(value)}</Num>;
+}
+
+/** Amount with an optional caption under it, right-aligned. */
+function WithCaption({ children, caption }: { children: ReactNode; caption: string | null }) {
+  if (!caption) return <>{children}</>;
+  return (
+    <span className="flex flex-col items-end">
+      {children}
+      <Caption className="whitespace-nowrap font-normal">{caption}</Caption>
+    </span>
+  );
+}
+
+/**
+ * The Rent Roll table: tenant, unit, property (optional), previous balance, rent due, paid, balance, status, status date, kebab,
+ * and the totals row over all filtered rows.
+ */
+export function RentRollTable({ totalRows, showProperty, pastMonth, onOpen, onRecordPayment, onAddCharge, ...props }: Props) {
   const columns = useMemo<Column<RentRollRow>[]>(
     () => [
       {
@@ -41,16 +67,29 @@ export function RentRollTable({ totalRows, onOpen, onRecordPayment, onAddCharge,
         ),
       },
       { key: "unit", header: "Unit", sortable: true, cell: (r) => r.unit.unitNumber },
-      { key: "property", header: "Property", cell: (r) => <span className="text-text-secondary">{r.unit.property.name}</span> },
-      { key: "rent", header: "Rent", align: "right", cell: (r) => (r.rent === null ? <Dash /> : <Num>{formatCurrency(r.rent)}</Num>) },
-      { key: "paid", header: "Paid", align: "right", sortable: true, cell: (r) => <Num>{formatCurrency(r.paid)}</Num> },
+      ...(showProperty
+        ? [{ key: "property", header: "Property", cell: (r: RentRollRow) => <span className="text-text-secondary">{r.unit.property.name}</span> }]
+        : []),
+      { key: "opening", header: "Previous balance", align: "right", sortable: true, cell: (r) => <PreviousBalance value={r.openingBalance} /> },
+      { key: "charged", header: "Rent due", align: "right", cell: (r) => <Num>{formatCurrency(r.charged)}</Num> },
+      {
+        key: "paid",
+        header: "Paid",
+        align: "right",
+        sortable: true,
+        cell: (r) => (
+          <WithCaption caption={paidCaption(r)}>
+            <Num>{formatCurrency(r.paid)}</Num>
+          </WithCaption>
+        ),
+      },
       { key: "balance", header: "Balance", align: "right", sortable: true, cell: (r) => <BalanceText value={r.balance} /> },
       { key: "status", header: "Status", cell: (r) => <StatusBadge domain="rent" status={r.status} /> },
       {
         key: "statusDate",
         header: "Status date",
         cell: (r) => {
-          const d = statusDate(r);
+          const d = statusDate(r, pastMonth);
           if (!d.text) return <Dash />;
           return <span className={cn("text-text-secondary", d.tone === "danger" && "font-semibold text-danger", d.tone === "muted" && "text-text-muted")}>{d.text}</span>;
         },
@@ -67,21 +106,28 @@ export function RentRollTable({ totalRows, onOpen, onRecordPayment, onAddCharge,
         },
       },
     ],
-    [onOpen, onRecordPayment, onAddCharge],
+    [showProperty, pastMonth, onOpen, onRecordPayment, onAddCharge],
   );
 
+  // One cell per column, by key, so the row stays aligned when Property is hidden.
   const t = rowTotals(totalRows);
-  const totals = [
-    "Totals",
-    `${t.billed.toLocaleString("en-US")} billed`,
-    "",
-    <Num key="rent">{formatCurrency(centsToAmount(t.rentCents))}</Num>,
-    <Num key="paid" className="text-success">{formatCurrency(centsToAmount(t.paidCents))}</Num>,
-    <BalanceText key="balance" value={centsToAmount(t.balanceCents)} />,
-    "",
-    "",
-    "",
-  ];
+  const totalCells: Record<string, ReactNode> = {
+    tenant: (
+      <span className="flex flex-col">
+        Totals
+        <Caption className="font-normal">{`${t.billed.toLocaleString("en-US")} billed`}</Caption>
+      </span>
+    ),
+    opening: <PreviousBalance value={centsToAmount(t.openingCents)} />,
+    charged: <Num>{formatCurrency(centsToAmount(t.chargedCents))}</Num>,
+    paid: <Num className="text-success">{formatCurrency(centsToAmount(t.paidCents))}</Num>,
+    balance: (
+      <WithCaption caption={t.creditCents > 0 ? `after ${formatCurrency(centsToAmount(t.creditCents))} in credits` : null}>
+        <BalanceText value={centsToAmount(t.balanceCents)} />
+      </WithCaption>
+    ),
+  };
+  const totals = columns.map((c) => totalCells[c.key] ?? "");
 
   return <DataTable {...props} columns={columns} rowKey={(r) => r.leaseId} onRowClick={onOpen} totals={totals} />;
 }

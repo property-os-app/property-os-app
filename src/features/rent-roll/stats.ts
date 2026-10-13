@@ -1,4 +1,4 @@
-import { addMonthsYM, currentMonthUTC, daysUntil, formatDate, isMonth, toCents } from "@/lib/format";
+import { addMonthsYM, centsToAmount, currentMonthUTC, daysUntil, formatCurrency, formatDate, isMonth, toCents } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import type { PaymentTarget } from "@/features/ledger/RecordPaymentModal";
 import type { RentRollRow, RentRollStatus } from "@/types/rentRoll";
@@ -23,6 +23,28 @@ export function canGenerateRent(month: string): boolean {
   return isMonth(month) && month <= lastGeneratableMonth();
 }
 
+/** True for months before the current UTC month: the page is a snapshot of the month's last day. */
+export function isPastMonth(month: string): boolean {
+  return isMonth(month) && month < currentMonthUTC();
+}
+
+/** True for months after the current UTC month. */
+export function isFutureMonth(month: string): boolean {
+  return isMonth(month) && month > currentMonthUTC();
+}
+
+/**
+ * Caption under Paid. Payments pay the oldest charges first, so up to openingBalance of `paid` went to earlier months:
+ * "incl. $900.00 toward earlier balance". A row covered by a credit from before: "Covered by earlier credit". Else null.
+ */
+export function paidCaption(r: RentRollRow): string | null {
+  const opening = toCents(r.openingBalance);
+  const paid = toCents(r.paid);
+  if (opening > 0 && paid > 0) return `incl. ${formatCurrency(centsToAmount(Math.min(paid, opening)))} toward earlier balance`;
+  if (paid === 0 && opening < 0 && r.status === "PAID") return "Covered by earlier credit";
+  return null;
+}
+
 /** Rows per segment (all rows of the month, before search). */
 export function statusCounts(rows: RentRollRow[]): Record<StatusFilter, number> {
   const counts: Record<StatusFilter, number> = { all: rows.length, PAID: 0, PARTIAL: 0, UNPAID: 0, OVERDUE: 0, NOT_BILLED: 0 };
@@ -36,26 +58,39 @@ export const rowSearchText = (r: RentRollRow) => [r.leaseNumber, r.unit.unitNumb
 /** Leases that owe something (balance > 0), for the Outstanding KPI chip. */
 export const owingCount = (rows: RentRollRow[]) => rows.filter((r) => toCents(r.balance) > 0).length;
 
-/** Totals row over the visible rows, in integer cents. `billed`: rows that are not NOT_BILLED. */
+/**
+ * Totals row over the visible rows, in integer cents. `billed`: rows that are not NOT_BILLED.
+ * `balanceCents` is net (credits subtract); `creditCents` is the sum of the credits as a positive number.
+ */
 export function rowTotals(rows: RentRollRow[]) {
   return rows.reduce(
-    (t, r) => ({
-      billed: t.billed + (r.status === "NOT_BILLED" ? 0 : 1),
-      rentCents: t.rentCents + toCents(r.rent),
-      paidCents: t.paidCents + toCents(r.paid),
-      balanceCents: t.balanceCents + toCents(r.balance),
-    }),
-    { billed: 0, rentCents: 0, paidCents: 0, balanceCents: 0 },
+    (t, r) => {
+      const balance = toCents(r.balance);
+      return {
+        billed: t.billed + (r.status === "NOT_BILLED" ? 0 : 1),
+        openingCents: t.openingCents + toCents(r.openingBalance),
+        chargedCents: t.chargedCents + toCents(r.charged),
+        paidCents: t.paidCents + toCents(r.paid),
+        balanceCents: t.balanceCents + balance,
+        creditCents: t.creditCents + (balance < 0 ? -balance : 0),
+      };
+    },
+    { billed: 0, openingCents: 0, chargedCents: 0, paidCents: 0, balanceCents: 0, creditCents: 0 },
   );
 }
 
-/** "Status date" column: last payment (Paid, Partial), "{n} days overdue", "Due {date}" or "Not billed yet". */
-export function statusDate(r: RentRollRow): { text: string | null; tone: "danger" | "muted" | "default" } {
+/**
+ * "Status date" column: last payment (Paid, Partial), "{n} days overdue" ("Unpaid at month end" in a past month),
+ * "Due {date}" or "Not billed yet".
+ */
+export function statusDate(r: RentRollRow, pastMonth = false): { text: string | null; tone: "danger" | "muted" | "default" } {
   switch (r.status) {
     case "PAID":
     case "PARTIAL":
       return { text: r.lastPaymentDate ? formatDate(r.lastPaymentDate) : null, tone: "default" };
     case "OVERDUE": {
+      // A past month is a snapshot of its last day, so counting days to today would grow forever.
+      if (pastMonth) return { text: "Unpaid at month end", tone: "danger" };
       // Overdue is decided on UTC today; the count uses local calendar days, so it is at least 1.
       const days = Math.max(1, -(daysUntil(r.oldestUnpaidDueDate) ?? 1));
       return { text: `${plural(days, "day")} overdue`, tone: "danger" };

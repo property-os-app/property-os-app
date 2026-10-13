@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import { Body, Button } from "@/components/atoms";
 import { InlineError, toast } from "@/components/molecules";
 import { Modal } from "@/components/organisms";
@@ -6,6 +7,7 @@ import { errorText } from "@/lib/api";
 import { formatMonth } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import { useGenerateRent } from "@/features/rent-roll/hooks";
+import { isFutureMonth, isPastMonth } from "@/features/rent-roll/stats";
 import type { GenerateRentResponse } from "@/types/rentRoll";
 
 /** Result toast: "{n} rent charges created" plus the non-zero skip counts, or "Rent for {Month} was already generated". */
@@ -24,6 +26,12 @@ function showResult(r: GenerateRentResponse) {
 export function GenerateRentModal({ month, onClose }: { month: string; onClose: () => void }) {
   const generate = useGenerateRent();
   const [error, setError] = useState<string | null>(null);
+  const label = formatMonth(month);
+  const warning = isPastMonth(month)
+    ? `${label} is in the past. Charges will be due on past dates, so unpaid ones show as overdue right away.`
+    : isFutureMonth(month)
+      ? `${label} hasn't started yet. The new charges count in lease balances right away.`
+      : null;
 
   const confirm = async () => {
     setError(null);
@@ -39,7 +47,7 @@ export function GenerateRentModal({ month, onClose }: { month: string; onClose: 
     <Modal
       open
       onOpenChange={(open) => !open && !generate.isPending && onClose()}
-      title={`Generate rent for ${formatMonth(month)}`}
+      title={`Generate rent for ${label}`}
       footer={
         <>
           <Button disabled={generate.isPending} onClick={onClose}>
@@ -54,6 +62,12 @@ export function GenerateRentModal({ month, onClose }: { month: string; onClose: 
       <Body className="m-0">
         Creates a rent charge for every active monthly lease on all your properties that doesn't have one for this month yet. Safe to run more than once.
       </Body>
+      {warning && (
+        <div role="note" className="flex items-start gap-2 rounded-control border border-warning/40 bg-warning-soft px-3 py-2.5 text-small text-text-primary">
+          <AlertTriangle size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-warning" />
+          <span>{warning}</span>
+        </div>
+      )}
       {error && <InlineError title="Couldn't generate rent" description={error} />}
     </Modal>
   );

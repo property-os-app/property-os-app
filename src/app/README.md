@@ -3,7 +3,7 @@
 App wiring: providers, router, query cache, the signed-in layout and app-level pages (not found, errors, missing config). Feature pages live in `src/features/<area>`.
 
 ## providers.tsx
-- `Providers`: the app root. `ThemeProvider` > `QueryClientProvider` > `AuthProvider` > the design system `Toaster` (mounted once) + `RouterProvider`.
+- `Providers`: the app root. `ThemeProvider` > `QueryClientProvider` > `AuthProvider` > the design system `Toaster` (mounted once, top center so it never covers drawer or modal footers) + `RouterProvider`.
 
 ## router.tsx
 - `router`: all routes, made with `createBrowserRouter` (React Router library / data mode).
