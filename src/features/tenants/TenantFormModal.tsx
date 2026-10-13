@@ -9,7 +9,7 @@ import { ApiError, errorText } from "@/lib/api";
 import { applyServerError } from "@/lib/forms";
 import { contactMethodLabels, labelOptions, tenantTypeLabels } from "@/lib/labels";
 import { useCreateTenant, useTenant, useUpdateTenant } from "@/features/tenants/hooks";
-import type { ContactMethod, TenantCreateBody, TenantDetail, TenantType, TenantUpdateBody } from "@/types/tenant";
+import type { ContactMethod, Tenant, TenantCreateBody, TenantDetail, TenantType, TenantUpdateBody } from "@/types/tenant";
 
 const TENANT_TYPES = Object.keys(tenantTypeLabels) as [TenantType, ...TenantType[]];
 const CONTACT_METHODS = Object.keys(contactMethodLabels) as [ContactMethod, ...ContactMethod[]];
@@ -82,18 +82,20 @@ function changedFields(v: FormOutput, t: TenantDetail): TenantUpdateBody {
 export interface TenantFormModalProps {
   /** Edit this tenant (loads GET /tenants/:id for the idNumber); without it the modal creates one. */
   tenantId?: string;
+  /** After a successful save, before onClose (the lease wizard selects the new tenant). */
+  onSaved?: (tenant: Tenant) => void;
   onClose: () => void;
 }
 
 /** Add / edit tenant modal (OWNER and managers). Mount it only while open. */
-export function TenantFormModal({ tenantId, onClose }: TenantFormModalProps) {
-  return tenantId ? <EditTenant id={tenantId} onClose={onClose} /> : <TenantForm onClose={onClose} />;
+export function TenantFormModal({ tenantId, onSaved, onClose }: TenantFormModalProps) {
+  return tenantId ? <EditTenant id={tenantId} onSaved={onSaved} onClose={onClose} /> : <TenantForm onSaved={onSaved} onClose={onClose} />;
 }
 
 /** Edit mode: waits for the detail (the list has no idNumber), then shows the form. */
-function EditTenant({ id, onClose }: { id: string; onClose: () => void }) {
+function EditTenant({ id, onSaved, onClose }: { id: string; onSaved?: (tenant: Tenant) => void; onClose: () => void }) {
   const tenant = useTenant(id);
-  if (tenant.data) return <TenantForm tenant={tenant.data} onClose={onClose} />;
+  if (tenant.data) return <TenantForm tenant={tenant.data} onSaved={onSaved} onClose={onClose} />;
   return (
     <Modal
       open
@@ -115,7 +117,7 @@ function EditTenant({ id, onClose }: { id: string; onClose: () => void }) {
   );
 }
 
-function TenantForm({ tenant, onClose }: { tenant?: TenantDetail; onClose: () => void }) {
+function TenantForm({ tenant, onSaved, onClose }: { tenant?: TenantDetail; onSaved?: (tenant: Tenant) => void; onClose: () => void }) {
   const create = useCreateTenant();
   const update = useUpdateTenant();
   const [formErrors, setFormErrors] = useState<string[]>([]);
@@ -144,10 +146,12 @@ function TenantForm({ tenant, onClose }: { tenant?: TenantDetail; onClose: () =>
         if (Object.keys(body).length > 0) {
           const saved = await update.mutateAsync({ id: tenant.id, body });
           toast.success(`Tenant ${saved.fullName} updated`);
+          onSaved?.(saved);
         }
       } else {
         const saved = await create.mutateAsync(createBody(v));
         toast.success(`Tenant ${saved.fullName} added`);
+        onSaved?.(saved);
       }
       onClose();
     } catch (err) {

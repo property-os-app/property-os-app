@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { UserX } from "lucide-react";
+import { Plus, UserX } from "lucide-react";
 import { Button, Caption, Dash, H3, Num, Skeleton } from "@/components/atoms";
 import { Card, EmptyState, InlineError, KeyValueList, Tabs } from "@/components/molecules";
 import { DataTable, Drawer, type Column } from "@/components/organisms";
@@ -9,6 +9,7 @@ import { contactMethodLabels, paymentFrequencyLabels, tenantTypeLabels } from "@
 import { useAuth } from "@/features/auth/authContext";
 import { can, roleLabel } from "@/features/auth/permissions";
 import { LeaseBadge, StatCard } from "@/features/leases/LeaseParts";
+import { LeaseWizard } from "@/features/leases/LeaseWizard";
 import { dueNote, dueState, leaseEndsNote, leasePeriod } from "@/features/leases/stats";
 import { useTenant } from "@/features/tenants/hooks";
 import { TenantDeleteDialog } from "@/features/tenants/TenantDeleteDialog";
@@ -39,6 +40,7 @@ export function TenantDrawer({ row, onClose }: TenantDrawerProps) {
   const [tab, setTab] = useState<Tab>("overview");
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [addingLease, setAddingLease] = useState(false);
 
   const notFound = detail.error instanceof ApiError && detail.error.status === 404;
   const tenant = detail.data ?? row.tenant;
@@ -108,11 +110,12 @@ export function TenantDrawer({ row, onClose }: TenantDrawerProps) {
             </div>
           </>
         ) : (
-          <LeasesTab tenantId={row.tenant.id} leases={leases} />
+          <LeasesTab tenantId={row.tenant.id} leases={leases} onAddLease={can(role, "lease.create") ? () => setAddingLease(true) : undefined} />
         )}
       </Drawer>
 
       {editing && <TenantFormModal tenantId={row.tenant.id} onClose={() => setEditing(false)} />}
+      {addingLease && <LeaseWizard presetTenantId={row.tenant.id} onClose={() => setAddingLease(false)} />}
       <TenantDeleteDialog tenant={deleting ? row.tenant : null} onClose={() => setDeleting(false)} onDeleted={onClose} />
     </>
   );
@@ -166,8 +169,8 @@ function Details({ tenant }: { tenant: TenantDetail }) {
   );
 }
 
-/** Every visible lease that includes the tenant, with their role on it. */
-function LeasesTab({ tenantId, leases }: { tenantId: string; leases: Lease[] }) {
+/** Every visible lease that includes the tenant, with their role on it. "Add lease" (primary tenant preset) when allowed. */
+function LeasesTab({ tenantId, leases, onAddLease }: { tenantId: string; leases: Lease[]; onAddLease?: () => void }) {
   const columns: Column<Lease>[] = [
     { key: "number", header: "Lease", cell: (l) => <span className="font-semibold">{l.leaseNumber}</span> },
     {
@@ -186,14 +189,21 @@ function LeasesTab({ tenantId, leases }: { tenantId: string; leases: Lease[] }) 
     { key: "role", header: "Role", cell: (l) => (l.tenants.find((t) => t.id === tenantId)?.isPrimary ? "Primary" : "Co-tenant") },
   ];
   return (
-    <DataTable
-      columns={columns}
-      rows={leases}
-      rowKey={(l) => l.id}
-      density="compact"
-      caption="Leases"
-      state={leases.length === 0 ? "empty" : "ideal"}
-      empty={{ title: "No leases", description: "Not on any lease yet." }}
-    />
+    <div className="flex flex-col gap-3">
+      {onAddLease && (
+        <Button className="self-end" icon={<Plus size={16} strokeWidth={1.5} />} onClick={onAddLease}>
+          Add lease
+        </Button>
+      )}
+      <DataTable
+        columns={columns}
+        rows={leases}
+        rowKey={(l) => l.id}
+        density="compact"
+        caption="Leases"
+        state={leases.length === 0 ? "empty" : "ideal"}
+        empty={{ title: "No leases", description: "Not on any lease yet." }}
+      />
+    </div>
   );
 }

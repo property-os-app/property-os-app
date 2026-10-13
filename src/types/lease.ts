@@ -56,3 +56,47 @@ export interface Lease {
   /** "YYYY-MM-DD" or null. */
   oldestUnpaidDueDate: string | null;
 }
+
+/**
+ * POST /leases body (docs/API.md section 5). Only unitId is required for a DRAFT; status "ACTIVE" runs the activation checks.
+ * Money is a JSON number (max 2 decimals). Never send null on create.
+ */
+export interface LeaseCreateBody {
+  unitId: string;
+  status?: "DRAFT" | "ACTIVE";
+  signatureStatus?: SignatureStatus;
+  startDate?: string;
+  endDate?: string;
+  paymentFrequency?: PaymentFrequency;
+  rent?: number;
+  deposit?: number;
+  lateFeeAmount?: number;
+  lateFeeGraceDays?: number;
+  rentDueDay?: number;
+  autoRenew?: boolean;
+  tags?: string[];
+  notes?: string;
+  primaryTenantId?: string;
+  coTenantIds?: string[];
+}
+
+/**
+ * PATCH /leases/:id body: any subset, never status. unitId only while DRAFT.
+ * null clears startDate, endDate, rent, deposit, rentDueDay, notes and primaryTenantId (never send it on an ACTIVE lease).
+ */
+export type LeaseUpdateBody = Partial<
+  Omit<LeaseCreateBody, "status" | "startDate" | "endDate" | "rent" | "deposit" | "rentDueDay" | "notes" | "primaryTenantId">
+> & {
+  startDate?: string | null;
+  endDate?: string | null;
+  rent?: number | null;
+  deposit?: number | null;
+  rentDueDay?: number | null;
+  notes?: string | null;
+  primaryTenantId?: string | null;
+};
+
+/** POST /leases/:id/end body. Default ENDED. */
+export interface LeaseEndBody {
+  status?: "ENDED" | "TERMINATED";
+}

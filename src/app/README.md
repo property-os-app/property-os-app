@@ -8,7 +8,7 @@ App wiring: providers, router, query cache, the signed-in layout and app-level p
 ## router.tsx
 - `router`: all routes, made with `createBrowserRouter` (React Router library / data mode).
   - Public (inside `PublicOnly`): `/login`, `/forgot-password`.
-  - Signed in (inside `RequireAuth` + `AppLayout`): `/` redirects to `/properties`; `/properties` (`PropertiesPage`), `/properties/:id` (`PropertyDetailPage`); `/units` (`UnitsPage`); `/tenants` (`TenantsPage`); `/leases`, `/rent-roll` show `ComingSoonPage`; `/settings` (`SettingsPage`); `*` shows `NotFoundPage`.
+  - Signed in (inside `RequireAuth` + `AppLayout`): `/` redirects to `/properties`; `/properties` (`PropertiesPage`), `/properties/:id` (`PropertyDetailPage`); `/units` (`UnitsPage`); `/tenants` (`TenantsPage`); `/leases` (`LeasesPage`); `/rent-roll` shows `ComingSoonPage`; `/settings` (`SettingsPage`); `*` shows `NotFoundPage`.
   - `errorElement`: `RouteErrorPage` inside the shell for page errors, full page for anything above it.
   - Each page route has a `handle` (`RouteHandle`) with its title and Sidebar item.
 

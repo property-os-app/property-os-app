@@ -33,6 +33,9 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - `todayISO()` / `currentMonth()`: local "YYYY-MM-DD" / "YYYY-MM" (not UTC).
 - `todayUTC()`: UTC "YYYY-MM-DD", the backend's "today" (overdue, endingSoon).
 - `daysUntil(date)`: calendar days from local today to a "YYYY-MM-DD" date (negative in the past, null if invalid).
+- `addMonthsISO(date, n)`: "YYYY-MM-DD" + n months on year/month/day numbers; the day is clamped to the month's last day.
+- `addDaysISO(date, n)`: "YYYY-MM-DD" + n days (no time zone math).
+- `ordinal(n)`: "1st", "2nd", "3rd", "31st".
 - `initials(name)`: "Jordan Blake" -> "JB".
 - `EMPTY`: "-". `MoneyInput`: money input type.
 

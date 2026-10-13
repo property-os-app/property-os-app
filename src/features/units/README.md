@@ -25,7 +25,7 @@ Units: the /units list, the unit drawer (also opened from the property detail pa
 - `UnitsTable`: the list DataTable (Unit, Listed rent, Current rent sortable; kebab with Edit / Delete when allowed). Row click calls `onOpen`.
 
 ## UnitDrawer.tsx
-- `UnitDrawer`: lg drawer for one unit. Tenant tab (active lease card with Overdue / Due today / lease badge, Current rent / Balance / Lease ends cards, or "No active lease"; Details list) and Lease history tab (GET /leases?unitId=). Footer: Delete (OWNER) and Edit unit. Closes itself after a delete.
+- `UnitDrawer`: lg drawer for one unit. Tenant tab (active lease card with Overdue / Due today / lease badge, Current rent / Balance / Lease ends cards, or "No active lease" with an "Add lease" button that opens the lease wizard for this unit, with `lease.create`; Details list) and Lease history tab (GET /leases?unitId=). Footer: Delete (OWNER) and Edit unit. Closes itself after a delete.
 
 ## UnitFormModal.tsx
 - `UnitFormModal`: add / edit modal (react-hook-form + zod, rules.md Units). Blocks a duplicate unit number in the same property. Edit: property read-only, status read-only when OCCUPIED, PATCH with only changed fields (null when floor, bathrooms or description are cleared). Chain mode via `step` ("Add unit 1 of N", "Skip the rest", "Save & add next" / "Save") and `onSaved`. Mount it only while open.

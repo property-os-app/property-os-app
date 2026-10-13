@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 import { Avatar, Badge, Button, Caption, Dash, H3, Num, Skeleton } from "@/components/atoms";
 import { Card, EmptyState, InlineError, KeyValueList, StatusBadge, Tabs } from "@/components/molecules";
 import { DataTable, Drawer, type Column } from "@/components/organisms";
@@ -10,6 +10,7 @@ import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { useLeases } from "@/features/leases/hooks";
 import { LeaseBadge, StatCard } from "@/features/leases/LeaseParts";
+import { LeaseWizard } from "@/features/leases/LeaseWizard";
 import { dueNote, dueState, leaseEndsNote, leasePeriod } from "@/features/leases/stats";
 import { primaryTenantName } from "@/features/properties/stats";
 import { UnitDeleteDialog } from "@/features/units/UnitDeleteDialog";
@@ -44,10 +45,12 @@ export function UnitDrawer({ unit, propertyName, onClose }: UnitDrawerProps) {
   const [tab, setTab] = useState<Tab>("tenant");
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [addingLease, setAddingLease] = useState(false);
 
   const active = leases.data?.find((l) => l.status === "ACTIVE");
   const canEdit = can(role, "unit.edit");
   const canDelete = can(role, "unit.delete");
+  const canAddLease = can(role, "lease.create");
 
   return (
     <>
@@ -102,6 +105,13 @@ export function UnitDrawer({ unit, propertyName, onClose }: UnitDrawerProps) {
                   icon={<FileText strokeWidth={1.5} />}
                   title="No active lease"
                   description={`This unit is ${unitStatusLabels[unit.status].toLowerCase()}.`}
+                  action={
+                    canAddLease ? (
+                      <Button icon={<Plus size={16} strokeWidth={1.5} />} onClick={() => setAddingLease(true)}>
+                        Add lease
+                      </Button>
+                    ) : undefined
+                  }
                 />
               </Card>
             )}
@@ -136,6 +146,7 @@ export function UnitDrawer({ unit, propertyName, onClose }: UnitDrawerProps) {
       </Drawer>
 
       {editing && <UnitFormModal unit={unit} onClose={() => setEditing(false)} />}
+      {addingLease && <LeaseWizard presetUnit={unit} onClose={() => setAddingLease(false)} />}
       <UnitDeleteDialog unit={deleting ? unit : null} propertyName={propertyName} onClose={() => setDeleting(false)} onDeleted={onClose} />
     </>
   );

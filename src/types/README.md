@@ -32,3 +32,4 @@ TypeScript types for API responses. Each one is copied from docs/API.md section 
 - `LeaseStatus`, `SignatureStatus`, `PaymentFrequency`: lease enums.
 - `LeaseTenant`: one tenant on a lease (`isPrimary`).
 - `Lease`: one row from GET /leases (dates "YYYY-MM-DD", money strings, `endingSoon`, `balance`).
+- `LeaseCreateBody`: POST /leases body (only `unitId` required; `status` DRAFT or ACTIVE). `LeaseUpdateBody`: PATCH body (never `status`; dates, rent, deposit, rentDueDay, notes, primaryTenantId may be null). `LeaseEndBody`: `{ status?: ENDED | TERMINATED }`.

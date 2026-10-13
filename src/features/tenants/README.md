@@ -38,10 +38,10 @@ Tenants: one directory page (/tenants) with Cards / Table views, the tenant draw
 - `TenantsTable`: the Table view (Tenant and Balance sortable; kebab with Edit / Delete when allowed). Row click calls `onOpen`.
 
 ## TenantDrawer.tsx
-- `TenantDrawer`: lg drawer. Overview (current ACTIVE lease card + Rent / Balance / Lease ends cards; Details with the ID number) and Leases tab (lease, unit, period, rent, status, Primary / Co-tenant). Footer: Delete (OWNER) and Edit tenant. "Tenant not found" on 404. Closes itself after a delete.
+- `TenantDrawer`: lg drawer. Overview (current ACTIVE lease card + Rent / Balance / Lease ends cards; Details with the ID number) and Leases tab (lease, unit, period, rent, status, Primary / Co-tenant; "Add lease" opens the lease wizard with this tenant as primary, with `lease.create`). Footer: Delete (OWNER) and Edit tenant. "Tenant not found" on 404. Closes itself after a delete.
 
 ## TenantFormModal.tsx
-- `TenantFormModal`: add / edit modal (react-hook-form + zod, rules.md Tenants). Trims text, keeps the move-in date as "YYYY-MM-DD", PATCH sends only changed fields (null when ID number, address, move-in date or notes are cleared), 409 duplicate email under Email, "Discard changes?" on close. Edit mode loads GET /tenants/:id first. Mount it only while open.
+- `TenantFormModal`: add / edit modal (react-hook-form + zod, rules.md Tenants). Trims text, keeps the move-in date as "YYYY-MM-DD", PATCH sends only changed fields (null when ID number, address, move-in date or notes are cleared), 409 duplicate email under Email, "Discard changes?" on close. Edit mode loads GET /tenants/:id first. Optional `onSaved(tenant)` runs after a save (the lease wizard selects the new tenant). Mount it only while open.
 
 ## TenantDeleteDialog.tsx
 - `TenantDeleteDialog`: ConfirmDialog for DELETE /tenants/:id with busy state and the backend's 409 inside; toast and `onDeleted` on success.

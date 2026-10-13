@@ -144,12 +144,48 @@ export function daysUntil(date: string | null | undefined, now = new Date()): nu
   return target && today ? dayNumber(target) - dayNumber(today) : null;
 }
 
+/** Days in a month (m is 1-12). Date.UTC is used only as a calendar, no time zone is involved. */
+function daysInMonth(y: number, m: number): number {
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+const ymdISO = ({ y, m, d }: Ymd) => `${y}-${pad2(m)}-${pad2(d)}`;
+
+/**
+ * "YYYY-MM-DD" plus n months (n may be negative), on year/month/day numbers. The day is clamped to the month's last day:
+ * "2026-01-31" + 1 -> "2026-02-28". null when the date is invalid.
+ */
+export function addMonthsISO(date: string, n: number): string | null {
+  const p = toYmd(date);
+  if (!p) return null;
+  const index = p.y * 12 + (p.m - 1) + n;
+  const y = Math.floor(index / 12);
+  const m = index - y * 12 + 1;
+  return ymdISO({ y, m, d: Math.min(p.d, daysInMonth(y, m)) });
+}
+
+/** "YYYY-MM-DD" plus n days (n may be negative): "2027-01-01" - 1 -> "2026-12-31". null when the date is invalid. */
+export function addDaysISO(date: string, n: number): string | null {
+  const p = toYmd(date);
+  if (!p) return null;
+  const d = new Date((dayNumber(p) + n) * 86_400_000);
+  return ymdISO({ y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() });
+}
+
 /** This month as local "YYYY-MM", for the Rent Roll month and periodMonth. */
 export function currentMonth(now = new Date()): string {
   return todayISO(now).slice(0, 7);
 }
 
 /* ---------- Text ---------- */
+
+/** Ordinal number: 1 -> "1st", 2 -> "2nd", 3 -> "3rd", 11 -> "11th", 22 -> "22nd", 31 -> "31st". */
+export function ordinal(n: number): string {
+  const lastTwo = n % 100;
+  if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`;
+  const suffix = { 1: "st", 2: "nd", 3: "rd" }[n % 10] ?? "th";
+  return `${n}${suffix}`;
+}
 
 /** Initials for avatars: "Jordan Blake" -> "JB". */
 export function initials(name: string): string {
