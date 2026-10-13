@@ -11,6 +11,7 @@ import { PublicOnly } from "@/features/auth/PublicOnly";
 import { RequireAuth } from "@/features/auth/RequireAuth";
 import { PropertiesPage } from "@/features/properties/PropertiesPage";
 import { PropertyDetailPage } from "@/features/properties/PropertyDetailPage";
+import { SettingsPage } from "@/features/settings/SettingsPage";
 import { UnitsPage } from "@/features/units/UnitsPage";
 
 /** A placeholder page with its title and Sidebar item. */
@@ -21,6 +22,7 @@ function comingSoon(path: string, title: string, nav: ModuleKey): RouteObject {
 
 const notFoundHandle: RouteHandle = { title: "Page not found" };
 const unitsHandle: RouteHandle = { title: "Units", nav: "units" };
+const settingsHandle: RouteHandle = { title: "Settings", nav: "settings" };
 const propertiesHandle: RouteHandle = { title: "Properties", nav: "properties" };
 // The detail page replaces this title with the property name (usePageTitle).
 const propertyHandle: RouteHandle = { title: "Property", nav: "properties" };
@@ -56,6 +58,7 @@ export const router = createBrowserRouter([
                   comingSoon("tenants", "Tenants", "tenants"),
                   comingSoon("leases", "Leases", "leases"),
                   comingSoon("rent-roll", "Rent Roll", "rentroll"),
+                  { path: "settings", handle: settingsHandle, element: <SettingsPage /> },
                   { path: "*", handle: notFoundHandle, element: <NotFoundPage /> },
                 ],
               },

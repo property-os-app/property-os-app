@@ -67,7 +67,7 @@ export function Count({ className, tone = "neutral", children, ...props }: React
       className={cn(
         "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-pill px-1.5 text-overline font-semibold",
         tone === "neutral" && "bg-surface-3 text-text-secondary",
-        tone === "danger" && "bg-danger text-white",
+        tone === "danger" && "bg-danger-solid text-white",
         tone === "success" && "bg-success text-success-fg",
         className,
       )}

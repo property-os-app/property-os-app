@@ -8,9 +8,9 @@
 
 \- First delivery: about 2 weeks total. Goal: a demo where the main features work end to end against the real API.
 
-\- IN SCOPE: login, app layout, Properties, Units, Tenants, Leases, Rent Roll (with ledger drawer, Add Charge, Record Payment). Optional bonus at the very end: a Dashboard built only from existing endpoints.
+\- IN SCOPE: login, app layout, Properties, Units, Tenants, Leases, Rent Roll (with ledger drawer, Add Charge, Record Payment), Settings (Appearance: theme only for now). Optional bonus at the very end: a Dashboard built only from existing endpoints.
 
-\- OUT OF SCOPE: Expenses, Finance, Reports, Maintenance, Vendors, Inbox, Chat, Audit Log, Backup, Settings, Activity Timeline, AI features, reminders, export CSV, file uploads, e-sign, tenant portal.
+\- OUT OF SCOPE: Expenses, Finance, Reports, Maintenance, Vendors, Inbox, Chat, Audit Log, Backup, Activity Timeline, AI features, reminders, export CSV, file uploads, e-sign, tenant portal.
 
 
 

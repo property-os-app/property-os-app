@@ -3,17 +3,17 @@
 App wiring: providers, router, query cache, the signed-in layout and app-level pages (placeholder, not found, errors, missing config). Feature pages live in `src/features/<area>`.
 
 ## providers.tsx
-- `Providers`: the app root. `QueryClientProvider` > `AuthProvider` > the design system `Toaster` (mounted once) + `RouterProvider`.
+- `Providers`: the app root. `ThemeProvider` > `QueryClientProvider` > `AuthProvider` > the design system `Toaster` (mounted once) + `RouterProvider`.
 
 ## router.tsx
 - `router`: all routes, made with `createBrowserRouter` (React Router library / data mode).
   - Public (inside `PublicOnly`): `/login`, `/forgot-password`.
-  - Signed in (inside `RequireAuth` + `AppLayout`): `/` redirects to `/properties`; `/properties` (`PropertiesPage`), `/properties/:id` (`PropertyDetailPage`); `/units` (`UnitsPage`); `/tenants`, `/leases`, `/rent-roll` show `ComingSoonPage`; `*` shows `NotFoundPage`.
+  - Signed in (inside `RequireAuth` + `AppLayout`): `/` redirects to `/properties`; `/properties` (`PropertiesPage`), `/properties/:id` (`PropertyDetailPage`); `/units` (`UnitsPage`); `/tenants`, `/leases`, `/rent-roll` show `ComingSoonPage`; `/settings` (`SettingsPage`); `*` shows `NotFoundPage`.
   - `errorElement`: `RouteErrorPage` inside the shell for page errors, full page for anything above it.
   - Each page route has a `handle` (`RouteHandle`) with its title and Sidebar item.
 
 ## AppLayout.tsx
-- `AppLayout`: `ScopeProvider` + `WorkspaceShell` + `<Outlet />`. Sidebar gets our Leasing / Money groups (icons reused from `defaultNavGroups`), the role, name and role label from GET /auth/me, the scope label, and React Router links. Topbar gets the page title, the scope chip, no AI, and a profile menu (email + Sign out). Sets the tab title. Provides `PageTitleContext`, so a page can replace the route title.
+- `AppLayout`: `ScopeProvider` + `WorkspaceShell` + `<Outlet />`. Sidebar gets our Leasing / Money / Admin (Settings) groups (icons reused from `defaultNavGroups`), the role, name and role label from GET /auth/me, the scope label, and React Router links. Topbar gets the page title, the scope chip, no AI, and a profile menu (email, Settings, Sign out). Sets the tab title. Provides `PageTitleContext`, so a page can replace the route title.
 - `RouteHandle`: `{ title, nav? }`, put on a route as `handle`.
 
 ## queryClient.ts

@@ -80,19 +80,28 @@ export function AuthLayout({ children, aside, className }: { children: React.Rea
 /* ---------- Settings: left sub-navigation + content ---------- */
 export interface SettingsSection { key: string; label: string; href: string }
 
-export function SettingsLayout({ sections, active, children, className }: { sections: SettingsSection[]; active: string; children: React.ReactNode; className?: string }) {
+export interface SettingsLayoutProps {
+  sections: SettingsSection[];
+  active: string;
+  /** Render links with your router: (href, props) => <Link to={href} {...props} />. Default: plain <a>. */
+  renderLink?: SidebarProps["renderLink"];
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function SettingsLayout({ sections, active, renderLink, children, className }: SettingsLayoutProps) {
+  const link = renderLink ?? ((href, props) => <a href={href} {...props} />);
   return (
     <div className={cn("flex flex-wrap gap-8", className)}>
       <nav aria-label="Settings sections" className="flex w-[220px] shrink-0 flex-col gap-1">
         {sections.map((s) => (
-          <a
-            key={s.key}
-            href={s.href}
-            aria-current={s.key === active ? "page" : undefined}
-            className={cn("rounded-control px-3 py-2.5 no-underline", s.key === active ? "bg-surface-3 text-text-primary" : "text-text-secondary hover:bg-surface-3 hover:text-text-primary")}
-          >
-            {s.label}
-          </a>
+          <React.Fragment key={s.key}>
+            {link(s.href, {
+              "aria-current": s.key === active ? "page" : undefined,
+              className: cn("rounded-control px-3 py-2.5 no-underline", s.key === active ? "bg-surface-3 text-text-primary" : "text-text-secondary hover:bg-surface-3 hover:text-text-primary"),
+              children: s.label,
+            })}
+          </React.Fragment>
         ))}
       </nav>
       <div className="flex min-w-0 flex-1 basis-[560px] flex-col gap-6">{children}</div>

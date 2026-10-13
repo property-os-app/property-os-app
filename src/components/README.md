@@ -100,7 +100,7 @@ Page layouts.
 | `AuthLayout` | Form column (max 400px) + optional brand panel | `children`, `aside` | Login page. |
 | `OwnerShell` | Top-nav owner portal | `nav` | Not this app. |
 | `RenterShell` | Mobile tenant portal | `active`, `header` | Not this app. |
-| `SettingsLayout` | Settings sub-nav + content | `sections`, `active` | Settings pages. |
+| `SettingsLayout` | Settings sub-nav + content | `sections`, `active`, `renderLink` | Settings pages. |
 | `ThreePaneLayout` | List / thread / context | `list`, `thread`, `context` | Inbox / chat. |
 
 ---
@@ -114,7 +114,7 @@ Page layouts.
 | Background / surfaces | `bg-bg`, `bg-surface-1` (cards), `bg-surface-2` (inputs, headers), `bg-surface-3` (hover), `bg-overlay`, `bg-scrim` |
 | Borders | `border-border-subtle`, `border-border-strong` |
 | Text | `text-text-primary`, `text-text-secondary`, `text-text-muted` |
-| Status | `success` (green #059669, the main color), `danger`, `warning`, `info`, `ai`, each with `-soft`; `text-success-fg` is the dark text on solid green |
+| Status | `success` (green #059669, the main color), `danger`, `warning`, `info`, `ai`, each with `-soft`; `text-success-fg` is the dark text on solid green; `bg-danger-solid` is the red under white text (danger Button, danger Count) |
 | Type scale | `text-hero` 48, `text-display` 32, `text-h1` 24, `text-h2` 20, `text-h3` 16, `text-body` 14, `text-body-lg` 16, `text-small` 13, `text-caption` 12, `text-overline` 11 |
 | Radius | `rounded-badge` 6, `rounded-control` 8, `rounded-card` 12, `rounded-overlay` 16, `rounded-pill` |
 | Sizes | `w-sidebar` 264, `h-topbar` 64, `w-drawer` 480 / `-lg` 640 / `-xl` 800, `w-modal` 480 / `-lg` 640, `max-w-content` 1440 |
@@ -136,7 +136,7 @@ Based on docs/BRIEF.md (admin portal: login, Properties, Units, Tenants, Leases,
 - Atoms: Button, LinkButton, Badge, Tag, Count, Delta, Typography (H1-H3, Body, Small, Caption, Overline, Display, Num, Dash), Input, Textarea, Select, CurrencyInput, Checkbox, Toggle, Avatar, Skeleton, Divider, CollectionProgress, Bar
 - Molecules: StatusBadge, FormField, SearchInput, SegmentedControl, Tabs, FilterChip, Card, CardHeader, KpiCard, HeroStatCard, KeyValueList, EmptyState, InlineError, Toaster + toast, KebabMenu
 - Organisms: Sidebar, Topbar, PageHeader, Toolbar, KpiRow, DataTable, Pagination, Drawer, Modal, ConfirmDialog
-- Templates: WorkspaceShell, AuthLayout
+- Templates: WorkspaceShell, AuthLayout, SettingsLayout
 - Bonus Dashboard only: RentCollectionHero, HeroStat
 
 **Not used** (out of scope in the brief)
@@ -144,7 +144,7 @@ Based on docs/BRIEF.md (admin portal: login, Properties, Units, Tenants, Leases,
 - Charts: IncomeExpenseChart, DonutChart, HBarList
 - Maintenance / chat / activity: KanbanBoard, StatusTracker, ChatBubble, TimelineItem, TimelineDay, ActivityTimeline, ThreePaneLayout
 - Other portals: RenterTabBar, OwnerNav, RenterShell, OwnerShell
-- Other: FileDropzone (no uploads), SettingsLayout (no settings), InternalNote, Banner, Stepper, Kbd
+- Other: FileDropzone (no uploads), InternalNote, Banner, Stepper, Kbd
 
 ---
 
@@ -182,3 +182,7 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | 2026-10-13 | `atoms/Input.tsx` (`CurrencyInput`) | Keeps only digits and one dot, max 2 decimals; "" and "." report `""`, so `onChange` never gets `NaN`. | "1.2.3" gave `NaN`; the API rejects more than 2 decimals. |
 | 2026-10-13 | `organisms/Overlays.tsx` (`ConfirmDialog`) | Optional `busy` (buttons disabled, "Working...", can't close) and `error` (InlineError in the dialog). With either prop the dialog stays open after Confirm and the caller closes it on success. The typed name resets whenever it closes. Without them it works as before. | Delete property and Remove manager must show the backend 409/400 message in the dialog. |
 | 2026-10-13 | `lib/format.ts` | Added `todayUTC()` (UTC "YYYY-MM-DD") and `daysUntil(date)` (calendar days from local today). Nothing else changed. | The unit drawer compares `oldestUnpaidDueDate` with the backend's UTC today, and shows "{n} days left" without `new Date("YYYY-MM-DD")`. |
+| 2026-10-13 | `templates/Shells.tsx` (`SettingsLayout`) | Optional `renderLink` prop, same signature as `Sidebar`'s; default is still a plain `<a>`. New exported `SettingsLayoutProps`. | Plain `<a>` reloaded the whole app on section clicks; we pass React Router's `Link`. |
+| 2026-10-13 | `styles/theme.css` | `color-scheme: light` on `:root`, `color-scheme: dark` on `.dark` / `[data-theme="dark"]`. | Native controls (Select lists, date pickers, scrollbars, autofill) stayed light in dark mode. |
+| 2026-10-13 | `styles/theme.css` | `@custom-variant dark` matching `.dark` and `[data-theme="dark"]`. | Tailwind `dark:` classes (Skeleton shimmer) followed the OS setting instead of our chosen theme. |
+| 2026-10-13 | `styles/theme.css`, `tokens/index.ts`, `lib/cn.ts`, `atoms/Button.tsx`, `atoms/Badge.tsx` (`Count`) | New `--danger-solid` token / `bg-danger-solid` utility (`dangerSolid` in tokens, known to `cn`): `#e11d48` in both themes. Danger Button and danger Count use it instead of `bg-danger`. Light looks the same (`#e11d48` was already the light danger). | White text on dark `#f43f5e` was 3.67:1; on `#e11d48` it is 4.70:1 (WCAG AA 4.5:1). `--danger` (text, dots, soft fills) is unchanged. |

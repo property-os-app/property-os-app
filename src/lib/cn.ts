@@ -9,7 +9,7 @@ const typeScale = ["hero", "display", "h1", "h2", "h3", "body", "body-lg", "smal
 const colorTokens = [
   "bg", "surface-1", "surface-2", "surface-3", "overlay", "border-subtle", "border-strong",
   "text-primary", "text-secondary", "text-muted",
-  "success", "success-dark", "success-soft", "success-fg", "danger", "danger-soft", "warning", "warning-soft",
+  "success", "success-dark", "success-soft", "success-fg", "danger", "danger-solid", "danger-soft", "warning", "warning-soft",
   "info", "info-soft", "ai", "ai-soft", "scrim",
 ];
 

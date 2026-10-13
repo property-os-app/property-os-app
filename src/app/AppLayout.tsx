@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link, Outlet, useMatches } from "react-router";
-import { LogOut } from "lucide-react";
+import { Link, Outlet, useMatches, useNavigate } from "react-router";
+import { LogOut, SlidersHorizontal } from "lucide-react";
 import { defaultNavGroups, type ModuleKey, type NavGroup, type NavItem, type SidebarProps } from "@/components/organisms";
 import { WorkspaceShell } from "@/components/templates";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
@@ -23,6 +23,7 @@ const pick = (keys: ModuleKey[]): NavItem[] => keys.flatMap((key) => navItems.ge
 const navGroups: NavGroup[] = [
   { label: "Leasing", items: pick(["properties", "units", "tenants", "leases"]) },
   { label: "Money", items: pick(["rentroll"]) },
+  { label: "Admin", items: pick(["settings"]) },
 ];
 
 const renderLink: SidebarProps["renderLink"] = (href, props) => <Link to={href} {...props} />;
@@ -50,6 +51,7 @@ function AppShell() {
   const { me, signOut } = useAuth();
   const { label, openPicker } = useScope();
   const handle = useRouteHandle();
+  const navigate = useNavigate();
   // A page may replace the route title (usePageTitle), e.g. the property detail shows the property name.
   const [pageTitle, setPageTitle] = useState<string | null>(null);
   const title = pageTitle ?? handle.title;
@@ -78,6 +80,7 @@ function AppShell() {
         showAi: false,
         profileMenu: [
           { label: me.email, disabled: true, onSelect: () => {} },
+          { label: "Settings", icon: <SlidersHorizontal strokeWidth={1.5} />, onSelect: () => void navigate("/settings") },
           { label: "Sign out", icon: <LogOut strokeWidth={1.5} />, onSelect: () => void signOut() },
         ],
       }}
