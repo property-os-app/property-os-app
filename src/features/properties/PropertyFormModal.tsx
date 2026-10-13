@@ -25,7 +25,7 @@ const FIELDS = ["name", "street", "city", "state", "zip", "propertyType", "prope
 const required = (what: string) => z.string().trim().min(1, `Enter the ${what}.`);
 
 /**
- * Rules from docs/rules.md (Properties), plus the US formats for state and ZIP.
+ * Rules from ../property-os-api/docs/frontend-handoff/rules.md (Properties), plus the US formats for state and ZIP.
  * In edit mode state and ZIP are checked only when changed, so older values in another format can still be saved.
  */
 function makeSchema(original?: Property) {

@@ -1,4 +1,4 @@
-/** Types for the managers endpoints. Source: docs/API.md section 4 ("ManagerSummary", "ManagerListItem"). */
+/** Types for the managers endpoints. Source: ../property-os-api/docs/frontend-handoff/API.md section 4 ("ManagerSummary", "ManagerListItem"). */
 
 /** GET /properties/:propertyId/managers items, and the body of assign / unassign. */
 export interface ManagerSummary {

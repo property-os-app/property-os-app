@@ -16,7 +16,7 @@ const CONTACT_METHODS = Object.keys(contactMethodLabels) as [ContactMethod, ...C
 
 const FIELDS = ["fullName", "email", "phone", "idNumber", "address", "tenantType", "moveInDate", "preferredContactMethod", "notes"] as const;
 
-/** Rules from docs/rules.md (Tenants). Every text field is trimmed before it is checked and sent. */
+/** Rules from ../property-os-api/docs/frontend-handoff/rules.md (Tenants). Every text field is trimmed before it is checked and sent. */
 const schema = z.object({
   fullName: z.string().trim().min(1, "Enter the full name."),
   email: z.string().trim().min(1, "Enter the email.").pipe(z.email("Enter a valid email, e.g. name@example.com.")),

@@ -36,6 +36,11 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - `addMonthsISO(date, n)`: "YYYY-MM-DD" + n months on year/month/day numbers; the day is clamped to the month's last day.
 - `addDaysISO(date, n)`: "YYYY-MM-DD" + n days (no time zone math).
 - `ordinal(n)`: "1st", "2nd", "3rd", "31st".
+- `isMonth(value)`: true for a valid "YYYY-MM".
+- `currentMonthUTC()`: UTC "YYYY-MM", the backend's default month (Rent Roll, generate rent).
+- `formatMonth(month)`: "2026-10" -> "October 2026".
+- `addMonthsYM(month, n)`: "YYYY-MM" + n months on numbers (no Date math).
+- `dayInMonth(month, day)`: day of a "YYYY-MM" month, clamped to its last day ("2026-02", 31 -> "2026-02-28").
 - `initials(name)`: "Jordan Blake" -> "JB".
 - `EMPTY`: "-". `MoneyInput`: money input type.
 
@@ -43,7 +48,7 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - `cn(...classes)`: merges Tailwind class lists (clsx + tailwind-merge).
 
 ## labels.ts
-- One `...Labels` map per enum in docs/API.md section 2 (`propertyTypeLabels`, `unitTypeLabels` "1 BR", `paymentMethodLabels` "Credit card", ...). Status labels come from the design system `statusLabel`.
+- One `...Labels` map per enum in ../property-os-api/docs/frontend-handoff/API.md section 2 (`propertyTypeLabels`, `unitTypeLabels` "1 BR", `paymentMethodLabels` "ACH bank transfer", `chargeTypeLabels`, `rentStatusLabels`, ...). Status labels come from the design system `statusLabel`.
 - `labelOptions(labels)`: `[{ value, label }]` for a Select.
 - `plural(count, singular, plural?)`: "1 unit" / "3 units".
 - `unitLayout(unitType, bathrooms)`: "1 bd / 1 ba", "Studio / 1 ba", or "3 bd" when bathrooms is null.

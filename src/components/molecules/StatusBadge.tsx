@@ -4,7 +4,7 @@ import { Badge, type Tone } from "@/components/atoms/Badge";
 /**
  * Domain status map from the guideline, section 7.
  * Keeps color decisions out of feature code: pass the domain and the raw status string.
- * rent, lease, esign and unit use the backend enums as keys (docs/API.md section 2) and show a friendly label.
+ * rent, lease, esign and unit use the backend enums as keys (../property-os-api/docs/frontend-handoff/API.md section 2) and show a friendly label.
  */
 export type RentStatus = "PAID" | "PARTIAL" | "UNPAID" | "OVERDUE" | "NOT_BILLED";
 /** Backend LeaseStatus plus the UI-only "EXPIRING" (an ACTIVE lease with endingSoon = true). */

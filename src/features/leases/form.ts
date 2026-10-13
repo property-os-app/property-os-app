@@ -1,6 +1,6 @@
 /**
  * Add / Edit Lease wizard: form schema, defaults, request bodies and server-error routing.
- * Rules from docs/rules.md (Leases) and docs/API.md (POST / PATCH /leases).
+ * Rules from ../property-os-api/docs/frontend-handoff/rules.md (Leases) and ../property-os-api/docs/frontend-handoff/API.md (POST / PATCH /leases).
  */
 import type { FieldErrors } from "react-hook-form";
 import { z } from "zod";
@@ -55,7 +55,7 @@ export const schema = z
     notes: z.string().trim(),
   })
   .superRefine((v, ctx) => {
-    // The backend checks this only at activation; the form checks it for drafts too (docs/rules.md).
+    // The backend checks this only at activation; the form checks it for drafts too (../property-os-api/docs/frontend-handoff/rules.md).
     if (v.startDate && v.endDate && v.endDate <= v.startDate) {
       ctx.addIssue({ code: "custom", path: ["endDate"], message: "End date must be after the start date." });
     }

@@ -1,4 +1,4 @@
-/** Types for the tenants endpoints. Source: docs/API.md sections 2 and 4 ("Tenant", "TenantDetail", "TenantListItem"). */
+/** Types for the tenants endpoints. Source: ../property-os-api/docs/frontend-handoff/API.md sections 2 and 4 ("Tenant", "TenantDetail", "TenantListItem"). */
 import type { UserRole } from "@/types/auth";
 
 export type TenantType = "INDIVIDUAL" | "COMPANY";

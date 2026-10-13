@@ -1,4 +1,4 @@
-/** Types for the units endpoints. Source: docs/API.md sections 2 and 4 ("Unit"). */
+/** Types for the units endpoints. Source: ../property-os-api/docs/frontend-handoff/API.md sections 2 and 4 ("Unit"). */
 
 export type UnitType = "STUDIO" | "ONE_BED" | "TWO_BED" | "THREE_BED" | "FOUR_BED";
 
@@ -26,7 +26,7 @@ export interface Unit {
   updatedAt: string;
 }
 
-/** POST /units body (docs/API.md section 5). Money is a JSON number (max 2 decimals). OCCUPIED is never sent. */
+/** POST /units body (../property-os-api/docs/frontend-handoff/API.md section 5). Money is a JSON number (max 2 decimals). OCCUPIED is never sent. */
 export interface UnitCreateBody {
   propertyId: string;
   unitNumber: string;

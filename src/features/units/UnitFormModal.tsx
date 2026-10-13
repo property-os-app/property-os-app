@@ -28,7 +28,7 @@ const WHOLE_RE = /^\d+$/;
 const toIntOrNull = (v: string) => (v === "" ? null : Number(v));
 
 /**
- * Rules from docs/rules.md (Units). The backend doesn't check duplicate unit numbers yet,
+ * Rules from ../property-os-api/docs/frontend-handoff/rules.md (Units). The backend doesn't check duplicate unit numbers yet,
  * so the form blocks a number that already exists in the chosen property (trimmed, case-insensitive).
  */
 function makeSchema(units: Unit[], propertyName: (id: string) => string, editing?: Unit) {

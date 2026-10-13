@@ -124,7 +124,7 @@ Page layouts.
 
 **`src/lib/cn.ts`**: `cn(...classes)` merges class lists (clsx + tailwind-merge, taught our custom classes). Use it for every `className`.
 
-**`src/lib/format.ts`**: `formatCurrency`, `formatCompactCurrency`, `formatPercent`, `formatDate`, `formatRelative`, `leaseCountdown`, `initials`, `EMPTY`, plus our `toCents`, `centsToAmount`, `todayISO`, `todayUTC`, `daysUntil`, `currentMonth`, `addMonthsISO`, `addDaysISO`, `ordinal`. Takes API money strings and "YYYY-MM-DD" dates; details in [src/lib/README.md](../lib/README.md).
+**`src/lib/format.ts`**: `formatCurrency`, `formatCompactCurrency`, `formatPercent`, `formatDate`, `formatRelative`, `leaseCountdown`, `initials`, `EMPTY`, plus our `toCents`, `centsToAmount`, `todayISO`, `todayUTC`, `daysUntil`, `currentMonth`, `currentMonthUTC`, `isMonth`, `formatMonth`, `addMonthsYM`, `dayInMonth`, `addMonthsISO`, `addDaysISO`, `ordinal`. Takes API money strings and "YYYY-MM-DD" dates; details in [src/lib/README.md](../lib/README.md).
 
 ---
 
@@ -159,12 +159,12 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | `organisms/Sidebar.tsx` | `Role` is admin/manager/leasing/maintenance/accountant (we map OWNER → admin, PROPERTY_MANAGER → manager). Default groups list out-of-scope modules; we must pass our own `groups`. Avatar always shows the online dot. |
 | `organisms/Topbar.tsx` | `showAi` defaults to `true` (we pass `false`). Search placeholder mentions tickets (we don't pass `onSearch`, so it's hidden). |
 | `templates/Shells.tsx` (`WorkspaceShell`) | Sidebar is hidden under 768px and there is no mobile nav in its place. |
-| `organisms/Overlays.tsx` (`ConfirmDialog`) | No field for a reason (Void needs `reason`, max 300). |
+| `organisms/Overlays.tsx` (`ConfirmDialog`) | No field for a reason (Void needs `reason`, max 300). We use our own `VoidEntryModal` (on `Modal`) instead. |
 | `organisms/Overlays.tsx` (`Drawer`) | Uses `animate-in` / `animate-out` classes from a Tailwind plugin that isn't installed, so they do nothing. |
 | `organisms/DataTable.tsx` (`Pagination`) | Shows at most 8 page buttons, no previous/next. Paging is up to the caller (the API has no pagination). |
 | `organisms/DataTable.tsx` | Empty and error states render only if the `empty` / `error` props are passed. |
 | `atoms/Input.tsx` (`Select`) | Native single select only. No multi-select (Add Property managers) and no searchable picker (Add Lease tenant). |
-| (missing) | No date or month picker component (lease dates, Rent Roll month). |
+| (missing) | No date or month picker component (lease dates, Rent Roll month). Rent Roll uses prev / month / next buttons; dates use `Input type="date"`. |
 | `molecules/FormField.tsx` | Passes an `invalid` prop to its child, so the child must be a design system control, not a plain HTML element. |
 
 ---
@@ -187,3 +187,5 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | 2026-10-13 | `styles/theme.css` | `@custom-variant dark` matching `.dark` and `[data-theme="dark"]`. | Tailwind `dark:` classes (Skeleton shimmer) followed the OS setting instead of our chosen theme. |
 | 2026-10-13 | `styles/theme.css`, `tokens/index.ts`, `lib/cn.ts`, `atoms/Button.tsx`, `atoms/Badge.tsx` (`Count`) | New `--danger-solid` token / `bg-danger-solid` utility (`dangerSolid` in tokens, known to `cn`): `#e11d48` in both themes. Danger Button and danger Count use it instead of `bg-danger`. Light looks the same (`#e11d48` was already the light danger). | White text on dark `#f43f5e` was 3.67:1; on `#e11d48` it is 4.70:1 (WCAG AA 4.5:1). `--danger` (text, dots, soft fills) is unchanged. |
 | 2026-10-13 | `lib/format.ts` | Added `addMonthsISO(date, n)` (year/month/day math, day clamped to the month's last day), `addDaysISO(date, n)` and `ordinal(n)` ("1st", "31st"). Nothing else changed. | The lease wizard sets the end date from a term (start + N months - 1 day) without `new Date("YYYY-MM-DD")`; the drawer shows "due on the 1st". |
+| 2026-10-13 | `lib/format.ts` | Added `isMonth`, `currentMonthUTC`, `formatMonth` ("October 2026"), `addMonthsYM` (month math on numbers) and `dayInMonth(month, day)` (clamped to the month's last day). Nothing else changed. | Rent Roll needs the backend's UTC month, month labels, prev / next month and the Rent due date without `new Date("YYYY-MM-DD")`. |
+| 2026-10-13 | `molecules/StatusBadge.tsx` | Comment only: API docs path now `../property-os-api/docs/frontend-handoff/API.md`. | The local docs/API.md copy was removed; the backend repo is the only source. |

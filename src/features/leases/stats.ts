@@ -9,7 +9,7 @@ export function leasePeriod(lease: Lease): string | null {
 }
 
 /**
- * Where the lease stands on payments, by the backend's rule (UTC today, docs/API.md rent roll):
+ * Where the lease stands on payments, by the backend's rule (UTC today, ../property-os-api/docs/frontend-handoff/API.md rent roll):
  * credit (balance < 0), none (nothing owed), overdue (oldest unpaid due date before today), today, or future.
  */
 export type DueState =
@@ -179,7 +179,7 @@ export function termEndDate(start: string, months: number): string | null {
 
 /* ---------- Tags ---------- */
 
-/** Backend tag rules (docs/rules.md, Leases): max 10 tags, each max 30 characters after trimming. */
+/** Backend tag rules (../property-os-api/docs/frontend-handoff/rules.md, Leases): max 10 tags, each max 30 characters after trimming. */
 export const MAX_TAGS = 10;
 export const MAX_TAG_LENGTH = 30;
 

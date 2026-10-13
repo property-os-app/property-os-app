@@ -1,4 +1,4 @@
-/** Types for the leases endpoints. Source: docs/API.md sections 2 and 4 ("Lease"). */
+/** Types for the leases endpoints. Source: ../property-os-api/docs/frontend-handoff/API.md sections 2 and 4 ("Lease"). */
 
 export type LeaseStatus = "DRAFT" | "ACTIVE" | "ENDED" | "TERMINATED";
 
@@ -58,7 +58,7 @@ export interface Lease {
 }
 
 /**
- * POST /leases body (docs/API.md section 5). Only unitId is required for a DRAFT; status "ACTIVE" runs the activation checks.
+ * POST /leases body (../property-os-api/docs/frontend-handoff/API.md section 5). Only unitId is required for a DRAFT; status "ACTIVE" runs the activation checks.
  * Money is a JSON number (max 2 decimals). Never send null on create.
  */
 export interface LeaseCreateBody {

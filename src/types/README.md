@@ -1,6 +1,6 @@
 # src/types
 
-TypeScript types for API responses. Each one is copied from docs/API.md section 4. docs/api-samples is still empty (samples come later from the backend's capture script): when they arrive, check these types against them. No logic here.
+TypeScript types for API responses. Each one is copied from ../property-os-api/docs/frontend-handoff/API.md section 4. ../property-os-api/docs/frontend-handoff/api-samples does not exist yet (samples come later from the backend's capture script): when they arrive, check these types against them. No logic here.
 
 ## auth.ts
 - `UserRole`: `OWNER | PROPERTY_MANAGER | TENANT`.
@@ -33,3 +33,14 @@ TypeScript types for API responses. Each one is copied from docs/API.md section 
 - `LeaseTenant`: one tenant on a lease (`isPrimary`).
 - `Lease`: one row from GET /leases (dates "YYYY-MM-DD", money strings, `endingSoon`, `balance`).
 - `LeaseCreateBody`: POST /leases body (only `unitId` required; `status` DRAFT or ACTIVE). `LeaseUpdateBody`: PATCH body (never `status`; dates, rent, deposit, rentDueDay, notes, primaryTenantId may be null). `LeaseEndBody`: `{ status?: ENDED | TERMINATED }`.
+
+## ledger.ts
+- `ChargeType`, `PaymentMethod`, `LedgerEntryKind`: money enums.
+- `Charge`, `Payment`: POST charge / payment answers (money strings, "YYYY-MM-DD" dates, void fields).
+- `LedgerEntry`, `LedgerResponse`: GET /leases/:id/ledger (entries oldest first; `runningBalance` may be negative; summary with balance, totals, monthly rent).
+- `ChargeCreateBody` (`periodMonth` only on RENT), `PaymentCreateBody`, `VoidBody` (`reason`): request bodies.
+
+## rentRoll.ts
+- `RentRollStatus`: `PAID | PARTIAL | UNPAID | OVERDUE | NOT_BILLED`.
+- `RentRollRow`, `RentRollResponse`: GET /rent-roll (rows plus a summary that ignores status and search).
+- `GenerateRentResponse`: POST /rent-roll/generate counts.

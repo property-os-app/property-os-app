@@ -1,4 +1,4 @@
-/** Types for the auth endpoints. Source: docs/API.md sections 1, 2 and 4 ("AuthUser"). */
+/** Types for the auth endpoints. Source: ../property-os-api/docs/frontend-handoff/API.md sections 1, 2 and 4 ("AuthUser"). */
 
 export type UserRole = "OWNER" | "PROPERTY_MANAGER" | "TENANT";
 
@@ -15,7 +15,7 @@ export interface Me {
   updatedAt: string;
 }
 
-/** The only values of ApiError.code (docs/API.md section 1, "Error body"). Other errors have no code. */
+/** The only values of ApiError.code (../property-os-api/docs/frontend-handoff/API.md section 1, "Error body"). Other errors have no code. */
 export type AuthErrorCode =
   | "MISSING_TOKEN"
   | "INVALID_TOKEN"

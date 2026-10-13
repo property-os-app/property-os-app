@@ -177,6 +177,42 @@ export function currentMonth(now = new Date()): string {
   return todayISO(now).slice(0, 7);
 }
 
+/* ---------- Months ("YYYY-MM", no Date math) ---------- */
+
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** True for a valid "YYYY-MM" (month 01-12), the API's month format. */
+export function isMonth(value: string | null | undefined): value is string {
+  return typeof value === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+}
+
+/** This month as UTC "YYYY-MM": the backend's default month (rent roll, generate rent). */
+export function currentMonthUTC(now = new Date()): string {
+  return todayUTC(now).slice(0, 7);
+}
+
+/** "2026-10" -> "October 2026". Invalid -> "-". */
+export function formatMonth(month: string): string {
+  if (!isMonth(month)) return EMPTY;
+  return `${MONTH_NAMES[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`;
+}
+
+/** "YYYY-MM" plus n months (n may be negative), on numbers: "2026-12" + 1 -> "2027-01". Invalid stays as it is. */
+export function addMonthsYM(month: string, n: number): string {
+  if (!isMonth(month)) return month;
+  const index = Number(month.slice(0, 4)) * 12 + Number(month.slice(5, 7)) - 1 + n;
+  const y = Math.floor(index / 12);
+  return `${y}-${pad2(index - y * 12 + 1)}`;
+}
+
+/** Day `day` (1-31) of a "YYYY-MM" month, clamped to its last day: ("2026-02", 31) -> "2026-02-28". null when invalid. */
+export function dayInMonth(month: string, day: number): string | null {
+  if (!isMonth(month) || !Number.isInteger(day) || day < 1) return null;
+  const y = Number(month.slice(0, 4));
+  const m = Number(month.slice(5, 7));
+  return ymdISO({ y, m, d: Math.min(day, daysInMonth(y, m)) });
+}
+
 /* ---------- Text ---------- */
 
 /** Ordinal number: 1 -> "1st", 2 -> "2nd", 3 -> "3rd", 11 -> "11th", 22 -> "22nd", 31 -> "31st". */

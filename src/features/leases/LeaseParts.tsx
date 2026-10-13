@@ -8,15 +8,15 @@ export function LeaseBadge({ lease }: { lease: Lease }) {
   return <StatusBadge domain="lease" status={lease.endingSoon ? "EXPIRING" : lease.status} />;
 }
 
-/** Small stat card for drawers: Overline label, H2 tabular value, Caption note. */
-export function StatCard({ label, value, note, className }: { label: string; value: string; note: string; className?: string }) {
+/** Small stat card for drawers: Overline label, H2 tabular value, optional Caption note. */
+export function StatCard({ label, value, note, className }: { label: string; value: string; note?: string; className?: string }) {
   return (
     <Card padding="compact" className="flex flex-col gap-1">
       <Overline>{label}</Overline>
       <H2 as="div" className={cn("tabular", className)}>
         {value}
       </H2>
-      <Caption>{note}</Caption>
+      {note && <Caption>{note}</Caption>}
     </Card>
   );
 }

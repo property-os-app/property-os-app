@@ -1,8 +1,6 @@
-import { createBrowserRouter, Navigate, type RouteObject } from "react-router";
-import type { ModuleKey } from "@/components/organisms";
+import { createBrowserRouter, Navigate } from "react-router";
 import type { RouteHandle } from "@/app/AppLayout";
 import { AppLayout } from "@/app/AppLayout";
-import { ComingSoonPage } from "@/app/ComingSoonPage";
 import { NotFoundPage } from "@/app/NotFoundPage";
 import { RouteErrorPage } from "@/app/RouteErrorPage";
 import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
@@ -12,20 +10,16 @@ import { PublicOnly } from "@/features/auth/PublicOnly";
 import { RequireAuth } from "@/features/auth/RequireAuth";
 import { PropertiesPage } from "@/features/properties/PropertiesPage";
 import { PropertyDetailPage } from "@/features/properties/PropertyDetailPage";
+import { RentRollPage } from "@/features/rent-roll/RentRollPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import { TenantsPage } from "@/features/tenants/TenantsPage";
 import { UnitsPage } from "@/features/units/UnitsPage";
-
-/** A placeholder page with its title and Sidebar item. */
-function comingSoon(path: string, title: string, nav: ModuleKey): RouteObject {
-  const handle: RouteHandle = { title, nav };
-  return { path, handle, element: <ComingSoonPage title={title} /> };
-}
 
 const notFoundHandle: RouteHandle = { title: "Page not found" };
 const unitsHandle: RouteHandle = { title: "Units", nav: "units" };
 const tenantsHandle: RouteHandle = { title: "Tenants", nav: "tenants" };
 const leasesHandle: RouteHandle = { title: "Leases", nav: "leases" };
+const rentRollHandle: RouteHandle = { title: "Rent Roll", nav: "rentroll" };
 const settingsHandle: RouteHandle = { title: "Settings", nav: "settings" };
 const propertiesHandle: RouteHandle = { title: "Properties", nav: "properties" };
 // The detail page replaces this title with the property name (usePageTitle).
@@ -61,7 +55,7 @@ export const router = createBrowserRouter([
                   { path: "units", handle: unitsHandle, element: <UnitsPage /> },
                   { path: "tenants", handle: tenantsHandle, element: <TenantsPage /> },
                   { path: "leases", handle: leasesHandle, element: <LeasesPage /> },
-                  comingSoon("rent-roll", "Rent Roll", "rentroll"),
+                  { path: "rent-roll", handle: rentRollHandle, element: <RentRollPage /> },
                   { path: "settings", handle: settingsHandle, element: <SettingsPage /> },
                   { path: "*", handle: notFoundHandle, element: <NotFoundPage /> },
                 ],

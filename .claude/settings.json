@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "../property-os-api/docs/frontend-handoff"
+    ]
+  }
+}

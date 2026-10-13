@@ -1,4 +1,4 @@
-/** Types for the properties endpoints. Source: docs/API.md sections 2 and 4 ("Property"). */
+/** Types for the properties endpoints. Source: ../property-os-api/docs/frontend-handoff/API.md sections 2 and 4 ("Property"). */
 
 export type PropertyType = "RESIDENTIAL" | "COMMERCIAL" | "MIXED_USE";
 

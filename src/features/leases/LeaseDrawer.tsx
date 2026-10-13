@@ -1,11 +1,11 @@
 import { useState, type ReactNode } from "react";
-import { AlertTriangle, FileX, Info } from "lucide-react";
+import { AlertTriangle, FileX, Info, Wallet } from "lucide-react";
 import { Avatar, Button, Caption, Dash, H3, Num, Select, Skeleton, Tag } from "@/components/atoms";
 import { Card, EmptyState, InlineError, KeyValueList, StatusBadge, Tabs, toast } from "@/components/molecules";
 import { Drawer } from "@/components/organisms";
 import { ApiError, errorText } from "@/lib/api";
 import { cn } from "@/lib/cn";
-import { daysUntil, formatCurrency, formatDate, ordinal, toCents } from "@/lib/format";
+import { currentMonthUTC, daysUntil, formatCurrency, formatDate, ordinal, toCents } from "@/lib/format";
 import { labelOptions, paymentFrequencyLabels, plural, signatureStatusLabels } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
@@ -16,9 +16,13 @@ import { LeaseEndModal } from "@/features/leases/LeaseEndModal";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
 import { coTenants, dueNote, dueState, isClosed, isPastEnd, leaseMissing, primaryTenant } from "@/features/leases/stats";
 import { TagEditor } from "@/features/leases/TagEditor";
+import { AddChargeModal } from "@/features/ledger/AddChargeModal";
+import { useLedger } from "@/features/ledger/hooks";
+import { LedgerView } from "@/features/ledger/LedgerView";
+import { RecordPaymentModal } from "@/features/ledger/RecordPaymentModal";
 import type { Lease, SignatureStatus } from "@/types/lease";
 
-type Tab = "details" | "tenants";
+type Tab = "details" | "payments" | "tenants";
 
 export interface LeaseDrawerProps {
   leaseId: string;
@@ -30,7 +34,8 @@ export interface LeaseDrawerProps {
 }
 
 /**
- * One lease (lg drawer): Details (alert card, key values, e-signature, tags) and Tenants tabs.
+ * One lease (lg drawer): Details (alert card, key values, e-signature, tags), Payments and Tenants tabs.
+ * Payments tab: the shared ledger with Add charge / Record Payment.
  * Footer by status: DRAFT Delete draft / Edit / Activate; ACTIVE End lease / Edit; ENDED, TERMINATED Edit notes and tags.
  * Mount it only while open; it closes itself after a delete.
  */
@@ -77,6 +82,7 @@ export function LeaseDrawer({ leaseId, placeholder, initialActivateError = null,
               onChange={setTab}
               tabs={[
                 { value: "details", label: "Details" },
+                { value: "payments", label: "Payments" },
                 { value: "tenants", label: "Tenants", count: lease.tenants.length },
               ]}
             />
@@ -114,6 +120,8 @@ export function LeaseDrawer({ leaseId, placeholder, initialActivateError = null,
             <LeaseAlert lease={lease} />
             <Details lease={lease} canEdit={canEdit} />
           </>
+        ) : tab === "payments" ? (
+          <PaymentsTab lease={lease} />
         ) : (
           <TenantsTab lease={lease} />
         )}
@@ -374,6 +382,56 @@ function TagsSection({ lease, canEdit }: { lease: Lease; canEdit: boolean }) {
       )}
       {error && <InlineError title="Couldn't save the tags" description={error} />}
     </div>
+  );
+}
+
+/* ---------- Payments tab ---------- */
+
+/** The shared ledger plus Add charge / Record Payment (by permission). DRAFT leases can't have charges or payments. */
+function PaymentsTab({ lease }: { lease: Lease }) {
+  const { me } = useAuth();
+  const role = me!.role;
+  const canCharge = can(role, "charge.create");
+  const canPay = can(role, "payment.create");
+  // Same query as LedgerView (shared cache): the payment modal needs the summary balance.
+  const ledger = useLedger(lease.id);
+  const [charging, setCharging] = useState(false);
+  const [paying, setPaying] = useState(false);
+
+  if (lease.status === "DRAFT") {
+    return (
+      <Card padding="none">
+        <EmptyState icon={<Wallet strokeWidth={1.5} />} title="No payments on a draft" description="Activate the lease to add charges and payments." />
+      </Card>
+    );
+  }
+
+  const balance = ledger.data?.summary.balance;
+  const tenantName = primaryTenant(lease)?.fullName ?? "No tenant";
+
+  return (
+    <>
+      {(canCharge || canPay) && (
+        <div className="flex flex-wrap justify-end gap-3">
+          {canCharge && <Button onClick={() => setCharging(true)}>Add charge</Button>}
+          {canPay && (
+            <Button disabled={balance === undefined} onClick={() => setPaying(true)}>
+              Record Payment
+            </Button>
+          )}
+        </div>
+      )}
+      <LedgerView leaseId={lease.id} canVoid={can(role, "entry.void")} />
+
+      {charging && <AddChargeModal leaseId={lease.id} month={currentMonthUTC()} onClose={() => setCharging(false)} />}
+      {paying && balance !== undefined && (
+        <RecordPaymentModal
+          targets={[{ leaseId: lease.id, label: `${tenantName}, Unit ${lease.unit.unitNumber}, ${lease.unit.property.name}`, unitNumber: lease.unit.unitNumber, balance }]}
+          presetLeaseId={lease.id}
+          onClose={() => setPaying(false)}
+        />
+      )}
+    </>
   );
 }
 

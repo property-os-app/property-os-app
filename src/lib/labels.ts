@@ -1,12 +1,14 @@
 /**
- * Friendly labels for every enum in docs/API.md section 2. The UI never shows a raw enum.
+ * Friendly labels for every enum in ../property-os-api/docs/frontend-handoff/API.md section 2. The UI never shows a raw enum.
  * Status labels (rent, lease, e-sign, unit) live in the design system StatusBadge and are re-exported here,
  * so each label is written once.
  */
 import { statusLabel } from "@/components/molecules/StatusBadge";
 import type { UserRole } from "@/types/auth";
 import type { LeaseStatus, PaymentFrequency, SignatureStatus } from "@/types/lease";
+import type { ChargeType, LedgerEntryKind, PaymentMethod } from "@/types/ledger";
 import type { PropertyType } from "@/types/property";
+import type { RentRollStatus } from "@/types/rentRoll";
 import type { ContactMethod, TenantType } from "@/types/tenant";
 import type { UnitStatus, UnitType } from "@/types/unit";
 
@@ -74,23 +76,23 @@ export const paymentFrequencyLabels: Record<PaymentFrequency, string> = {
   QUARTERLY: "Quarterly",
 };
 
-export const paymentMethodLabels: Record<"ACH" | "CHECK" | "CREDIT_CARD" | "CASH" | "OTHER", string> = {
-  ACH: "ACH",
+export const paymentMethodLabels: Record<PaymentMethod, string> = {
+  ACH: "ACH bank transfer",
   CHECK: "Check",
   CREDIT_CARD: "Credit card",
   CASH: "Cash",
   OTHER: "Other",
 };
 
-export const chargeTypeLabels: Record<"RENT" | "LATE_FEE" | "OTHER", string> = {
+export const chargeTypeLabels: Record<ChargeType, string> = {
   RENT: "Rent",
   LATE_FEE: "Late fee",
   OTHER: "Other",
 };
 
-export const rentStatusLabels: Record<"PAID" | "PARTIAL" | "UNPAID" | "OVERDUE" | "NOT_BILLED", string> = statusLabel.rent;
+export const rentStatusLabels: Record<RentRollStatus, string> = statusLabel.rent;
 
-export const ledgerKindLabels: Record<"CHARGE" | "PAYMENT", string> = {
+export const ledgerKindLabels: Record<LedgerEntryKind, string> = {
   CHARGE: "Charge",
   PAYMENT: "Payment",
 };

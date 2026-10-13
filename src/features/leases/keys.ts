@@ -9,8 +9,10 @@ export const leaseKeys = {
   lists: ["leases", "list"] as const,
   list: (params: LeaseListParams) => ["leases", "list", params] as const,
   detail: (id: string) => ["leases", "detail", id] as const,
+  /** GET /leases/:id/ledger. Under ["leases"], so every lease refresh also refreshes ledgers. */
+  ledger: (id: string) => ["leases", "ledger", id] as const,
   tagSuggestions: ["leases", "tag-suggestions"] as const,
 };
 
-/** Prefix of the Rent Roll queries (the Rent Roll feature comes in its own step). Lease changes invalidate it. */
+/** Prefix of the Rent Roll queries (src/features/rent-roll). Lease, charge and payment changes invalidate it. */
 export const rentRollPrefix = ["rent-roll"] as const;

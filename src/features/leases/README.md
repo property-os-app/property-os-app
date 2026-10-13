@@ -4,7 +4,8 @@ Leases: the /leases page (KPIs, toolbar, table), the lease drawer, the 4-step Ad
 
 ## keys.ts
 - `leaseKeys`: `all`, `lists`, `list({ propertyId?, unitId?, status? })`, `detail(id)`, `tagSuggestions`.
-- `LeaseListParams`: the list filters. `rentRollPrefix`: `["rent-roll"]`, invalidated after lease changes (Rent Roll comes later).
+- `leaseKeys.ledger(id)`: GET /leases/:id/ledger, under `["leases"]` so every lease refresh also refreshes ledgers.
+- `LeaseListParams`: the list filters. `rentRollPrefix`: `["rent-roll"]`, invalidated after lease and money changes.
 
 ## hooks.ts
 - `useLeases(params, { enabled? })`: GET /leases (OWNER all, manager assigned), newest first.
@@ -35,10 +36,10 @@ Leases: the /leases page (KPIs, toolbar, table), the lease drawer, the 4-step Ad
 - `LeasesPage`: /leases. KPIs (Active, Expiring in 60 days, Past end date, Monthly rent), toolbar (status segments, search, Property = sidebar scope, e-sign), the table with its 5 states, drawer, wizard, end and delete. Kebab actions open their modal directly; a failed kebab Activate opens the drawer with the reason.
 
 ## LeasesTable.tsx
-- `LeasesTable`: DataTable columns (tenant, unit, rent, term, status, tags, e-signature, expires, balance) and the kebab (Open, Edit, Activate, End lease, Delete draft).
+- `LeasesTable`: DataTable columns (tenant, unit, rent, term, status, tags, e-signature, expires, balance via the ledger's `BalanceText`) and the kebab (Open, Edit, Activate, End lease, Delete draft).
 
 ## LeaseDrawer.tsx
-- `LeaseDrawer`: lg drawer. Details (alert card, key values, e-signature Select, tags) and Tenants tabs. Footer by status (hidden without `lease.edit`). Activate shows its error with an "Edit lease" button. Closes itself after a delete.
+- `LeaseDrawer`: lg drawer. Details (alert card, key values, e-signature Select, tags), Payments and Tenants tabs. Payments: the shared `LedgerView` with Add charge / Record Payment by permission; DRAFT shows "Activate the lease to add charges and payments."; Add charge bills the current UTC month; Record Payment uses the ledger summary balance. Footer by status (hidden without `lease.edit`). Activate shows its error with an "Edit lease" button. Closes itself after a delete.
 
 ## LeaseWizard.tsx
 - `LeaseWizard`: the Add / Edit Lease modal (Stepper, Back / Cancel / Save as draft / Continue or Create & activate / Save changes). Opens TenantFormModal over itself for "Add new tenant".
@@ -60,4 +61,4 @@ Leases: the /leases page (KPIs, toolbar, table), the lease drawer, the 4-step Ad
 
 ## LeaseParts.tsx
 - `LeaseBadge`: lease StatusBadge, "Expiring" when `endingSoon`.
-- `StatCard`: small drawer card (label, big value, note).
+- `StatCard`: small drawer card (label, big value, optional note). Also used by the ledger cards.

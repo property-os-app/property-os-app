@@ -4,7 +4,8 @@ import { Avatar, Caption, Dash, Num, Tag } from "@/components/atoms";
 import { KebabMenu, StatusBadge, type MenuItem } from "@/components/molecules";
 import { DataTable, type Column, type DataTableProps } from "@/components/organisms";
 import { cn } from "@/lib/cn";
-import { centsToAmount, formatCurrency, formatDate, toCents } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
+import { BalanceText } from "@/features/ledger/LedgerParts";
 import { LeaseBadge } from "@/features/leases/LeaseParts";
 import { coTenants, isPastEnd, primaryTenant } from "@/features/leases/stats";
 import type { Lease } from "@/types/lease";
@@ -17,13 +18,6 @@ type Props = Pick<DataTableProps<Lease>, "rows" | "state" | "sort" | "onSortChan
   onEnd?: (lease: Lease) => void;
   onDelete?: (lease: Lease) => void;
 };
-
-/** Balance: danger when owed, "Credit {amount}" when negative. */
-function Balance({ value }: { value: string }) {
-  const cents = toCents(value);
-  if (cents < 0) return <Num className="text-success">Credit {formatCurrency(centsToAmount(-cents))}</Num>;
-  return <Num className={cn(cents > 0 && "font-semibold text-danger")}>{formatCurrency(value)}</Num>;
-}
 
 /** The Leases list table. Row click opens the lease drawer; the kebab has Open, Edit, Activate, End lease, Delete draft. */
 export function LeasesTable({ onOpen, onEdit, onActivate, onEnd, onDelete, ...props }: Props) {
@@ -84,7 +78,7 @@ export function LeasesTable({ onOpen, onEdit, onActivate, onEnd, onDelete, ...pr
             <Dash />
           ),
       },
-      { key: "balance", header: "Balance", align: "right", sortable: true, cell: (l) => <Balance value={l.balance} /> },
+      { key: "balance", header: "Balance", align: "right", sortable: true, cell: (l) => <BalanceText value={l.balance} /> },
       {
         key: "actions",
         header: <span className="sr-only">Actions</span>,
