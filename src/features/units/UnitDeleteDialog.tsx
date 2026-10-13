@@ -13,7 +13,7 @@ export interface UnitDeleteDialogProps {
   onDeleted?: () => void;
 }
 
-/** "Delete unit?" confirm (OWNER). The backend's 409 ("This unit has leases...", "related records") shows inside the dialog. */
+/** "Delete unit?" confirm (OWNER). The backend's 409 ("Cannot delete unit 4B: it has 1 draft lease(s). Delete them first.", active or ended leases, maintenance tickets) shows inside the dialog. */
 export function UnitDeleteDialog({ unit, propertyName, onClose, onDeleted }: UnitDeleteDialogProps) {
   const del = useDeleteUnit();
   const name = unit ? `Unit ${unit.unitNumber}${propertyName ? `, ${propertyName}` : ""}` : "";

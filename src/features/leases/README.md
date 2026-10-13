@@ -13,6 +13,7 @@ Leases: the /leases page (KPIs, toolbar, table), the lease drawer, the 4-step Ad
 - `useTagSuggestions()`: GET /leases/tag-suggestions.
 - `useCreateLease()`: POST /leases (DRAFT, or status ACTIVE to create and activate in one call).
 - `useUpdateLease()`: PATCH /leases/:id. `useActivateLease()`: POST /leases/:id/activate. `useEndLease()`: POST /leases/:id/end. `useDeleteLease()`: DELETE /leases/:id (DRAFT only).
+- `leaseErrorText(err)`: like `errorText`, with friendly field names in lease messages (drawer signature and tag saves).
 - `ActivateError`, `activateErrorOf(err)`: a failed activation as an InlineError (friendly missing field names; `fixable` shows "Edit lease").
 - `useActivateAction()`: activate + the success toast; `run(id)` returns null or an `ActivateError`.
 
@@ -21,16 +22,19 @@ Leases: the /leases page (KPIs, toolbar, table), the lease drawer, the 4-step Ad
 - `primaryTenant`, `coTenants`, `isClosed` (ENDED / TERMINATED), `isPastEnd` (ACTIVE, end before UTC today), `expiresWithin(lease, days)`, `startedThisMonth`, `leaseUnitLine`, `pastEndNote`: page and drawer helpers.
 - `compareLeasesDefault`: ACTIVE by soonest end, then DRAFT newest first, then ENDED / TERMINATED latest end first.
 - `activationFieldLabels`, `missingToActivate(parts)`, `leaseMissing(lease)`, `parseMissingMessage(msg)`: what activation still needs, with friendly names.
+- `leaseFieldLabels`, `leaseFieldLabel(field)`: friendly names for every lease field.
+- `LeaseFieldsMessage`, `parseLeaseFieldsMessage(msg)`: reads "Cannot activate lease: missing ...", "Lease X is ACTIVE, so it needs: ..." and the ENDED / TERMINATED "Not allowed: ..." message.
+- `friendlyLeaseMessage(msg)`: those three with friendly field names; other messages unchanged.
 - `termMonthsOf(start, end)`: whole months, end date included. `termEndDate(start, months)`: start + months - 1 day.
 - `MAX_TAGS`, `MAX_TAG_LENGTH`, `normalizeTag`: the tag rules.
 
 ## form.ts
 - `STEPS`, `STEP_FIELDS`, `SERVER_FIELDS`, `stepOf`, `firstErrorStep`: the wizard steps and which fields each shows.
-- `schema`, `FormInput`, `FormOutput`: format rules only (activation is checked separately). End date after start date is checked for drafts too.
+- `schema`, `FormInput`, `FormOutput`: format rules only (activation is checked separately). End date after start date on every status (like the backend). Money max $9,999,999,999.99, grace period max 2,147,483,647.
 - `defaults(presets)`: from a lease (edit) or the preset unit / scope / tenant (create).
 - `formMissing(values)`: missing to activate, from the form.
 - `createBody(values, activate)`: POST body, empty fields left out. `updateBody(values, lease)`: PATCH with only the changed fields and the per-status rules (closed: notes and tags; ACTIVE: never unitId, never null for required fields).
-- `friendlyServerMessage`, `serverErrorStep`: show server errors on the right step.
+- `serverErrorStep`: the step to show after a server error (field, overlap, missing, ACTIVE-needs / closed: first named field).
 
 ## LeasesPage.tsx
 - `LeasesPage`: /leases. KPIs (Active, Expiring in 60 days, Past end date, Monthly rent), toolbar (status segments, search, Property = sidebar scope, e-sign), the table with its 5 states, drawer, wizard, end and delete. Kebab actions open their modal directly; a failed kebab Activate opens the drawer with the reason.
@@ -39,7 +43,7 @@ Leases: the /leases page (KPIs, toolbar, table), the lease drawer, the 4-step Ad
 - `LeasesTable`: DataTable columns (tenant, unit, rent, term, status, tags, e-signature, expires, balance via the ledger's `BalanceText`) and the kebab (Open, Edit, Activate, End lease, Delete draft).
 
 ## LeaseDrawer.tsx
-- `LeaseDrawer`: lg drawer. Details (alert card, key values, e-signature Select, tags), Payments and Tenants tabs. Payments: the shared `LedgerView` with Add charge / Record Payment by permission; DRAFT shows "Activate the lease to add charges and payments."; Add charge bills the current UTC month; Record Payment uses the ledger summary balance. Footer by status (hidden without `lease.edit`). Activate shows its error with an "Edit lease" button. Closes itself after a delete.
+- `LeaseDrawer`: lg drawer. Details (alert card, key values, e-signature Select, tags), Payments and Tenants tabs. Payments: the shared `LedgerView` with Add charge / Record Payment by permission; DRAFT shows "Activate the lease to add charges and payments."; Add charge bills the current UTC month; Record Payment uses the ledger summary balance. Footer by status (hidden without `lease.edit`). Activate shows its error with an "Edit lease" button. Signature and tag save errors use `leaseErrorText`. Closes itself after a delete.
 
 ## LeaseWizard.tsx
 - `LeaseWizard`: the Add / Edit Lease modal (Stepper, Back / Cancel / Save as draft / Continue or Create & activate / Save changes). Opens TenantFormModal over itself for "Add new tenant".

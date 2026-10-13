@@ -27,11 +27,11 @@ export interface Lease {
   /** "YYYY-MM-DD"; null only on DRAFT. */
   endDate: string | null;
   paymentFrequency: PaymentFrequency;
-  /** Money string; null only on DRAFT. */
+  /** Money string ("1200.00"); null only on DRAFT. */
   rent: string | null;
-  /** Money string; null only on DRAFT. */
+  /** Money string ("1200.00"); null only on DRAFT. */
   deposit: string | null;
-  /** Money string, default "0". */
+  /** Money string, default "0.00". */
   lateFeeAmount: string;
   lateFeeGraceDays: number;
   /** 1–31; null only on DRAFT. */
@@ -45,7 +45,7 @@ export interface Lease {
   /** ISO timestamp. */
   updatedAt: string;
   unit: { id: string; unitNumber: string; property: { id: string; name: string } };
-  /** Primary first; [] when none. */
+  /** Primary first, then co-tenants by fullName A→Z (sorted by the API); [] when none. */
   tenants: LeaseTenant[];
   /** Whole months, end date inclusive; null if a date is missing. */
   termMonths: number | null;
@@ -82,7 +82,8 @@ export interface LeaseCreateBody {
 
 /**
  * PATCH /leases/:id body: any subset, never status. unitId only while DRAFT.
- * null clears startDate, endDate, rent, deposit, rentDueDay, notes and primaryTenantId (never send it on an ACTIVE lease).
+ * null clears startDate, endDate, rent, deposit, rentDueDay, notes and primaryTenantId (DRAFT; on ACTIVE only notes).
+ * null on any other field gives 400 "<field> cannot be null; omit it to leave it unchanged".
  */
 export type LeaseUpdateBody = Partial<
   Omit<LeaseCreateBody, "status" | "startDate" | "endDate" | "rent" | "deposit" | "rentDueDay" | "notes" | "primaryTenantId">

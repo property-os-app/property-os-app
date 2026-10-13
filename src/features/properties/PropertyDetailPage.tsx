@@ -12,7 +12,7 @@ import { plural, propertyTypeLabels } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { useLeases } from "@/features/leases/hooks";
-import { useDeleteProperty, useProperty, usePropertyManagers } from "@/features/properties/hooks";
+import { useDeleteProperty, useProperty } from "@/features/properties/hooks";
 import { PropertyImage } from "@/features/properties/PropertyCard";
 import { PropertyFormModal } from "@/features/properties/PropertyFormModal";
 import { PropertyManagersCard } from "@/features/properties/PropertyManagersCard";
@@ -48,7 +48,7 @@ function Tile({ label, value, note, loading, className }: { label: string; value
   );
 }
 
-/** /properties/:id: header card with KPIs and managers, Overview and Units tabs, edit and delete (OWNER). */
+/** /properties/:id: header card with KPIs and managers (embedded in the property; the Managers card fetches emails), Overview and Units tabs, edit and delete (OWNER). */
 export function PropertyDetailPage() {
   const { id = "" } = useParams();
   const property = useProperty(id);
@@ -108,7 +108,6 @@ function PropertyDetail({ property }: { property: Property }) {
   const role = me!.role;
   const units = useUnits({ propertyId: property.id });
   const leases = useLeases({ propertyId: property.id });
-  const managers = usePropertyManagers(property.id);
   const del = useDeleteProperty();
 
   const [tab, setTab] = useState<Tab>("overview");
@@ -162,7 +161,7 @@ function PropertyDetail({ property }: { property: Property }) {
               <div className="min-w-0">
                 <H1>{property.name}</H1>
                 <Small className="mt-1 block">
-                  {formatAddress(property)} · Acquired {acquired} · {unitsLoading ? "…" : plural(counts.total, "unit")}
+                  {formatAddress(property)} · Acquired {acquired} · {plural(property.unitCount, "unit")}
                 </Small>
               </div>
               {(can(role, "property.edit") || canAddUnit) && (
@@ -206,17 +205,15 @@ function PropertyDetail({ property }: { property: Property }) {
                 note="From active leases"
                 className="text-success"
               />
-              <Tile label="Units" loading={unitsLoading} value={counts.total} note={`${counts.VACANT} vacant`} />
+              <Tile label="Units" loading={unitsLoading} value={property.unitCount} note={`${counts.VACANT} vacant`} />
               <Tile label="Current value" loading={false} value={formatCompactCurrency(property.propertyValue)} note={`Acquired ${acquired}`} />
             </div>
 
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-              {managers.isPending ? (
-                <Skeleton className="h-6 w-48" />
-              ) : managers.isError || managers.data.length === 0 ? (
-                <Caption>{managers.isError ? "Managers couldn't be loaded" : "No manager assigned"}</Caption>
+              {property.managers.length === 0 ? (
+                <Caption>No manager assigned</Caption>
               ) : (
-                managers.data.map((m) => (
+                property.managers.map((m) => (
                   <span key={m.id} className="flex items-center gap-2">
                     <Avatar name={m.name} size={24} />
                     <Small>{m.name}, Property Manager</Small>

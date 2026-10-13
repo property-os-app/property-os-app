@@ -43,7 +43,7 @@ export function useUpdateUnit() {
   });
 }
 
-/** DELETE /units/:id (OWNER). 409 while the unit has any lease or related records. */
+/** DELETE /units/:id (OWNER). 409 while the unit has any lease (even DRAFT) or maintenance tickets; the message says which. */
 export function useDeleteUnit() {
   const qc = useQueryClient();
   return useMutation({

@@ -9,7 +9,7 @@ Units: the /units list, the unit drawer (also opened from the property detail pa
 - `useUnits({ propertyId? })`: GET /units (OWNER all, manager assigned). An unknown propertyId gives `[]`.
 - `useCreateUnit()`: POST /units. Adds the new unit to the cached lists at once (the next step of an Add unit chain sees it for the duplicate check), then refreshes.
 - `useUpdateUnit()`: PATCH /units/:id. Refreshes units and leases (leases embed the unit number).
-- `useDeleteUnit()`: DELETE /units/:id (OWNER). 409 while the unit has leases or related records.
+- `useDeleteUnit()`: DELETE /units/:id (OWNER). 409 while the unit has any lease (even DRAFT) or maintenance tickets; the message says which.
 
 ## stats.ts
 - `UnitListRow`, `buildUnitListRows(units, activeLeases, propertyNames)`: rows with the ACTIVE lease and property name, sorted vacant / maintenance, reserved, occupied, then property name, then unit number.
@@ -28,7 +28,7 @@ Units: the /units list, the unit drawer (also opened from the property detail pa
 - `UnitDrawer`: lg drawer for one unit. Tenant tab (active lease card with Overdue / Due today / lease badge, Current rent / Balance / Lease ends cards, or "No active lease" with an "Add lease" button that opens the lease wizard for this unit, with `lease.create`; Details list) and Lease history tab (GET /leases?unitId=). Footer: Delete (OWNER) and Edit unit. Closes itself after a delete.
 
 ## UnitFormModal.tsx
-- `UnitFormModal`: add / edit modal (react-hook-form + zod, ../property-os-api/docs/frontend-handoff/rules.md Units). Blocks a duplicate unit number in the same property. Edit: property read-only, status read-only when OCCUPIED, PATCH with only changed fields (null when floor, bathrooms or description are cleared). Chain mode via `step` ("Add unit 1 of N", "Skip the rest", "Save & add next" / "Save") and `onSaved`. Mount it only while open.
+- `UnitFormModal`: add / edit modal (react-hook-form + zod, ../property-os-api/docs/frontend-handoff/rules.md Units). Blocks a duplicate unit number in the same property. Rent more than $0 and at most $99,999,999.99; floor -2,147,483,648 to 2,147,483,647; bathrooms 0 to 2,147,483,647. Edit: property read-only, status read-only when OCCUPIED, PATCH with only changed fields (null when floor, bathrooms or description are cleared). Chain mode via `step` ("Add unit 1 of N", "Skip the rest", "Save & add next" / "Save") and `onSaved`. Mount it only while open.
 
 ## UnitDeleteDialog.tsx
 - `UnitDeleteDialog`: ConfirmDialog for DELETE /units/:id with busy state and the backend's 409 shown inside; toast "Unit 4B deleted" and `onDeleted` on success.

@@ -19,14 +19,18 @@ const columns: Column<PropertyRow>[] = [
     ),
   },
   { key: "type", header: "Type", cell: (r) => propertyTypeLabels[r.property.propertyType] },
-  { key: "units", header: "Units", sortable: true, cell: (r) => <Num>{r.counts.total}</Num> },
+  { key: "units", header: "Units", sortable: true, cell: (r) => <Num>{r.property.unitCount}</Num> },
   { key: "occupancy", header: "Occupancy", sortable: true, cell: (r) => (r.occupancy === null ? <Dash /> : <Num>{formatPercent(r.occupancy)}</Num>) },
   { key: "rent", header: "Monthly rent", align: "right", cell: (r) => formatCurrency(centsToAmount(r.rentCents)) },
   {
     key: "managers",
     header: "Managers",
     cell: (r) =>
-      r.managers === undefined || r.managers.length === 0 ? <Dash /> : <span className="whitespace-normal">{r.managers.map((m) => m.name).join(", ")}</span>,
+      r.property.managers.length === 0 ? (
+        <Dash />
+      ) : (
+        <span className="whitespace-normal">{r.property.managers.map((m) => m.name).join(", ")}</span>
+      ),
   },
   { key: "value", header: "Value", align: "right", sortable: true, cell: (r) => formatCompactCurrency(r.property.propertyValue) },
 ];

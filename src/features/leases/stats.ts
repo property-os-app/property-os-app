@@ -152,10 +152,75 @@ export function leaseMissing(lease: Lease): string[] {
   return missingToActivate({ ...lease, primaryTenantId: primaryTenant(lease)?.id });
 }
 
+/** Friendly names of every lease field the backend can name in an error, keyed by the backend field name. */
+export const leaseFieldLabels: Record<string, string> = {
+  ...activationFieldLabels,
+  unitId: "Unit",
+  coTenantIds: "Co-tenants",
+  lateFeeAmount: "Late fee",
+  lateFeeGraceDays: "Grace period",
+  autoRenew: "Auto-renew",
+  signatureStatus: "E-signature status",
+  tags: "Tags",
+  notes: "Notes",
+  status: "Status",
+};
+
+/** "rent" -> "Monthly rent"; an unknown name stays as it is. */
+export const leaseFieldLabel = (field: string) => leaseFieldLabels[field] ?? field;
+
+/**
+ * A backend lease message that lists fields (backend names, in the backend's order):
+ * - missing: 400 "Cannot activate lease: missing rent, deposit" (activate, or create as ACTIVE).
+ * - activeNeeds: 400 "Lease LSE-2026-001 is ACTIVE, so it needs: rent. These can't be cleared on an ACTIVE lease." (PATCH).
+ * - closed: 409 "Lease LSE-2026-001 is ENDED, so only notes and tags can be changed. Not allowed: rent, startDate." (PATCH).
+ */
+export type LeaseFieldsMessage =
+  | { kind: "missing"; fields: string[] }
+  | { kind: "activeNeeds"; leaseNumber: string; fields: string[] }
+  | { kind: "closed"; leaseNumber: string; status: "ENDED" | "TERMINATED"; fields: string[] };
+
+const fieldList = (text: string) =>
+  text
+    .split(/,\s*/)
+    .map((f) => f.trim())
+    .filter(Boolean);
+
+/** Parses one of the three messages above; null when the message is something else. */
+export function parseLeaseFieldsMessage(message: string): LeaseFieldsMessage | null {
+  const missing = /^Cannot activate lease: missing (.+?)\.?$/.exec(message);
+  if (missing) return { kind: "missing", fields: fieldList(missing[1]) };
+  const needs = /^Lease (\S+) is ACTIVE, so it needs: (.+?)\. These can't be cleared/.exec(message);
+  if (needs) return { kind: "activeNeeds", leaseNumber: needs[1], fields: fieldList(needs[2]) };
+  const closed = /^Lease (\S+) is (ENDED|TERMINATED), so only notes and tags can be changed\. Not allowed: (.+?)\.?$/.exec(message);
+  if (closed) return { kind: "closed", leaseNumber: closed[1], status: closed[2] as "ENDED" | "TERMINATED", fields: fieldList(closed[3]) };
+  return null;
+}
+
 /** Friendly names from "Cannot activate lease: missing primaryTenantId, rent" (null when the message is something else). */
 export function parseMissingMessage(message: string): string[] | null {
-  const match = /^Cannot activate lease: missing (.+)$/.exec(message);
-  return match ? match[1].split(/,\s*/).map((f) => activationFieldLabels[f] ?? f) : null;
+  const parsed = parseLeaseFieldsMessage(message);
+  return parsed?.kind === "missing" ? parsed.fields.map(leaseFieldLabel) : null;
+}
+
+/**
+ * A backend lease message with friendly field names; any other message unchanged.
+ * "Cannot activate lease: missing rent" -> "Missing to activate: Monthly rent."
+ * "Lease X is ACTIVE, so it needs: rent. ..." -> "Lease X is active, so these can't be cleared: Monthly rent."
+ * "Lease X is ENDED, so only ... Not allowed: rent." -> "Lease X is ended, so only notes and tags can change. Not allowed: Monthly rent."
+ */
+export function friendlyLeaseMessage(message: string): string {
+  const parsed = parseLeaseFieldsMessage(message);
+  if (!parsed) return message;
+  const names = parsed.fields.map(leaseFieldLabel).join(", ");
+  switch (parsed.kind) {
+    case "missing":
+      return `Missing to activate: ${names}.`;
+    case "activeNeeds":
+      return `Lease ${parsed.leaseNumber} is active, so these can't be cleared: ${names}.`;
+    case "closed":
+      return `Lease ${parsed.leaseNumber} is ${parsed.status.toLowerCase()}, so only notes and tags can change. Not allowed: ${names}.`;
+  }
 }
 
 /**

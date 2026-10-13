@@ -15,8 +15,11 @@ import type { Unit, UnitCreateBody, UnitStatus, UnitType, UnitUpdateBody } from 
 const UNIT_TYPES = Object.keys(unitTypeLabels) as [UnitType, ...UnitType[]];
 /** The statuses a user may pick. OCCUPIED is set only by activating a lease. */
 const EDITABLE_STATUSES = ["VACANT", "RESERVED", "UNDER_MAINTENANCE"] as const satisfies readonly UnitStatus[];
-/** Decimal(10,2) column: above this the backend gives a 500. */
+/** monthlyRent: more than 0, at most 99,999,999.99 (API.md, POST /units). */
 const MAX_RENT_CENTS = 9_999_999_999;
+/** floor and bathrooms are 32-bit integers: floor -2,147,483,648 to 2,147,483,647, bathrooms 0 to 2,147,483,647. */
+const MIN_INT = -2_147_483_648;
+const MAX_INT = 2_147_483_647;
 
 const FIELDS = ["propertyId", "unitNumber", "unitType", "floorArea", "floor", "bathrooms", "monthlyRent", "status", "description"] as const;
 
@@ -48,11 +51,13 @@ function makeSchema(units: Unit[], propertyName: (id: string) => string, editing
         .string()
         .trim()
         .refine((v) => v === "" || INT_RE.test(v), "Use a whole number, e.g. 3 or -1.")
+        .refine((v) => v === "" || !INT_RE.test(v) || (Number(v) >= MIN_INT && Number(v) <= MAX_INT), "Floor must be between -2,147,483,648 and 2,147,483,647.")
         .transform(toIntOrNull),
       bathrooms: z
         .string()
         .trim()
         .refine((v) => v === "" || WHOLE_RE.test(v), "Use a whole number, 0 or more.")
+        .refine((v) => v === "" || !WHOLE_RE.test(v) || Number(v) <= MAX_INT, "Bathrooms can be at most 2,147,483,647.")
         .transform(toIntOrNull),
       monthlyRent: z
         .union([z.number(), z.literal("")])

@@ -13,7 +13,7 @@ import { useCreateProperty, useManagers, useUpdateProperty } from "@/features/pr
 import type { Property, PropertyCreateBody, PropertyType, PropertyUpdateBody } from "@/types/property";
 
 const PROPERTY_TYPES = Object.keys(propertyTypeLabels) as [PropertyType, ...PropertyType[]];
-/** Decimal(12,2) column: above this the backend gives a 500. */
+/** propertyValue: more than 0, at most 9,999,999,999.99 (API.md, POST /properties). */
 const MAX_VALUE_CENTS = 999_999_999_999;
 const STATE_RE = /^[A-Z]{2}$/;
 const ZIP_RE = /^\d{5}(-\d{4})?$/;

@@ -7,7 +7,7 @@ import { z } from "zod";
 import { ApiError } from "@/lib/api";
 import { centsToAmount, toCents } from "@/lib/format";
 import { paymentFrequencyLabels, signatureStatusLabels } from "@/lib/labels";
-import { MAX_TAGS, coTenants, isClosed, missingToActivate, parseMissingMessage, primaryTenant } from "@/features/leases/stats";
+import { MAX_TAGS, coTenants, isClosed, missingToActivate, parseLeaseFieldsMessage, primaryTenant } from "@/features/leases/stats";
 import type { Lease, LeaseCreateBody, LeaseUpdateBody, PaymentFrequency, SignatureStatus } from "@/types/lease";
 import type { Unit } from "@/types/unit";
 
@@ -16,8 +16,10 @@ export const STEPS = ["Parties", "Terms", "Deposit", "Review"] as const;
 const FREQUENCIES = Object.keys(paymentFrequencyLabels) as [PaymentFrequency, ...PaymentFrequency[]];
 const SIGNATURES = Object.keys(signatureStatusLabels) as [SignatureStatus, ...SignatureStatus[]];
 
-/** rent, deposit, lateFeeAmount: 0 to 9,999,999,999.99. */
+/** rent, deposit, lateFeeAmount: 0 to 9,999,999,999.99 (API.md, POST /leases). */
 const MAX_MONEY_CENTS = 999_999_999_999;
+/** lateFeeGraceDays: integer 0 to 2,147,483,647. */
+const MAX_GRACE_DAYS = 2_147_483_647;
 
 const money = (label: string) =>
   z.union([z.number(), z.literal("")]).refine((v) => v === "" || toCents(v) <= MAX_MONEY_CENTS, `${label} can be at most $9,999,999,999.99.`);
@@ -47,6 +49,7 @@ export const schema = z
       .string()
       .trim()
       .refine((v) => /^\d+$/.test(v), "Use a whole number, 0 or more.")
+      .refine((v) => !/^\d+$/.test(v) || Number(v) <= MAX_GRACE_DAYS, "Grace period can be at most 2,147,483,647 days.")
       .transform(Number),
     autoRenew: z.boolean(),
     deposit: money("Security deposit"),
@@ -55,7 +58,7 @@ export const schema = z
     notes: z.string().trim(),
   })
   .superRefine((v, ctx) => {
-    // The backend checks this only at activation; the form checks it for drafts too (../property-os-api/docs/frontend-handoff/rules.md).
+    // The backend checks this on every status (create, edit, activate); the form catches it first.
     if (v.startDate && v.endDate && v.endDate <= v.startDate) {
       ctx.addIssue({ code: "custom", path: ["endDate"], message: "End date must be after the start date." });
     }
@@ -238,15 +241,10 @@ export function updateBody(v: FormOutput, lease: Lease): LeaseUpdateBody {
   return body;
 }
 
-/** "Cannot activate lease: missing rent, deposit" -> "Missing to activate: Monthly rent, Security deposit". Other messages unchanged. */
-export function friendlyServerMessage(message: string): string {
-  const missing = parseMissingMessage(message);
-  return missing ? `Missing to activate: ${missing.join(", ")}.` : message;
-}
-
 /**
  * The step to show after a server error: a field message jumps to its field's step, an overlap (409) to Terms,
- * a missing-fields message to Review, tenant / unit messages to Parties. Otherwise stay on `current`.
+ * a missing-fields message to Review, "ACTIVE, so it needs" / ENDED "Not allowed" to the step of the first named field,
+ * tenant / unit messages to Parties. Otherwise stay on `current`.
  */
 export function serverErrorStep(err: unknown, current: number): number {
   if (!(err instanceof ApiError)) return current;
@@ -254,7 +252,9 @@ export function serverErrorStep(err: unknown, current: number): number {
     const field = SERVER_FIELDS.find((f) => m === f || m.startsWith(`${f} `));
     if (field) return stepOf(field);
     if (m.includes("overlapping")) return 1;
-    if (parseMissingMessage(m)) return 3;
+    const fields = parseLeaseFieldsMessage(m);
+    if (fields?.kind === "missing") return 3;
+    if (fields && fields.fields.length > 0) return stepOf(fields.fields[0]);
     if (/^(Tenant|Unit)/.test(m) || m.includes("access to this property")) return 0;
   }
   return current;

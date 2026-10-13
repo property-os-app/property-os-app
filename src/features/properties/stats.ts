@@ -1,4 +1,4 @@
-/** Numbers the frontend computes for properties (the API stores no counts). All money math in integer cents. */
+/** Numbers the frontend computes for properties. The API gives only unitCount; counts by status, occupancy and rent come from units and leases. All money math in integer cents. */
 import type { Tone } from "@/components/atoms";
 import { toCents } from "@/lib/format";
 import { propertyTypeLabels, unitStatusLabels } from "@/lib/labels";

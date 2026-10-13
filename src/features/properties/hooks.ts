@@ -1,11 +1,11 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/features/auth/authContext";
 import { managerKeys, propertyKeys } from "@/features/properties/keys";
 import type { ManagerListItem, ManagerSummary } from "@/types/manager";
 import type { Property, PropertyCreateBody, PropertyUpdateBody } from "@/types/property";
 
-/** GET /properties: OWNER sees all, PROPERTY_MANAGER only assigned. Newest first. */
+/** GET /properties: OWNER sees all, PROPERTY_MANAGER only assigned. Newest first. Each one has unitCount and managers ({ id, name }). */
 export function useProperties() {
   return useQuery({
     queryKey: propertyKeys.list,
@@ -21,35 +21,11 @@ export function useProperty(id: string) {
   });
 }
 
-function fetchPropertyManagers(id: string, signal: AbortSignal) {
-  return apiFetch<ManagerSummary[]>(`/properties/${encodeURIComponent(id)}/managers`, { signal });
-}
-
-/** GET /properties/:id/managers, oldest assignment first. */
+/** GET /properties/:id/managers, oldest assignment first. With emails (the embedded property.managers has none). */
 export function usePropertyManagers(id: string) {
   return useQuery({
     queryKey: propertyKeys.managers(id),
-    queryFn: ({ signal }) => fetchPropertyManagers(id, signal),
-  });
-}
-
-/**
- * GET /properties/:id/managers for each property (one request per property; fine for a small list).
- * Returns a map propertyId -> managers (missing while loading or on error) and the overall state.
- */
-export function usePropertyManagersMap(propertyIds: string[]) {
-  return useQueries({
-    queries: propertyIds.map((id) => ({
-      queryKey: propertyKeys.managers(id),
-      queryFn: ({ signal }: { signal: AbortSignal }) => fetchPropertyManagers(id, signal),
-    })),
-    combine: (results) => {
-      const byProperty = new Map<string, ManagerSummary[]>();
-      results.forEach((r, i) => {
-        if (r.data) byProperty.set(propertyIds[i], r.data);
-      });
-      return { byProperty, isPending: results.some((r) => r.isPending), isError: results.some((r) => r.isError) };
-    },
+    queryFn: ({ signal }) => apiFetch<ManagerSummary[]>(`/properties/${encodeURIComponent(id)}/managers`, { signal }),
   });
 }
 
@@ -102,16 +78,23 @@ export function useDeleteProperty() {
   });
 }
 
+/**
+ * After assigning or removing a manager: the property detail (it embeds managers; the prefix also covers its managers list),
+ * the property list (embeds managers too) and the managers' property counts.
+ */
+function refreshAfterManagerChange(qc: QueryClient, propertyId: string) {
+  void qc.invalidateQueries({ queryKey: propertyKeys.detail(propertyId) });
+  void qc.invalidateQueries({ queryKey: propertyKeys.list });
+  void qc.invalidateQueries({ queryKey: managerKeys.all });
+}
+
 /** POST /properties/:id/managers { userId } (OWNER). 400 not a manager, 409 already assigned. */
 export function useAssignManager(propertyId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (userId: string) =>
       apiFetch<ManagerSummary>(`/properties/${encodeURIComponent(propertyId)}/managers`, { method: "POST", body: { userId } }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: propertyKeys.managers(propertyId) });
-      void qc.invalidateQueries({ queryKey: managerKeys.all });
-    },
+    onSuccess: () => refreshAfterManagerChange(qc, propertyId),
   });
 }
 
@@ -121,9 +104,6 @@ export function useRemoveManager(propertyId: string) {
   return useMutation({
     mutationFn: (userId: string) =>
       apiFetch<ManagerSummary>(`/properties/${encodeURIComponent(propertyId)}/managers/${encodeURIComponent(userId)}`, { method: "DELETE" }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: propertyKeys.managers(propertyId) });
-      void qc.invalidateQueries({ queryKey: managerKeys.all });
-    },
+    onSuccess: () => refreshAfterManagerChange(qc, propertyId),
   });
 }

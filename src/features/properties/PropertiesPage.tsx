@@ -11,7 +11,7 @@ import { useStoredView } from "@/lib/useStoredView";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { useLeases } from "@/features/leases/hooks";
-import { useManagers, useProperties, usePropertyManagersMap } from "@/features/properties/hooks";
+import { useManagers, useProperties } from "@/features/properties/hooks";
 import { PropertiesTable } from "@/features/properties/PropertiesTable";
 import { PropertyCard, PropertyCardSkeleton, type PropertyRow } from "@/features/properties/PropertyCard";
 import { PropertyFormModal } from "@/features/properties/PropertyFormModal";
@@ -39,16 +39,19 @@ const searchText = (r: PropertyRow) => [r.property.name, r.property.street, r.pr
 
 const matchFilters = (r: PropertyRow, f: Filters) =>
   (f.type === "all" || r.property.propertyType === f.type) &&
-  (f.manager === "all" || Boolean(r.managers?.some((m) => m.id === f.manager)));
+  (f.manager === "all" || r.property.managers.some((m) => m.id === f.manager));
 
 const sorts: Record<string, SortColumn<PropertyRow>> = {
   name: { kind: "text", value: (r) => r.property.name },
-  units: { kind: "number", value: (r) => r.counts.total },
+  units: { kind: "number", value: (r) => r.property.unitCount },
   occupancy: { kind: "number", value: (r) => r.occupancy },
   value: { kind: "money", value: (r) => r.property.propertyValue },
 };
 
-/** /properties: KPIs, toolbar and the Cards or Table view. Ignores the sidebar property scope on purpose. */
+/**
+ * /properties: KPIs, toolbar and the Cards or Table view. Ignores the sidebar property scope on purpose.
+ * Unit totals and managers come with each property; GET /units is only for the counts by status (occupancy, vacant).
+ */
 export function PropertiesPage() {
   const { me } = useAuth();
   const role = me!.role;
@@ -59,8 +62,6 @@ export function PropertiesPage() {
   const units = useUnits();
   const leases = useLeases({ status: "ACTIVE" });
   const managers = useManagers();
-  const ids = useMemo(() => properties.data?.map((p) => p.id) ?? [], [properties.data]);
-  const managersMap = usePropertyManagersMap(ids);
 
   const [view, setView] = useStoredView<View>(VIEW_KEY, VIEWS, "cards");
   const [formOpen, setFormOpen] = useState(false);
@@ -78,10 +79,9 @@ export function PropertiesPage() {
           counts,
           occupancy: occupancy(counts),
           rentCents: rentByProperty.get(property.id) ?? 0,
-          managers: managersMap.byProperty.get(property.id) ?? (managersMap.isPending ? undefined : []),
         };
       }),
-    [properties.data, countsByProperty, rentByProperty, managersMap.byProperty, managersMap.isPending],
+    [properties.data, countsByProperty, rentByProperty],
   );
 
   const table = useClientTable<PropertyRow, Filters>({ rows, searchText, initialFilters, matchFilters, sorts });
@@ -93,6 +93,7 @@ export function PropertiesPage() {
   };
 
   const allUnits = useMemo(() => countUnits(units.data ?? []), [units.data]);
+  const totalUnits = useMemo(() => (properties.data ?? []).reduce((sum, p) => sum + p.unitCount, 0), [properties.data]);
   const totalValueCents = useMemo(() => sumCents(properties.data?.map((p) => p.propertyValue) ?? []), [properties.data]);
   const ready = !isLoading && !failed;
   const kpi = (value: ReactNode) => (ready ? value : <Skeleton className="h-10 w-24" />);
@@ -131,13 +132,13 @@ export function PropertiesPage() {
     <>
       <PageHeader
         title="Properties"
-        description={ready ? `${plural(properties.data?.length ?? 0, "property", "properties")}, ${plural(allUnits.total, "unit")}.` : undefined}
+        description={ready ? `${plural(properties.data?.length ?? 0, "property", "properties")}, ${plural(totalUnits, "unit")}.` : undefined}
         actions={addButton("primary")}
       />
 
       <KpiRow>
         <KpiCard label="Total properties" value={kpi(properties.data?.length ?? 0)} note={ready ? typeBreakdown(properties.data ?? []) : undefined} />
-        <KpiCard label="Total units" value={kpi(allUnits.total)} note={ready ? unitStatusNote(allUnits) : undefined} />
+        <KpiCard label="Total units" value={kpi(totalUnits)} note={ready ? unitStatusNote(allUnits) : undefined} />
         <KpiCard
           label="Occupancy"
           value={kpi(formatPercent(occupancy(allUnits)))}

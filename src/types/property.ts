@@ -2,7 +2,13 @@
 
 export type PropertyType = "RESIDENTIAL" | "COMMERCIAL" | "MIXED_USE";
 
-/** GET /properties and GET /properties/:id. No managers, units or counts are embedded. */
+/** One manager embedded in a Property: no email (use GET /properties/:id/managers for emails). */
+export interface PropertyManagerRef {
+  id: string;
+  name: string;
+}
+
+/** Every Property endpoint (GET list and one, POST, PATCH, DELETE). Units are not embedded; unitCount and managers are. */
 export interface Property {
   id: string;
   name: string;
@@ -11,7 +17,7 @@ export interface Property {
   state: string;
   zip: string;
   propertyType: PropertyType;
-  /** Money string, e.g. "250000". */
+  /** Money string with 2 decimals, e.g. "250000.00". */
   propertyValue: string;
   /** ISO timestamp (not "YYYY-MM-DD"). */
   acquisitionDate: string;
@@ -20,6 +26,10 @@ export interface Property {
   createdAt: string;
   /** ISO timestamp. */
   updatedAt: string;
+  /** All units of the property. */
+  unitCount: number;
+  /** Oldest assignment first; [] when none. */
+  managers: PropertyManagerRef[];
 }
 
 /** POST /properties body. Money is a JSON number (max 2 decimals); acquisitionDate is "YYYY-MM-DD". */

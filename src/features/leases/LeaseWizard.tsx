@@ -18,7 +18,6 @@ import {
   defaults,
   firstErrorStep,
   formMissing,
-  friendlyServerMessage,
   schema,
   serverErrorStep,
   updateBody,
@@ -26,7 +25,7 @@ import {
   type FormOutput,
 } from "@/features/leases/form";
 import { useCreateLease, useUpdateLease } from "@/features/leases/hooks";
-import { isClosed, leaseUnitLine } from "@/features/leases/stats";
+import { friendlyLeaseMessage, isClosed, leaseUnitLine } from "@/features/leases/stats";
 import { DepositStep, PartiesStep, ReviewStep, TermsStep, type StepContext } from "@/features/leases/LeaseWizardSteps";
 import type { PickedTenant } from "@/features/leases/TenantPicker";
 import type { Lease } from "@/types/lease";
@@ -129,7 +128,7 @@ export function LeaseWizard({ lease, presetUnit, presetTenantId, onSaved, onClos
       // Field messages go under their field; the rest at the top of the step the error belongs to.
       const general = applyServerError(setError, err, SERVER_FIELDS);
       setStep(serverErrorStep(err, step));
-      setFormErrors(general.map(friendlyServerMessage));
+      setFormErrors(general.map(friendlyLeaseMessage));
     }
   };
 

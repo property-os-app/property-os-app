@@ -16,7 +16,7 @@ export interface Unit {
   /** Integer, can be negative. */
   floor: number | null;
   bathrooms: number | null;
-  /** Money string, e.g. "1200" or "1200.5". */
+  /** Money string with 2 decimals, e.g. "1200.00". */
   monthlyRent: string;
   status: UnitStatus;
   description: string | null;

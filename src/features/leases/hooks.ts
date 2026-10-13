@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/molecules";
 import { ApiError, apiFetch, errorText } from "@/lib/api";
-import { parseMissingMessage } from "@/features/leases/stats";
+import { friendlyLeaseMessage, parseMissingMessage } from "@/features/leases/stats";
 import { leaseKeys, rentRollPrefix, type LeaseListParams } from "@/features/leases/keys";
 import { tenantKeys } from "@/features/tenants/keys";
 import { unitKeys } from "@/features/units/keys";
@@ -94,6 +94,11 @@ export function useDeleteLease() {
       void qc.invalidateQueries({ queryKey: rentRollPrefix });
     },
   });
+}
+
+/** errorText for lease saves: backend messages that list lease fields get friendly names (friendlyLeaseMessage). */
+export function leaseErrorText(err: unknown): string {
+  return err instanceof ApiError && err.messages.length > 0 ? err.messages.map(friendlyLeaseMessage).join(" ") : errorText(err);
 }
 
 /** Why activation failed, ready for an InlineError. `fixable`: the user can fix it in the wizard ("Edit lease" button). */

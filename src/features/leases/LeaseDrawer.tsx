@@ -9,7 +9,7 @@ import { currentMonthUTC, daysUntil, formatCurrency, formatDate, ordinal, toCent
 import { labelOptions, paymentFrequencyLabels, plural, signatureStatusLabels } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
-import { useActivateAction, useLease, useUpdateLease, type ActivateError } from "@/features/leases/hooks";
+import { leaseErrorText, useActivateAction, useLease, useUpdateLease, type ActivateError } from "@/features/leases/hooks";
 import { LeaseBadge } from "@/features/leases/LeaseParts";
 import { LeaseDeleteDialog } from "@/features/leases/LeaseDeleteDialog";
 import { LeaseEndModal } from "@/features/leases/LeaseEndModal";
@@ -322,7 +322,7 @@ function SignatureSection({ lease, canChange }: { lease: Lease; canChange: boole
       await update.mutateAsync({ id: lease.id, body: { signatureStatus } });
       toast.success("Signature status updated");
     } catch (err) {
-      setError(errorText(err));
+      setError(leaseErrorText(err));
     }
   };
 
@@ -362,7 +362,7 @@ function TagsSection({ lease, canEdit }: { lease: Lease; canEdit: boolean }) {
       await update.mutateAsync({ id: lease.id, body: { tags: next } });
       toast.success("Tags updated");
     } catch (err) {
-      setError(errorText(err));
+      setError(leaseErrorText(err));
     }
   };
 

@@ -11,7 +11,7 @@ export interface TenantDeleteDialogProps {
   onDeleted?: () => void;
 }
 
-/** "Delete tenant?" confirm (OWNER). The backend's 409 ("still has 2 lease(s)") shows inside the dialog. */
+/** "Delete tenant?" confirm (OWNER). The backend's 409 ("Cannot delete tenant Jane Doe: they are on 2 lease(s). ...") shows inside the dialog. */
 export function TenantDeleteDialog({ tenant, onClose, onDeleted }: TenantDeleteDialogProps) {
   const del = useDeleteTenant();
 

@@ -1,6 +1,6 @@
 /** Formatting rules from the PropOS guideline, section 11, adapted to our API (money as strings, dates as "YYYY-MM-DD"). */
 
-/** Money as it comes from the API ("1200.00", "-150.00", "2500.5"), or a number from older callers. */
+/** Money as it comes from the API (always 2 decimals: "1200.00", "-150.00"), or a number from older callers. Other decimal counts still parse. */
 export type MoneyInput = string | number | null | undefined;
 
 /** Empty values render as a single dash, never "N/A". */
