@@ -6,6 +6,7 @@ The /rent-roll page: the month's rows per lease, KPIs from the summary, Generate
 - `rentRollKeys`: `all` (the shared `["rent-roll"]` prefix) and `month(month, propertyId)`.
 
 ## hooks.ts
+- `rentRollQuery(month, propertyId)`: the GET /rent-roll query options (key + fetch), shared with the dashboard's month history.
 - `useRentRoll(month, propertyId)`: GET /rent-roll with month and the scope only (status and search are filtered on the client so counts and KPIs match).
 - `useGenerateRent()`: POST /rent-roll/generate { month } (all visible properties); refreshes rent roll, leases and tenants.
 

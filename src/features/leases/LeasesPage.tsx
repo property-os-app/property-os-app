@@ -134,7 +134,7 @@ function LeasesList() {
   const onActivate = async (l: Lease) => {
     const failure = await activate.run(l.id);
     // A failed activation opens the lease page with the reason and the "Edit lease" button.
-    if (failure) void navigate(`/leases/${encodeURIComponent(l.id)}`, { state: { fromList: true, activateError: failure } satisfies LeasePageState });
+    if (failure) void navigate(`/leases/${encodeURIComponent(l.id)}`, { state: { from: "leases", activateError: failure } satisfies LeasePageState });
   };
 
   return (
@@ -215,7 +215,7 @@ function LeasesList() {
             <Pagination page={table.page} pageCount={table.pageCount} onPageChange={table.setPage} summary={table.summary} />
           ) : undefined
         }
-        onOpen={(l) => void navigate(`/leases/${encodeURIComponent(l.id)}`, { state: { fromList: true } satisfies LeasePageState })}
+        onOpen={(l) => void navigate(`/leases/${encodeURIComponent(l.id)}`, { state: { from: "leases" } satisfies LeasePageState })}
         onEdit={canEdit ? setEditLease : undefined}
         onActivate={canEdit ? (l) => void onActivate(l) : undefined}
         onEnd={canEdit ? setEndLease : undefined}

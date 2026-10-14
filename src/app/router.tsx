@@ -1,9 +1,10 @@
-import { createBrowserRouter, Navigate } from "react-router";
+import { createBrowserRouter } from "react-router";
 import type { RouteHandle } from "@/app/AppLayout";
 import { AppLayout } from "@/app/AppLayout";
 import { NotFoundPage } from "@/app/NotFoundPage";
 import { RouteErrorPage } from "@/app/RouteErrorPage";
 import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
+import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { LeasePage } from "@/features/leases/LeasePage";
 import { LeasesPage } from "@/features/leases/LeasesPage";
@@ -17,6 +18,7 @@ import { TenantsPage } from "@/features/tenants/TenantsPage";
 import { UnitsPage } from "@/features/units/UnitsPage";
 
 const notFoundHandle: RouteHandle = { title: "Page not found" };
+const dashboardHandle: RouteHandle = { title: "Dashboard", nav: "dashboard" };
 const unitsHandle: RouteHandle = { title: "Units", nav: "units" };
 const tenantsHandle: RouteHandle = { title: "Tenants", nav: "tenants" };
 const leasesHandle: RouteHandle = { title: "Leases", nav: "leases" };
@@ -52,7 +54,7 @@ export const router = createBrowserRouter([
                 // Page errors render inside the shell.
                 errorElement: <RouteErrorPage />,
                 children: [
-                  { index: true, element: <Navigate to="/properties" replace /> },
+                  { index: true, handle: dashboardHandle, element: <DashboardPage /> },
                   { path: "properties", handle: propertiesHandle, element: <PropertiesPage /> },
                   { path: "properties/:id", handle: propertyHandle, element: <PropertyDetailPage /> },
                   { path: "units", handle: unitsHandle, element: <UnitsPage /> },

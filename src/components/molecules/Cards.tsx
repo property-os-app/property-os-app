@@ -45,24 +45,21 @@ export interface KpiCardProps {
   /** Whole card is clickable and filters the list below. */
   href?: string;
   onClick?: () => void;
+  /** Render the `href` link with your router (same signature as Sidebar's): (href, props) => <Link to={href} {...props} />. Default: plain <a>. */
+  renderLink?: (href: string, props: { className: string; children: React.ReactNode }) => React.ReactNode;
   className?: string;
 }
 
 /** Overline label, Display value, optional delta chip and note. */
-export function KpiCard({ label, value, tone = "default", delta, note, href, onClick, className }: KpiCardProps) {
+export function KpiCard({ label, value, tone = "default", delta, note, href, onClick, renderLink, className }: KpiCardProps) {
   const interactive = Boolean(href || onClick);
-  const Tag: React.ElementType = href ? "a" : onClick ? "button" : "div";
-  return (
-    <Tag
-      href={href}
-      onClick={onClick}
-      type={onClick && !href ? "button" : undefined}
-      className={cn(
-        "flex flex-col gap-2 rounded-card border border-border-subtle bg-surface-1 p-5 text-left no-underline text-text-primary",
-        interactive && "cursor-pointer transition-colors duration-fast hover:bg-surface-3 focus-visible:focus-ring",
-        className,
-      )}
-    >
+  const classes = cn(
+    "flex flex-col gap-2 rounded-card border border-border-subtle bg-surface-1 p-5 text-left no-underline text-text-primary",
+    interactive && "cursor-pointer transition-colors duration-fast hover:bg-surface-3 focus-visible:focus-ring",
+    className,
+  );
+  const content = (
+    <>
       <Overline>{label}</Overline>
       <Display className={cn(tone === "success" && "text-success", tone === "danger" && "text-danger", tone === "warning" && "text-warning")}>{value}</Display>
       {(delta || note) && (
@@ -71,6 +68,13 @@ export function KpiCard({ label, value, tone = "default", delta, note, href, onC
           {note && <Caption>{note}</Caption>}
         </div>
       )}
+    </>
+  );
+  if (href && renderLink) return renderLink(href, { className: classes, children: content });
+  const Tag: React.ElementType = href ? "a" : onClick ? "button" : "div";
+  return (
+    <Tag href={href} onClick={onClick} type={onClick && !href ? "button" : undefined} className={classes}>
+      {content}
     </Tag>
   );
 }

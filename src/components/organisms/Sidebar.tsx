@@ -74,7 +74,8 @@ export const roleModules: Record<Role, ModuleKey[]> = {
 
 export interface SidebarProps {
   role: Role;
-  active: ModuleKey;
+  /** The highlighted item; leave it out to highlight nothing (e.g. a "not found" page). */
+  active?: ModuleKey;
   user: { name: string; roleLabel: string; avatarUrl?: string };
   /** Current scope label shown in the scope switcher, e.g. "All properties". */
   scope: string;

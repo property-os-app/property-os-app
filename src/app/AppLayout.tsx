@@ -21,6 +21,7 @@ const navItems = new Map(defaultNavGroups.flatMap((g) => g.items).map((item) => 
 const pick = (keys: ModuleKey[]): NavItem[] => keys.flatMap((key) => navItems.get(key) ?? []);
 
 const navGroups: NavGroup[] = [
+  { label: "Overview", items: pick(["dashboard"]) },
   { label: "Leasing", items: pick(["properties", "units", "tenants", "leases"]) },
   { label: "Money", items: pick(["rentroll"]) },
   { label: "Admin", items: pick(["settings"]) },
@@ -66,8 +67,8 @@ function AppShell() {
     <WorkspaceShell
       sidebar={{
         role: toSidebarRole(me.role),
-        // "dashboard" is not in our groups, so pages without a nav key highlight nothing.
-        active: pageNav ?? handle.nav ?? "dashboard",
+        // Pages without a nav key (not found) highlight nothing.
+        active: pageNav ?? handle.nav,
         user: { name: me.name, roleLabel: roleLabel(me.role) },
         scope: label,
         onScopeClick: openPicker,

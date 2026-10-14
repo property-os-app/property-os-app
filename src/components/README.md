@@ -33,7 +33,7 @@ Small building blocks with no domain knowledge.
 | `Avatar` | Initials or image circle | `name`, `src`, `size` 24/32/40/56, `online` | People in lists and the sidebar. |
 | `Skeleton` | Shimmer block | `className` for size | Loading placeholders (no spinners). |
 | `Divider` | 1px line | - | Separating sections. |
-| `CollectionProgress` | 16px striped bar + % | `value` 0-100, `label` | Rent collection rate. |
+| `CollectionProgress` | 16px striped bar + % | `value` 0-100 or `null` (empty bar, no %), `label` | Rent collection rate. |
 | `Bar` | Thin 8px bar | `value`, `tone` | Occupancy and similar ratios. |
 | `Ring` | Circular 0-100 score | `value`, `size` | Portfolio health score. |
 
@@ -51,7 +51,7 @@ Atoms combined to do one job.
 | `FilterChip` | Pill filter, removable when active | `active`, `count`, `onRemove` | Applied filters in a toolbar. |
 | `Card` | White bordered surface | `padding` none/compact/default, `as` | Grouping content. |
 | `CardHeader` | Card title row | `title`, `description`, `action` | Top of a card. |
-| `KpiCard` | Label + big value + delta/note | `label`, `value`, `tone`, `delta`, `note`, `onClick`/`href` | KPI row cards. |
+| `KpiCard` | Label + big value + delta/note | `label`, `value`, `tone`, `delta`, `note`, `onClick`/`href`, `renderLink` (router link for `href`) | KPI row cards. |
 | `HeroStatCard` | Big stat with colored top border | `label`, `value`, `note`, `tone` | Total due / collected / outstanding. |
 | `KeyValueList` | Two-column label/value grid | `items`, `labelWidth` | Details in drawers. |
 | `InternalNote` | Amber "not visible to tenant" note | `author`, `date` | Staff-only notes. |
@@ -73,7 +73,7 @@ Page sections. They own no data.
 
 | Component | What it does | Main props | When to use |
 | --- | --- | --- | --- |
-| `Sidebar` | Left nav, filtered by role | `role`, `active`, `user`, `scope`, `onScopeClick`, `groups`, `brand`, `renderLink`, `badges`, `collapsed` | Inside `WorkspaceShell`. |
+| `Sidebar` | Left nav, filtered by role | `role`, `active` (optional: nothing highlighted), `user`, `scope`, `onScopeClick`, `groups`, `brand`, `renderLink`, `badges`, `collapsed` | Inside `WorkspaceShell`. |
 | `Topbar` | 64px top bar: title, scope chip, avatar; search, bell and quick add only when their handler is passed | `title`, `scope`, `user`, `showAi`, `onSearch`, `onNotifications`, `onQuickAdd`, `profileMenu` (or `onProfile`) | Inside `WorkspaceShell`. |
 | `PageHeader` | Page title, description, actions | `title`, `description`, `actions`, `breadcrumb` | Top of every page. Primary action last. |
 | `Toolbar` | Wrapping row | `children` | Search + filters above a table. |
@@ -84,6 +84,8 @@ Page sections. They own no data.
 | `Modal` | Centered dialog (480/640) | `open`, `onOpenChange`, `title`, `footer`, `size`, `confirmClose` | Create/edit forms; may open over a drawer. |
 | `ConfirmDialog` | Confirm modal, optional type-to-confirm | `title`, `consequence`, `confirmLabel`, `onConfirm`, `destructive`, `typeToConfirm`, `busy`, `error` (with either, the dialog stays open and the caller closes it on success) | Every destructive action. |
 | `RentCollectionHero` | 3 hero stats + collection bar | `period`, `totalDue`, `collected`, `outstanding`, counts | Dashboard rent block. |
+| `BarChart` | Vertical bars, grouped series, one y-axis, grid lines, legend for 2+ series, tooltips (hover + keyboard), hidden table, 5 states | `series` (label, color), `data` (key, label, fullLabel, values), `formatValue`, `formatTick`, `tooltip`, `integer`, `onBarClick`, `caption`, `height`, `state`/`empty`/`error` | Dashboard charts. Fluid width; values as integers (cents, counts). |
+| `StackedBar` | One horizontal bar split into parts, legend with count and %, tooltips, hidden table | `segments` (key, label, value, color), `onSegmentClick`, `caption`, `state`/`empty`/`error` | Units by status. |
 | `IncomeExpenseChart`, `DonutChart`, `HBarList` | Simple SVG/CSS charts | `data` / `slices` / `items`, `format` | Finance charts. |
 | `KanbanBoard` | 4-column ticket board | `tickets`, `onOpen`, `onMove` | Maintenance tickets. |
 | `AiActionPanel`, `AiCommandCenter` | AI panels | `actions` / `score`, `headline` | AI features. |
@@ -135,9 +137,9 @@ Based on docs/BRIEF.md (admin portal: login, Properties, Units, Tenants, Leases,
 **Used**
 - Atoms: Button, LinkButton, Badge, Tag, Count, Delta, Typography (H1-H3, Body, Small, Caption, Overline, Display, Num, Dash), Input, Textarea, Select, CurrencyInput, Checkbox, Toggle, Avatar, Skeleton, Divider, CollectionProgress, Bar
 - Molecules: StatusBadge, FormField, SearchInput, SegmentedControl, Tabs, FilterChip, Card, CardHeader, KpiCard, HeroStatCard, KeyValueList, EmptyState, InlineError, Toaster + toast, KebabMenu, Stepper (Add Lease wizard)
-- Organisms: Sidebar, Topbar, PageHeader, Toolbar, KpiRow, DataTable, Pagination, Drawer, Modal, ConfirmDialog
+- Organisms: Sidebar, Topbar, PageHeader, Toolbar, KpiRow, DataTable, Pagination, Drawer, Modal, ConfirmDialog, BarChart, StackedBar
 - Templates: WorkspaceShell, AuthLayout, SettingsLayout
-- Bonus Dashboard only: RentCollectionHero, HeroStat
+- Dashboard: HeroStatCard, CollectionProgress, BarChart, StackedBar (RentCollectionHero is not used: see Known gaps)
 
 **Not used** (out of scope in the brief)
 - AI: AiActionItem, AiHeading, AiActionPanel, AiCommandCenter, Ring, Button `variant="ai"`
@@ -165,6 +167,7 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | `organisms/DataTable.tsx` | Empty and error states render only if the `empty` / `error` props are passed. |
 | `atoms/Input.tsx` (`Select`) | Native single select only. No multi-select (Add Property managers) and no searchable picker (Add Lease tenant). |
 | (missing) | No date or month picker component (lease dates, Rent Roll month). Rent Roll uses prev / month / next buttons; dates use `Input type="date"`. |
+| `atoms/Button.tsx` (`LinkButton`), `organisms/Panels.tsx` (RentCollectionHero, AiCommandCenter, ActivityTimeline links) | Plain `<a href>`, which reloads the whole app. Unused by us; use a router `Link` with `buttonVariants` instead. |
 | `molecules/FormField.tsx` | Passes an `invalid` prop to its child, so the child must be a design system control, not a plain HTML element. |
 
 ---
@@ -193,3 +196,7 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | 2026-10-13 | `lib/format.ts` | New exported `parseDateOnly(value)` (strict "YYYY-MM-DD" with a real calendar day, never throws) and `Ymd` type; `formatDate` and the other date helpers parse strings only through it (no more first-10-characters of any string). New `formatTimestampDate(ts)` (local day of an ISO timestamp). `todayUTC` built from UTC parts instead of `toISOString`. | Backend Batch B: date-only fields are strictly "YYYY-MM-DD". Timestamps (createdAt) showed the UTC day, so in the US an evening entry showed tomorrow's date. |
 | 2026-10-14 | `molecules/Feedback.tsx` (`Toaster`) | Optional `position` prop (Sonner positions), default still `"bottom-right"`. We mount it with `"top-center"` in `src/app/providers.tsx`. | Bottom-right toasts covered the drawer and modal footer buttons; the position was hard-coded. |
 | 2026-10-14 | `molecules/Feedback.tsx` (`toast`) | `toast.success` takes an optional `duration` (ms); without it the Toaster default of 4 s stays. | The "voided" toast keeps its Undo button for 10 s; the duration was fixed. |
+| 2026-10-14 | `organisms/Charts.tsx` | New `BarChart` (grouped bars, one y-axis, light grid lines, thin bars with rounded tops and 2px gaps, legend only for 2+ series, tooltip on hover and keyboard focus, optional click, hidden table, loading / empty / error) and `StackedBar` (one split bar, legend with count and %, tooltips, hidden table, states). CSS percentages, theme colors only. Existing charts unchanged. | The dashboard needs charts with tooltips, keyboard access and states; the existing ones have none, and no chart library is allowed. |
+| 2026-10-14 | `molecules/Cards.tsx` (`KpiCard`) | Optional `renderLink(href, props)` for `href` (like Sidebar's); default still a plain `<a>`. | A plain `<a>` reloaded the whole app; the dashboard KPI cards are router links. |
+| 2026-10-14 | `atoms/Progress.tsx` (`CollectionProgress`) | `value` may be `null`: empty bar, no percentage, `aria-valuetext` "No data". | `collectionRate` is null when nothing is billed; 0% would be wrong. |
+| 2026-10-14 | `organisms/Sidebar.tsx` | `active` is optional; without it nothing is highlighted. | Dashboard is now in our nav; the not-found page must not highlight it. |

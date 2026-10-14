@@ -84,9 +84,9 @@ export function RentRollPage() {
   const [payment, setPayment] = useState<PaymentOpen | null>(null);
 
   // The lease page, Ledger tab, with a breadcrumb back to this month.
-  // fromList shows the page's back arrow.
+  // `from` shows the lease page's back arrow.
   const openLedger = (r: RentRollRow) =>
-    void navigate(`/leases/${encodeURIComponent(r.leaseId)}?tab=ledger&from=rent-roll&month=${month}`, { state: { fromList: true } satisfies LeasePageState });
+    void navigate(`/leases/${encodeURIComponent(r.leaseId)}?tab=ledger&from=rent-roll&month=${month}`, { state: { from: "rent-roll" } satisfies LeasePageState });
 
   const ready = rentRoll.isSuccess;
   const kpi = (value: ReactNode) => (ready ? value : <Skeleton className="h-10 w-24" />);

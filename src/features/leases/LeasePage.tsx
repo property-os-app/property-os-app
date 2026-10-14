@@ -29,9 +29,12 @@ import type { Lease } from "@/types/lease";
 type Tab = "ledger" | "details" | "tenants";
 const TABS: Tab[] = ["ledger", "details", "tenants"];
 
-/** Router state from the lists. `fromList`: opened from the Leases list or the Rent Roll in this tab (shows the back arrow). */
+/** Where an in-app click came from (shows the back arrow and picks the Sidebar item). */
+export type LeaseOrigin = "leases" | "rent-roll" | "dashboard";
+
+/** Router state from the lists and the Dashboard. Without `from` (pasted link, new tab) there is no back arrow. */
 export interface LeasePageState {
-  fromList?: boolean;
+  from?: LeaseOrigin;
   /** A failed kebab Activate on the Leases list, shown under the header. */
   activateError?: ActivateError;
 }
@@ -49,20 +52,20 @@ function useOrigin() {
 const hasAppHistory = () => ((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0;
 
 /**
- * Back arrow (only when opened from a list in this tab) above the breadcrumb. Back goes back in history so the list keeps
- * its filters, search and scroll; without an in-app entry it opens the list URL. Also picks the Sidebar item.
+ * Back arrow (only when opened from a list or the Dashboard in this tab) above the breadcrumb. Back goes back in history;
+ * without an in-app entry it opens the origin URL. Also picks the Sidebar item (Dashboard, Rent Roll or Leases).
  */
 function PageTop({ current }: { current: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { fromRentRoll, links } = useOrigin();
-  const fromList = (location.state as LeasePageState | null)?.fromList === true;
-  usePageNav(fromRentRoll ? "rentroll" : "leases");
-  const list = links[0];
+  const from = (location.state as LeasePageState | null)?.from;
+  usePageNav(from === "dashboard" ? "dashboard" : fromRentRoll ? "rentroll" : "leases");
+  const list: Crumb = from === "dashboard" ? { label: "Dashboard", to: "/" } : links[0];
 
   return (
     <div className="flex flex-col items-start gap-2">
-      {fromList && (
+      {from && (
         <Button
           variant="ghost"
           size="sm"
