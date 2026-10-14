@@ -183,7 +183,7 @@ function LeaseDetail({ lease }: { lease: Lease }) {
         return out;
       },
       // Keep the router state (back arrow, activation error): a URL change without it would drop it.
-      { replace: true, state: location.state },
+      { replace: true, preventScrollReset: true, state: location.state },
     );
 
   const [activateError, setActivateError] = useState<ActivateError | null>((location.state as LeasePageState | null)?.activateError ?? null);

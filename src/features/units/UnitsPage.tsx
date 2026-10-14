@@ -25,6 +25,7 @@ type StatusFilter = "all" | UnitStatus;
 type Filters = { status: StatusFilter };
 
 const initialFilters: Filters = { status: "all" };
+const statusValues: StatusFilter[] = ["all", "OCCUPIED", "VACANT", "RESERVED", "UNDER_MAINTENANCE"];
 
 const matchFilters = (r: UnitListRow, f: Filters) => f.status === "all" || r.unit.status === f.status;
 
@@ -55,7 +56,15 @@ export function UnitsPage() {
     () => (units.data && leases.data ? buildUnitListRows(units.data, leases.data, names) : undefined),
     [units.data, leases.data, names],
   );
-  const table = useClientTable<UnitListRow, Filters>({ rows, searchText: unitSearchText, initialFilters, matchFilters, sorts });
+  const table = useClientTable<UnitListRow, Filters>({
+    rows,
+    searchText: unitSearchText,
+    initialFilters,
+    matchFilters,
+    sorts,
+    inUrl: true,
+    filterValues: { status: statusValues },
+  });
 
   const failed = [properties, units, leases].find((q) => q.isError);
   const isLoading = !failed && (properties.isPending || units.isPending || leases.isPending);
@@ -153,22 +162,24 @@ export function UnitsPage() {
         />
       </Toolbar>
 
-      <UnitsTable
-        rows={table.pageRows}
-        state={state}
-        sort={table.sort}
-        onSortChange={table.setSort}
-        empty={empty}
-        error={error}
-        footer={
-          table.showPagination ? (
-            <Pagination page={table.page} pageCount={table.pageCount} onPageChange={table.setPage} summary={table.summary} />
-          ) : undefined
-        }
-        onOpen={(r) => setOpenId(r.unit.id)}
-        onEdit={can(role, "unit.edit") ? (r) => setEditUnit(r.unit) : undefined}
-        onDelete={can(role, "unit.delete") ? (r) => setDeleteRow(r) : undefined}
-      />
+      <div id={table.listId} className="scroll-mt-24">
+        <UnitsTable
+          rows={table.pageRows}
+          state={state}
+          sort={table.sort}
+          onSortChange={table.setSort}
+          empty={empty}
+          error={error}
+          footer={
+            table.showPagination ? (
+              <Pagination page={table.page} pageCount={table.pageCount} onPageChange={table.setPage} summary={table.summary} />
+            ) : undefined
+          }
+          onOpen={(r) => setOpenId(r.unit.id)}
+          onEdit={can(role, "unit.edit") ? (r) => setEditUnit(r.unit) : undefined}
+          onDelete={can(role, "unit.delete") ? (r) => setDeleteRow(r) : undefined}
+        />
+      </div>
 
       {openRow && <UnitDrawer unit={openRow.unit} propertyName={openRow.propertyName} onClose={() => setOpenId(null)} />}
       {formOpen && <UnitFormModal defaultPropertyId={scope} onClose={() => setFormOpen(false)} />}

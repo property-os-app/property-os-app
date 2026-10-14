@@ -22,11 +22,18 @@ export interface DrawerProps {
   size?: "default" | "lg" | "xl";
   /** Ask "Discard changes?" before closing when a form is dirty. */
   confirmClose?: () => boolean;
+  /** Edge it slides in from. "left" is the navigation menu: sidebar width (max 85% of the screen), never full screen. */
+  side?: "right" | "left";
+  /** No header, padding or footer: `children` fill the panel. The title is still read by screen readers. */
+  bare?: boolean;
   children: React.ReactNode;
 }
 
-/** Right-side drawer, 480 / 640 / 800px; full-screen sheet under 768px. Never stack a drawer on a drawer. */
-export function Drawer({ open, onOpenChange, title, description, status, tabs, footer, size = "default", confirmClose, children }: DrawerProps) {
+/**
+ * Right-side drawer, 480 / 640 / 800px; full-screen sheet under 768px. Never stack a drawer on a drawer.
+ * `side="left"` + `bare` is the mobile navigation menu (WorkspaceShell's NavMenuDrawer).
+ */
+export function Drawer({ open, onOpenChange, title, description, status, tabs, footer, size = "default", confirmClose, side = "right", bare = false, children }: DrawerProps) {
   const handleChange = (next: boolean) => {
     if (!next && confirmClose && !confirmClose()) return;
     onOpenChange(next);
@@ -36,27 +43,42 @@ export function Drawer({ open, onOpenChange, title, description, status, tabs, f
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-scrim data-[state=open]:animate-in data-[state=closed]:animate-out" />
         <Dialog.Content
+          // A bare drawer without a description: no aria-describedby (silences Radix's missing-description warning).
+          {...(bare && !description ? { "aria-describedby": undefined } : {})}
           className={cn(
-            "fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-overlay shadow-overlay outline-none md:rounded-l-overlay md:border-l md:border-border-subtle",
-            "transition-transform duration-overlay ease-overlay data-[state=closed]:translate-x-full data-[state=open]:translate-x-0",
-            size === "default" && "md:w-drawer",
-            size === "lg" && "md:w-drawer-lg",
-            size === "xl" && "md:w-drawer-xl",
+            "fixed inset-y-0 z-50 flex flex-col bg-overlay shadow-overlay outline-none",
+            "transition-transform duration-overlay ease-overlay data-[state=open]:translate-x-0",
+            side === "right"
+              ? "right-0 w-full data-[state=closed]:translate-x-full md:rounded-l-overlay md:border-l md:border-border-subtle"
+              : "left-0 w-sidebar max-w-[85vw] border-r border-border-subtle data-[state=closed]:-translate-x-full",
+            side === "right" && size === "default" && "md:w-drawer",
+            side === "right" && size === "lg" && "md:w-drawer-lg",
+            side === "right" && size === "xl" && "md:w-drawer-xl",
           )}
         >
-          <div className="flex items-center gap-3 border-b border-border-subtle px-6 py-5">
-            <div className="min-w-0 flex-1">
-              <Dialog.Title asChild><H2 className="truncate">{title}</H2></Dialog.Title>
-              {description && <Dialog.Description className="mt-0.5 text-small text-text-secondary">{description}</Dialog.Description>}
-            </div>
-            {status}
-            <Dialog.Close asChild>
-              <Button variant="ghost" iconOnly aria-label="Close" icon={<X size={20} strokeWidth={1.5} />} />
-            </Dialog.Close>
-          </div>
-          {tabs && <div className="px-6">{tabs}</div>}
-          <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">{children}</div>
-          {footer && <div className="flex justify-end gap-3 border-t border-border-subtle bg-overlay px-6 py-4">{footer}</div>}
+          {bare ? (
+            <>
+              <Dialog.Title className="sr-only">{title}</Dialog.Title>
+              {description && <Dialog.Description className="sr-only">{description}</Dialog.Description>}
+              {children}
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 border-b border-border-subtle px-6 py-5">
+                <div className="min-w-0 flex-1">
+                  <Dialog.Title asChild><H2 className="truncate">{title}</H2></Dialog.Title>
+                  {description && <Dialog.Description className="mt-0.5 text-small text-text-secondary">{description}</Dialog.Description>}
+                </div>
+                {status}
+                <Dialog.Close asChild>
+                  <Button variant="ghost" iconOnly aria-label="Close" icon={<X size={20} strokeWidth={1.5} />} />
+                </Dialog.Close>
+              </div>
+              {tabs && <div className="px-6">{tabs}</div>}
+              <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">{children}</div>
+              {footer && <div className="flex justify-end gap-3 border-t border-border-subtle bg-overlay px-6 py-4">{footer}</div>}
+            </>
+          )}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -101,7 +123,7 @@ export function Modal({ open, onOpenChange, title, description, footer, size = "
             </Dialog.Close>
           </div>
           <div className="flex flex-col gap-4 overflow-y-auto p-6">{children}</div>
-          {footer && <div className="flex justify-end gap-3 border-t border-border-subtle px-6 py-4">{footer}</div>}
+          {footer && <div className="flex flex-wrap justify-end gap-3 border-t border-border-subtle px-6 py-4">{footer}</div>}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

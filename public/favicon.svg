@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- PropertyOS "P" mark: brand green (#059669) tile, dark green letter (#04130d, text-success-fg). Readable on light and dark tabs. -->
   <rect width="32" height="32" rx="8" fill="#059669"/>
-  <text x="16" y="23" text-anchor="middle" font-family="'Plus Jakarta Sans', Arial, sans-serif" font-size="20" font-weight="800" fill="#04130d">P</text>
+  <path fill="#04130d" fill-rule="evenodd" d="M9.5 7H17A5.75 5.75 0 0 1 17 18.5H14V25H9.5Z M14 11H16.75A1.75 1.75 0 0 1 16.75 14.5H14Z"/>
 </svg>

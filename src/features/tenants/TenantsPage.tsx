@@ -90,6 +90,8 @@ export function TenantsPage() {
     initialFilters,
     matchFilters,
     sorts,
+    inUrl: true,
+    filterValues: { lease: leaseFilterOptions.map((o) => o.value), balance: ["any", "owed"] },
   });
 
   const failed = [tenants, leases].find((q) => q.isError);
@@ -218,37 +220,39 @@ export function TenantsPage() {
         />
       </Toolbar>
 
-      {view === "table" ? (
-        <TenantsTable
-          rows={table.pageRows}
-          state={state}
-          sort={table.sort}
-          onSortChange={table.setSort}
-          empty={empty}
-          error={error}
-          footer={pagination}
-          onOpen={onOpen}
-          onEdit={onEdit}
-          onDelete={onDelete}
-        />
-      ) : state === "error" ? (
-        <InlineError {...error} />
-      ) : state === "empty" ? (
-        <Card padding="none">
-          <EmptyState icon={noTenants ? <Users strokeWidth={1.5} /> : <SearchX strokeWidth={1.5} />} {...empty} />
-        </Card>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {state === "loading"
-              ? Array.from({ length: 6 }).map((_, i) => <TenantCardSkeleton key={i} />)
-              : table.pageRows.map((row) => (
-                  <TenantCard key={row.tenant.id} row={row} onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} />
-                ))}
-          </div>
-          {pagination && <div className="flex items-center justify-between text-small text-text-secondary">{pagination}</div>}
-        </>
-      )}
+      <div id={table.listId} className="flex scroll-mt-24 flex-col gap-6">
+        {view === "table" ? (
+          <TenantsTable
+            rows={table.pageRows}
+            state={state}
+            sort={table.sort}
+            onSortChange={table.setSort}
+            empty={empty}
+            error={error}
+            footer={pagination}
+            onOpen={onOpen}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ) : state === "error" ? (
+          <InlineError {...error} />
+        ) : state === "empty" ? (
+          <Card padding="none">
+            <EmptyState icon={noTenants ? <Users strokeWidth={1.5} /> : <SearchX strokeWidth={1.5} />} {...empty} />
+          </Card>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {state === "loading"
+                ? Array.from({ length: 6 }).map((_, i) => <TenantCardSkeleton key={i} />)
+                : table.pageRows.map((row) => (
+                    <TenantCard key={row.tenant.id} row={row} onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} />
+                  ))}
+            </div>
+            {pagination && <div className="flex items-center justify-between text-small text-text-secondary">{pagination}</div>}
+          </>
+        )}
+      </div>
 
       {openRow && <TenantDrawer row={openRow} onClose={() => setOpenId(null)} />}
       {formOpen && <TenantFormModal onClose={() => setFormOpen(false)} />}

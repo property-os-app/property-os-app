@@ -24,7 +24,7 @@ Numbers the frontend computes (money in integer cents). The API gives only `unit
 - `buildUnitRows`, `UnitRow`, `needsAttention`, `primaryTenantName`: units of one property with their active / draft lease (sorted with `compareNatural`).
 
 ## PropertiesPage.tsx
-- `PropertiesPage`: /properties. Unit totals and managers from each property; GET /units only for counts by status, GET /leases (ACTIVE) for rent. PageHeader, 4 KPIs, toolbar (Cards/Table saved with `useStoredView`, search, Type, Manager for OWNER), loading / empty / error / no-results states, client paging. After Add Property with a "Number of units", runs the "Add unit 1 of N" chain (`UnitFormModal` with a new key per step).
+- `PropertiesPage`: /properties. Unit totals and managers from each property; GET /units only for counts by status, GET /leases (ACTIVE) for rent. PageHeader, 4 KPIs, toolbar (Cards/Table saved with `useStoredView`, search, Type, Manager for OWNER), loading / empty / error / no-results states, client paging. Search, filters, sort and page live in the URL (`useClientTable` `inUrl`): `?q=&type=&manager=&sort=&page=`; a manager id is kept while the managers load and dropped only if it isn't in the loaded list. After Add Property with a "Number of units", runs the "Add unit 1 of N" chain (`UnitFormModal` with a new key per step).
 
 ## PropertyCard.tsx
 - `PropertyCard`: the clickable card of the Cards view. `PropertyCardSkeleton`: its loading shape.

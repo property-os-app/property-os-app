@@ -19,7 +19,7 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - `ApiFetchOptions`: options type.
 
 ## useDocumentTitle.ts
-- `useDocumentTitle(title)`: sets the browser tab to "<title> · PropertyOS Admin".
+- `useDocumentTitle(title)`: sets the browser tab to "<title> · PropertyOS".
 
 ## format.ts (design system file, adapted to our API)
 - `formatCurrency(value)`: "1200.00" -> "$1,200.00", "-150.00" -> "-$150.00"; empty -> "-". Numbers still work.
@@ -65,5 +65,11 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - `applyServerError(setError, error, fieldNames)`: backend messages starting with a field name go under that field; returns the others for an InlineError at the top. Works with string or array messages.
 
 ## useClientTable.ts
-- `useClientTable({ rows, searchText, initialFilters, matchFilters, sorts, initialSort, pageSize })`: search, filters, sort (text / number / money via `toCents` / "YYYY-MM-DD" date) and 25-row pages in memory. Back to page 1 on search or filter change. Returns `pageRows`, `showPagination`, `summary`, `clearFilters`, `isFiltered`...
+- `useClientTable({ rows, searchText, initialFilters, matchFilters, filterValues, sorts, initialSort, pageSize, inUrl })`: search, filters, sort (text / number / money via `toCents` / "YYYY-MM-DD" date) and 25-row pages on the client. With `inUrl` (list pages) the state lives in the URL query, every change replaces the history entry without a scroll jump, and the search reaches the URL after 300 ms; without it, in memory (a table inside a page). Back to page 1 on search or filter change. `setPage` scrolls the `listId` element's top into view when it is off screen. Returns `pageRows`, `showPagination`, `summary`, `clearFilters`, `isFiltered`, `listId`...
+
+## tableParams.ts
+- `readTableParams(params, defaults)`: a table's state from query params (`q`, filter keys, `sort=key-asc|desc`, `page`); missing or invalid values fall back to the defaults.
+- `writeTableParams(params, state, defaults)`: sets those keys, leaving out defaults and keeping other keys (e.g. `month`).
+- `FilterValues`: allowed values per filter, a list or a check returning true / false / undefined (undefined = data still loading, keep the value).
+- `SEARCH_KEY`, `SORT_KEY`, `PAGE_KEY`, `TableParams`, `TableDefaults`.
 - `SortKind`, `SortColumn`: sort column types.

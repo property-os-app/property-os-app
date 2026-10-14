@@ -29,7 +29,7 @@ Tenants: one directory page (/tenants) with Cards / Table views, the tenant draw
 - `BalanceValue`: owed in danger, "$0.00" in success, "Credit $X" when negative, Dash without a lease.
 
 ## TenantsPage.tsx
-- `TenantsPage`: /tenants. PageHeader with "Add Tenant", 4 KPIs, toolbar (search, Property = scope, Lease status, "Has balance" chip, Cards / Table saved with `useStoredView`), all states, drawer, modals and delete dialog.
+- `TenantsPage`: /tenants. PageHeader with "Add Tenant", 4 KPIs, toolbar (search, Property = scope, Lease status, "Has balance" chip, Cards / Table saved with `useStoredView`), all states, drawer, modals and delete dialog. Search, filters, sort and page live in the URL (`useClientTable` `inUrl`): `?q=&lease=&balance=&sort=&page=`.
 
 ## TenantCard.tsx
 - `TenantCard`: compact clickable card (avatar, name, unit line, kebab; email, phone; Lease / Rent status / Balance). `TenantCardSkeleton`: its loading shape.

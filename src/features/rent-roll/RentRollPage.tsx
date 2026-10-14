@@ -63,19 +63,32 @@ export function RentRollPage() {
   const [params, setParams] = useSearchParams();
   const month = monthFromParam(params.get("month"));
   const monthLabel = formatMonth(month);
+  // Another month starts on page 1 and keeps the scroll position (the switcher is in the header).
   const setMonth = (next: string) =>
-    setParams((prev) => {
-      const out = new URLSearchParams(prev);
-      out.set("month", next);
-      return out;
-    });
+    setParams(
+      (prev) => {
+        const out = new URLSearchParams(prev);
+        out.set("month", next);
+        out.delete("page");
+        return out;
+      },
+      { preventScrollReset: true },
+    );
 
   const properties = useProperties();
   const rentRoll = useRentRoll(month, scope);
   const allRows = useMemo(() => rentRoll.data?.rows ?? [], [rentRoll.data]);
   const summary = rentRoll.data?.summary;
   // API order (property, unit, lease number) is the default; status and search are filtered here.
-  const table = useClientTable<RentRollRow, Filters>({ rows: rentRoll.data?.rows, searchText: rowSearchText, initialFilters, matchFilters, sorts });
+  const table = useClientTable<RentRollRow, Filters>({
+    rows: rentRoll.data?.rows,
+    searchText: rowSearchText,
+    initialFilters,
+    matchFilters,
+    sorts,
+    inUrl: true,
+    filterValues: { status: STATUS_FILTERS },
+  });
   const counts = useMemo(() => statusCounts(allRows), [allRows]);
   const targets = useMemo(() => paymentTargets(allRows), [allRows]);
 
@@ -235,26 +248,28 @@ export function RentRollPage() {
         </Card>
       )}
 
-      <RentRollTable
-        showProperty={!scope}
-        pastMonth={pastMonth}
-        rows={table.pageRows}
-        totalRows={table.filteredRows}
-        state={state}
-        sort={table.sort}
-        onSortChange={table.setSort}
-        empty={empty}
-        error={error}
-        caption={`Rent roll, ${monthLabel}`}
-        footer={
-          table.showPagination ? (
-            <Pagination page={table.page} pageCount={table.pageCount} onPageChange={table.setPage} summary={table.summary} />
-          ) : undefined
-        }
-        onOpen={openLedger}
-        onRecordPayment={canPay ? (r) => setPayment({ leaseId: r.leaseId }) : undefined}
-        onAddCharge={canCharge ? (r) => setChargeFor(r.leaseId) : undefined}
-      />
+      <div id={table.listId} className="scroll-mt-24">
+        <RentRollTable
+          showProperty={!scope}
+          pastMonth={pastMonth}
+          rows={table.pageRows}
+          totalRows={table.filteredRows}
+          state={state}
+          sort={table.sort}
+          onSortChange={table.setSort}
+          empty={empty}
+          error={error}
+          caption={`Rent roll, ${monthLabel}`}
+          footer={
+            table.showPagination ? (
+              <Pagination page={table.page} pageCount={table.pageCount} onPageChange={table.setPage} summary={table.summary} />
+            ) : undefined
+          }
+          onOpen={openLedger}
+          onRecordPayment={canPay ? (r) => setPayment({ leaseId: r.leaseId }) : undefined}
+          onAddCharge={canCharge ? (r) => setChargeFor(r.leaseId) : undefined}
+        />
+      </div>
 
       {generating && <GenerateRentModal month={month} onClose={() => setGenerating(false)} />}
       {chargeFor && <AddChargeModal leaseId={chargeFor} month={month} onClose={() => setChargeFor(null)} />}

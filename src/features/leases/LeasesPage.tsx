@@ -26,6 +26,8 @@ type StatusFilter = "all" | "active" | "expiring" | "draft" | "ended";
 type Filters = { status: StatusFilter; esign: "all" | SignatureStatus };
 
 const initialFilters: Filters = { status: "all", esign: "all" };
+const statusValues: StatusFilter[] = ["all", "active", "expiring", "draft", "ended"];
+const esignValues: Filters["esign"][] = ["all", "NOT_SENT", "PENDING", "SIGNED"];
 
 function matchStatus(l: Lease, status: StatusFilter): boolean {
   switch (status) {
@@ -81,7 +83,15 @@ function LeasesList() {
 
   // Default order: ACTIVE by soonest end, then DRAFT newest first, then ENDED / TERMINATED latest end first.
   const rows = useMemo(() => (leases.data ? [...leases.data].sort(compareLeasesDefault) : undefined), [leases.data]);
-  const table = useClientTable<Lease, Filters>({ rows, searchText, initialFilters, matchFilters, sorts });
+  const table = useClientTable<Lease, Filters>({
+    rows,
+    searchText,
+    initialFilters,
+    matchFilters,
+    sorts,
+    inUrl: true,
+    filterValues: { status: statusValues, esign: esignValues },
+  });
 
   const all = useMemo(() => leases.data ?? [], [leases.data]);
   const kpis = useMemo(() => {
@@ -203,24 +213,26 @@ function LeasesList() {
         </div>
       </Toolbar>
 
-      <LeasesTable
-        rows={table.pageRows}
-        state={state}
-        sort={table.sort}
-        onSortChange={table.setSort}
-        empty={empty}
-        error={error}
-        footer={
-          table.showPagination ? (
-            <Pagination page={table.page} pageCount={table.pageCount} onPageChange={table.setPage} summary={table.summary} />
-          ) : undefined
-        }
-        onOpen={(l) => void navigate(`/leases/${encodeURIComponent(l.id)}`, { state: { from: "leases" } satisfies LeasePageState })}
-        onEdit={canEdit ? setEditLease : undefined}
-        onActivate={canEdit ? (l) => void onActivate(l) : undefined}
-        onEnd={canEdit ? setEndLease : undefined}
-        onDelete={canEdit ? setDeleteLease : undefined}
-      />
+      <div id={table.listId} className="scroll-mt-24">
+        <LeasesTable
+          rows={table.pageRows}
+          state={state}
+          sort={table.sort}
+          onSortChange={table.setSort}
+          empty={empty}
+          error={error}
+          footer={
+            table.showPagination ? (
+              <Pagination page={table.page} pageCount={table.pageCount} onPageChange={table.setPage} summary={table.summary} />
+            ) : undefined
+          }
+          onOpen={(l) => void navigate(`/leases/${encodeURIComponent(l.id)}`, { state: { from: "leases" } satisfies LeasePageState })}
+          onEdit={canEdit ? setEditLease : undefined}
+          onActivate={canEdit ? (l) => void onActivate(l) : undefined}
+          onEnd={canEdit ? setEndLease : undefined}
+          onDelete={canEdit ? setDeleteLease : undefined}
+        />
+      </div>
 
       {adding && <LeaseWizard onClose={() => setAdding(false)} />}
       {editLease && <LeaseWizard lease={editLease} onClose={() => setEditLease(null)} />}

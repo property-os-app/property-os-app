@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Link, Outlet, useMatches, useNavigate } from "react-router";
+import { Link, Outlet, ScrollRestoration, useLocation, useMatches, useNavigate, useNavigation } from "react-router";
 import { LogOut, SlidersHorizontal } from "lucide-react";
 import { defaultNavGroups, type ModuleKey, type NavGroup, type NavItem, type SidebarProps } from "@/components/organisms";
 import { WorkspaceShell } from "@/components/templates";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { PageNavContext, PageTitleContext } from "@/app/pageTitle";
+import { PageSkeleton } from "@/app/PageSkeleton";
 import { useAuth } from "@/features/auth/authContext";
 import { roleLabel, toSidebarRole } from "@/features/auth/permissions";
 import { ScopeProvider } from "@/features/scope/ScopeProvider";
@@ -39,7 +40,7 @@ function useRouteHandle(): RouteHandle {
   return { title: "PropertyOS" };
 }
 
-/** Signed-in layout: WorkspaceShell (Sidebar + Topbar) around the current page. */
+/** Signed-in layout: WorkspaceShell (Sidebar + Topbar, mobile menu) around the current page, plus scroll restoration. */
 export function AppLayout() {
   return (
     <ScopeProvider>
@@ -60,11 +61,26 @@ function AppShell() {
   const [pageNav, setPageNav] = useState<ModuleKey | null>(null);
   useDocumentTitle(title);
 
+  // Mobile menu (below lg). Owned here so other openers (a phone tab bar) can use it too. Closes when the page changes.
+  const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPath, setMenuPath] = useState(location.pathname);
+  if (menuPath !== location.pathname) {
+    setMenuPath(location.pathname);
+    setMenuOpen(false);
+  }
+
+  // A page opened for the first time downloads its code (lazy route): show a skeleton instead of the old page meanwhile.
+  const navigation = useNavigation();
+  const pageLoading = navigation.state === "loading" && navigation.location.pathname !== location.pathname;
+
   // RequireAuth renders this layout only when status is "ready", so me is set.
   if (!me) return null;
 
   return (
     <WorkspaceShell
+      menuOpen={menuOpen}
+      onMenuOpenChange={setMenuOpen}
       sidebar={{
         role: toSidebarRole(me.role),
         // Pages without a nav key (not found) highlight nothing.
@@ -90,9 +106,11 @@ function AppShell() {
     >
       <PageTitleContext value={setPageTitle}>
         <PageNavContext value={setPageNav}>
-          <Outlet />
+          {pageLoading ? <PageSkeleton /> : <Outlet />}
         </PageNavContext>
       </PageTitleContext>
+      {/* Back restores the window scroll of that entry; a new page starts at the top. Table changes pass preventScrollReset. */}
+      <ScrollRestoration />
     </WorkspaceShell>
   );
 }

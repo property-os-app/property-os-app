@@ -34,6 +34,7 @@ type Filters = { type: string; manager: string };
 const VIEW_KEY = "propertyos.properties.view";
 const VIEWS = ["cards", "table"] as const;
 const initialFilters: Filters = { type: "all", manager: "all" };
+const propertyTypes = Object.keys(propertyTypeLabels);
 
 const searchText = (r: PropertyRow) => [r.property.name, r.property.street, r.property.city, r.property.state, r.property.zip];
 
@@ -84,7 +85,19 @@ export function PropertiesPage() {
     [properties.data, countsByProperty, rentByProperty],
   );
 
-  const table = useClientTable<PropertyRow, Filters>({ rows, searchText, initialFilters, matchFilters, sorts });
+  const table = useClientTable<PropertyRow, Filters>({
+    rows,
+    searchText,
+    initialFilters,
+    matchFilters,
+    sorts,
+    inUrl: true,
+    filterValues: {
+      type: propertyTypes,
+      // Kept while the managers load; managers can't use this filter.
+      manager: (id) => (!isOwner ? false : managers.data ? managers.data.some((m) => m.id === id) : undefined),
+    },
+  });
 
   const failed = [properties, units, leases].find((q) => q.isError);
   const isLoading = !failed && (properties.isPending || units.isPending || leases.isPending);
@@ -186,32 +199,34 @@ export function PropertiesPage() {
         )}
       </Toolbar>
 
-      {view === "table" ? (
-        <PropertiesTable
-          rows={table.pageRows}
-          state={state}
-          sort={table.sort}
-          onSortChange={table.setSort}
-          empty={empty}
-          error={error}
-          footer={pagination}
-        />
-      ) : state === "error" ? (
-        <InlineError {...error} />
-      ) : state === "empty" ? (
-        <Card padding="none">
-          <EmptyState icon={noProperties ? <Building2 strokeWidth={1.5} /> : <SearchX strokeWidth={1.5} />} {...empty} />
-        </Card>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {state === "loading"
-              ? Array.from({ length: 4 }).map((_, i) => <PropertyCardSkeleton key={i} />)
-              : table.pageRows.map((row) => <PropertyCard key={row.property.id} row={row} />)}
-          </div>
-          {pagination && <div className="flex items-center justify-between text-small text-text-secondary">{pagination}</div>}
-        </>
-      )}
+      <div id={table.listId} className="flex scroll-mt-24 flex-col gap-6">
+        {view === "table" ? (
+          <PropertiesTable
+            rows={table.pageRows}
+            state={state}
+            sort={table.sort}
+            onSortChange={table.setSort}
+            empty={empty}
+            error={error}
+            footer={pagination}
+          />
+        ) : state === "error" ? (
+          <InlineError {...error} />
+        ) : state === "empty" ? (
+          <Card padding="none">
+            <EmptyState icon={noProperties ? <Building2 strokeWidth={1.5} /> : <SearchX strokeWidth={1.5} />} {...empty} />
+          </Card>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {state === "loading"
+                ? Array.from({ length: 4 }).map((_, i) => <PropertyCardSkeleton key={i} />)
+                : table.pageRows.map((row) => <PropertyCard key={row.property.id} row={row} />)}
+            </div>
+            {pagination && <div className="flex items-center justify-between text-small text-text-secondary">{pagination}</div>}
+          </>
+        )}
+      </div>
 
       {formOpen && (
         <PropertyFormModal

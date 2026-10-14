@@ -46,7 +46,7 @@ Atoms combined to do one job.
 | `StatusBadge` | Maps a domain status to a tone and a friendly label | `domain` rent/lease/esign/ticket/priority/unit/insurance/approval, `status` (API enum for rent/lease/esign/unit, e.g. `UNDER_MAINTENANCE`; lease also takes UI-only `EXPIRING`), `children` (label override). `statusLabel` holds the labels. | Every status in a table or drawer. |
 | `FormField` | Label, control, help or error text | `label`, `htmlFor`, `required`, `help`, `error`, `action` | Wrap every form control. |
 | `SearchInput` | Input with a search icon | Input props, `shortcut` | Toolbar search. |
-| `SegmentedControl` | Button group with counts | `value`, `onChange`, `segments`, `aria-label` | Status filter (Rent Roll). |
+| `SegmentedControl` | Button group with counts; scrolls sideways inside itself when too wide | `value`, `onChange`, `segments`, `aria-label` | Status filter (Rent Roll). |
 | `Tabs` | Underline tabs with counts | `value`, `onChange`, `tabs` | Drawer tabs, Tenants page tabs. |
 | `FilterChip` | Pill filter, removable when active | `active`, `count`, `onRemove` | Applied filters in a toolbar. |
 | `Card` | White bordered surface | `padding` none/compact/default, `as` | Grouping content. |
@@ -73,15 +73,15 @@ Page sections. They own no data.
 
 | Component | What it does | Main props | When to use |
 | --- | --- | --- | --- |
-| `Sidebar` | Left nav, filtered by role | `role`, `active` (optional: nothing highlighted), `user`, `scope`, `onScopeClick`, `groups`, `brand`, `renderLink`, `badges`, `collapsed` | Inside `WorkspaceShell`. |
-| `Topbar` | 64px top bar: title, scope chip, avatar; search, bell and quick add only when their handler is passed | `title`, `scope`, `user`, `showAi`, `onSearch`, `onNotifications`, `onQuickAdd`, `profileMenu` (or `onProfile`) | Inside `WorkspaceShell`. |
-| `PageHeader` | Page title, description, actions | `title`, `description`, `actions`, `breadcrumb` | Top of every page. Primary action last. |
+| `Sidebar` | Left nav, filtered by role | `role`, `active` (optional: nothing highlighted), `user`, `scope`, `onScopeClick`, `groups`, `brand`, `renderLink`, `badges`, `collapsed`, `onNavigate` (after a nav click), `onClose` ("Close menu" button) | Inside `WorkspaceShell` and its mobile menu. |
+| `Topbar` | 64px top bar: title, scope chip, avatar; search, bell and quick add only when their handler is passed | `title`, `scope`, `user`, `showAi`, `onSearch`, `onNotifications`, `onQuickAdd`, `profileMenu` (or `onProfile`), `onMenu` ("Open menu" button below lg) | Inside `WorkspaceShell`. |
+| `PageHeader` | Page title, description, actions (wrap under the title on narrow screens) | `title`, `description`, `actions`, `breadcrumb` | Top of every page. Primary action last. |
 | `Toolbar` | Wrapping row | `children` | Search + filters above a table. |
 | `KpiRow` | Grid of up to 4 cards | `children` | Row of `KpiCard`s. |
 | `DataTable` | Table with 5 states, sort, selection, totals | `columns`, `rows`, `rowKey`, `state`, `empty`, `error`, `onRowClick`, `sort`/`onSortChange`, `totals`, `footer` | Every list. |
 | `Pagination` | Page number buttons | `page`, `pageCount`, `onPageChange`, `summary` | In `DataTable` `footer`. |
-| `Drawer` | Right side panel (480/640/800) | `open`, `onOpenChange`, `title`, `status`, `tabs`, `footer`, `size`, `confirmClose` | One record from a list. Never stack. |
-| `Modal` | Centered dialog (480/640) | `open`, `onOpenChange`, `title`, `footer`, `size`, `confirmClose` | Create/edit forms; may open over a drawer. |
+| `Drawer` | Right side panel (480/640/800) | `open`, `onOpenChange`, `title`, `status`, `tabs`, `footer`, `size`, `confirmClose`, `side` ("left": navigation menu), `bare` (no header/padding) | One record from a list. Never stack. |
+| `Modal` | Centered dialog (480/640); footer buttons wrap | `open`, `onOpenChange`, `title`, `footer`, `size`, `confirmClose` | Create/edit forms; may open over a drawer. |
 | `ConfirmDialog` | Confirm modal, optional type-to-confirm | `title`, `consequence`, `confirmLabel`, `onConfirm`, `destructive`, `typeToConfirm`, `busy`, `error` (with either, the dialog stays open and the caller closes it on success) | Every destructive action. |
 | `RentCollectionHero` | 3 hero stats + collection bar | `period`, `totalDue`, `collected`, `outstanding`, counts | Dashboard rent block. |
 | `BarChart` | Vertical bars, grouped series, one y-axis, grid lines, legend for 2+ series, tooltips (hover + keyboard), hidden table, 5 states | `series` (label, color), `data` (key, label, fullLabel, values), `formatValue`, `formatTick`, `tooltip`, `integer`, `onBarClick`, `caption`, `height`, `state`/`empty`/`error` | Dashboard charts. Fluid width; values as integers (cents, counts). |
@@ -98,7 +98,8 @@ Page layouts.
 
 | Component | What it does | Main props | When to use |
 | --- | --- | --- | --- |
-| `WorkspaceShell` | Sidebar + Topbar + centered main (max 1440) | `sidebar` (SidebarProps), `topbar` (TopbarProps), `banner` | Rendered ONCE by our layout route. Pages never wrap themselves. |
+| `WorkspaceShell` | Sidebar + Topbar + centered main (max 1440); the window scrolls. Below lg the sidebar hides and the Topbar menu button opens it in a left drawer | `sidebar` (SidebarProps), `topbar` (TopbarProps), `banner`, `menuOpen` + `onMenuOpenChange` (optional, controlled) | Rendered ONCE by our layout route. Pages never wrap themselves. |
+| `NavMenuDrawer` | The Sidebar in a left `Drawer` (closes on a pick, X, Escape, outside tap; focus returns to the opener) | `open`, `onOpenChange`, `sidebar` | Used by `WorkspaceShell`; reuse it for any other opener (phone tab bar "More"). |
 | `AuthLayout` | Form column (max 400px) + optional brand panel | `children`, `aside` | Login page. |
 | `OwnerShell` | Top-nav owner portal | `nav` | Not this app. |
 | `RenterShell` | Mobile tenant portal | `active`, `header` | Not this app. |
@@ -160,7 +161,6 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | `organisms/Panels.tsx` (`RentCollectionHero`) | Takes numbers and computes the rate with float math; needs `unitsBilled`, `paymentsReceived`, `lateCount`, which our rent-roll summary doesn't have (it has `collectionRate`, `overdueCount`). |
 | `organisms/Sidebar.tsx` | `Role` is admin/manager/leasing/maintenance/accountant (we map OWNER → admin, PROPERTY_MANAGER → manager). Default groups list out-of-scope modules; we must pass our own `groups`. Avatar always shows the online dot. |
 | `organisms/Topbar.tsx` | `showAi` defaults to `true` (we pass `false`). Search placeholder mentions tickets (we don't pass `onSearch`, so it's hidden). |
-| `templates/Shells.tsx` (`WorkspaceShell`) | Sidebar is hidden under 768px and there is no mobile nav in its place. |
 | `organisms/Overlays.tsx` (`ConfirmDialog`) | No field for a reason (Void needs `reason`, max 300). We use our own `VoidEntryModal` (on `Modal`) instead. |
 | `organisms/Overlays.tsx` (`Drawer`) | Uses `animate-in` / `animate-out` classes from a Tailwind plugin that isn't installed, so they do nothing. |
 | `organisms/DataTable.tsx` (`Pagination`) | Shows at most 8 page buttons, no previous/next. Paging is up to the caller (the API has no pagination). |
@@ -200,3 +200,10 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | 2026-10-14 | `molecules/Cards.tsx` (`KpiCard`) | Optional `renderLink(href, props)` for `href` (like Sidebar's); default still a plain `<a>`. | A plain `<a>` reloaded the whole app; the dashboard KPI cards are router links. |
 | 2026-10-14 | `atoms/Progress.tsx` (`CollectionProgress`) | `value` may be `null`: empty bar, no percentage, `aria-valuetext` "No data". | `collectionRate` is null when nothing is billed; 0% would be wrong. |
 | 2026-10-14 | `organisms/Sidebar.tsx` | `active` is optional; without it nothing is highlighted. | Dashboard is now in our nav; the not-found page must not highlight it. |
+| 2026-10-14 | `templates/Shells.tsx` (`WorkspaceShell`) | Sidebar shows from `lg` (was `md`). Below lg the Topbar gets a menu button that opens the same Sidebar in a left drawer. New optional `menuOpen` / `onMenuOpenChange` (controlled) and new exported `NavMenuDrawer` (+ `NavMenuDrawerProps`). | There was no navigation at all under 768px, and the 264px sidebar crowded tablets. The drawer is a separate export so a later phone tab bar can open the same menu. |
+| 2026-10-14 | `organisms/Overlays.tsx` (`Drawer`) | Optional `side` ("right" default, "left": sidebar width, max 85vw) and `bare` (children fill the panel, title and description only for screen readers). Right drawers unchanged. | The mobile menu needs a left panel that holds the Sidebar as it is, with Radix focus trap, Escape and focus return. |
+| 2026-10-14 | `organisms/Overlays.tsx` (`Modal`) | Footer row wraps (`flex-wrap`). | Three footer buttons (Lease wizard) overflowed the screen at 390px. |
+| 2026-10-14 | `organisms/Sidebar.tsx` | Optional `onNavigate` (called after a nav item click) and `onClose` ("Close menu" X next to the brand). Without them nothing changes. | The mobile menu closes when an item is picked and needs a visible close button. |
+| 2026-10-14 | `organisms/Topbar.tsx` (`Topbar`) | Optional `onMenu`: "Open menu" icon button, hidden from lg. Padding `px-4 lg:px-8` (was `px-8`); the title truncates instead of `whitespace-nowrap`. | Mobile menu opener; 32px side padding and a long unbreakable title wasted or overflowed a phone screen. |
+| 2026-10-14 | `organisms/Topbar.tsx` (`PageHeader`) | Title row and actions wrap (`flex-wrap`); the title block has `min-w-0`. | The Rent Roll header (month switcher, Generate rent, Record Payment) overflowed at 390px. |
+| 2026-10-14 | `molecules/SegmentedControl.tsx` | `max-w-full overflow-x-auto` on the group, segments don't shrink or wrap their text. | 5-6 status segments with counts (Units, Leases, Rent Roll) made the page scroll sideways at 390px; now only the control scrolls. |
