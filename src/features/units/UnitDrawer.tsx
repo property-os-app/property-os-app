@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { FileText, Plus } from "lucide-react";
 import { Avatar, Badge, Button, Caption, Dash, H3, Num, Skeleton } from "@/components/atoms";
 import { Card, EmptyState, InlineError, KeyValueList, StatusBadge, Tabs } from "@/components/molecules";
@@ -21,6 +22,8 @@ import type { Unit } from "@/types/unit";
 
 type Tab = "tenant" | "history";
 
+const leasePath = (l: Lease) => `/leases/${encodeURIComponent(l.id)}`;
+
 const historyColumns: Column<Lease>[] = [
   { key: "period", header: "Period", cell: (l) => leasePeriod(l) ?? <Dash /> },
   { key: "tenant", header: "Tenant", cell: (l) => primaryTenantName(l) ?? <Dash /> },
@@ -36,9 +39,11 @@ export interface UnitDrawerProps {
 
 /**
  * One unit (lg drawer): Tenant tab (active lease, rent/balance/end cards, details) and Lease history tab (GET /leases?unitId=).
+ * "Open lease" and a history row click go to /leases/:id.
  * Footer: Delete (OWNER) and Edit unit. Mount it only while open; it closes itself after a delete.
  */
 export function UnitDrawer({ unit, propertyName, onClose }: UnitDrawerProps) {
+  const navigate = useNavigate();
   const { me } = useAuth();
   const role = me!.role;
   const leases = useLeases({ unitId: unit.id });
@@ -136,6 +141,7 @@ export function UnitDrawer({ unit, propertyName, onClose }: UnitDrawerProps) {
             columns={historyColumns}
             rows={leases.data ?? []}
             rowKey={(l) => l.id}
+            onRowClick={(l) => void navigate(leasePath(l))}
             density="compact"
             caption="Lease history"
             state={leases.isError ? "error" : leases.isPending ? "loading" : leases.data.length === 0 ? "empty" : "ideal"}
@@ -154,6 +160,7 @@ export function UnitDrawer({ unit, propertyName, onClose }: UnitDrawerProps) {
 
 /** Tenant tab with an ACTIVE lease: tenant card with the payment badge, then rent / balance / lease end cards. */
 function ActiveLease({ lease, unit }: { lease: Lease; unit: Unit }) {
+  const navigate = useNavigate();
   const tenant = lease.tenants.find((t) => t.isPrimary) ?? lease.tenants[0];
   const due = dueState(lease);
   const period = leasePeriod(lease);
@@ -175,6 +182,9 @@ function ActiveLease({ lease, unit }: { lease: Lease; unit: Unit }) {
         ) : (
           <LeaseBadge lease={lease} />
         )}
+        <Button size="sm" variant="ghost" onClick={() => void navigate(leasePath(lease))}>
+          Open lease
+        </Button>
       </Card>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">

@@ -35,7 +35,7 @@ Numbers the frontend computes (money in integer cents). The API gives only `unit
 - `PropertiesTable`: the Table view (DataTable; Name, Units, Occupancy, Value sortable; row opens the detail).
 
 ## PropertyDetailPage.tsx
-- `PropertyDetailPage`: /properties/:id. Breadcrumb, header card (KPI tiles, `unitCount`, embedded managers, tabs), Overview (units needing attention, Details, Managers) and Units tabs, Edit / Delete for OWNER, "Add unit" (primary, `unit.create`), unit rows open the `UnitDrawer`, "Property not found" on 404. Sets the page title to the property name.
+- `PropertyDetailPage`: /properties/:id. Breadcrumb and tiles from `features/shared/DetailParts`, header card (KPI tiles, `unitCount`, embedded managers, tabs), Overview (units needing attention, Details, Managers) and Units tabs, Edit / Delete for OWNER, "Add unit" (primary, `unit.create`), unit rows open the `UnitDrawer`, "Property not found" on 404. Sets the page title to the property name.
 
 ## PropertyUnitsTable.tsx
 - `PropertyUnitsTable`: units with tenant, rent, lease and status (expiring leases show "Expiring"); 25 per page; optional `onRowClick`.

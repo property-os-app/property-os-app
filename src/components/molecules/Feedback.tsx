@@ -179,8 +179,13 @@ export function Toaster({ position = "bottom-right" }: { position?: React.Compon
 
 /** Past tense and specific: toast.success("Payment of $1,450.00 recorded for Unit 4B"). Errors persist until dismissed. */
 export const toast = {
-  success: (message: string, opts?: { description?: string; undo?: () => void }) =>
-    sonnerToast.success(message, { description: opts?.description, action: opts?.undo ? { label: "Undo", onClick: opts.undo } : undefined }),
+  /** `duration` in ms (default: the Toaster's 4000), e.g. a longer window for Undo. */
+  success: (message: string, opts?: { description?: string; undo?: () => void; duration?: number }) =>
+    sonnerToast.success(message, {
+      description: opts?.description,
+      duration: opts?.duration,
+      action: opts?.undo ? { label: "Undo", onClick: opts.undo } : undefined,
+    }),
   error: (message: string, opts?: { description?: string; retry?: () => void }) =>
     sonnerToast.error(message, { description: opts?.description, duration: Infinity, action: opts?.retry ? { label: "Retry", onClick: opts.retry } : undefined }),
   info: (message: string, description?: string) => sonnerToast(message, { description }),

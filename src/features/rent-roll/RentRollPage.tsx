@@ -15,8 +15,8 @@ import { RecordPaymentModal } from "@/features/ledger/RecordPaymentModal";
 import { useProperties } from "@/features/properties/hooks";
 import { GenerateRentModal } from "@/features/rent-roll/GenerateRentModal";
 import { useRentRoll } from "@/features/rent-roll/hooks";
-import { LedgerDrawer } from "@/features/rent-roll/LedgerDrawer";
 import { RentRollTable } from "@/features/rent-roll/RentRollTable";
+import type { LeasePageState } from "@/features/leases/LeasePage";
 import {
   canGenerateRent,
   isPastMonth,
@@ -50,14 +50,13 @@ type PaymentOpen = { leaseId?: string };
 
 /**
  * /rent-roll: month switcher (?month=YYYY-MM), KPIs from the summary, status segments + search (client-side) + Property scope,
- * the table with totals, the ledger drawer, Generate rent, Add charge and Record Payment.
+ * the table with totals, Generate rent, Add charge and Record Payment. A row (or "Open ledger") opens the lease page, Ledger tab.
  */
 export function RentRollPage() {
   const { me } = useAuth();
   const role = me!.role;
   const canCharge = can(role, "charge.create");
   const canPay = can(role, "payment.create");
-  const canVoid = can(role, "entry.void");
   const navigate = useNavigate();
   const { propertyId: scope, setPropertyId } = useScope();
 
@@ -80,13 +79,14 @@ export function RentRollPage() {
   const counts = useMemo(() => statusCounts(allRows), [allRows]);
   const targets = useMemo(() => paymentTargets(allRows), [allRows]);
 
-  const [openRow, setOpenRow] = useState<RentRollRow | null>(null);
   const [generating, setGenerating] = useState(false);
   const [chargeFor, setChargeFor] = useState<string | null>(null);
   const [payment, setPayment] = useState<PaymentOpen | null>(null);
 
-  // The drawer follows the refreshed row after a payment or void; it keeps the last one if the row left the month.
-  const drawerRow = openRow ? (allRows.find((r) => r.leaseId === openRow.leaseId) ?? openRow) : null;
+  // The lease page, Ledger tab, with a breadcrumb back to this month.
+  // fromList shows the page's back arrow.
+  const openLedger = (r: RentRollRow) =>
+    void navigate(`/leases/${encodeURIComponent(r.leaseId)}?tab=ledger&from=rent-roll&month=${month}`, { state: { fromList: true } satisfies LeasePageState });
 
   const ready = rentRoll.isSuccess;
   const kpi = (value: ReactNode) => (ready ? value : <Skeleton className="h-10 w-24" />);
@@ -251,21 +251,11 @@ export function RentRollPage() {
             <Pagination page={table.page} pageCount={table.pageCount} onPageChange={table.setPage} summary={table.summary} />
           ) : undefined
         }
-        onOpen={setOpenRow}
+        onOpen={openLedger}
         onRecordPayment={canPay ? (r) => setPayment({ leaseId: r.leaseId }) : undefined}
         onAddCharge={canCharge ? (r) => setChargeFor(r.leaseId) : undefined}
       />
 
-      {drawerRow && (
-        <LedgerDrawer
-          key={drawerRow.leaseId}
-          row={drawerRow}
-          canVoid={canVoid}
-          onAddCharge={canCharge ? () => setChargeFor(drawerRow.leaseId) : undefined}
-          onRecordPayment={canPay ? () => setPayment({ leaseId: drawerRow.leaseId }) : undefined}
-          onClose={() => setOpenRow(null)}
-        />
-      )}
       {generating && <GenerateRentModal month={month} onClose={() => setGenerating(false)} />}
       {chargeFor && <AddChargeModal leaseId={chargeFor} month={month} onClose={() => setChargeFor(null)} />}
       {payment && <RecordPaymentModal targets={targets} presetLeaseId={payment.leaseId} onClose={() => setPayment(null)} />}

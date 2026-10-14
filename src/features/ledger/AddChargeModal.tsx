@@ -12,6 +12,7 @@ import { chargeTypeLabels, labelOptions } from "@/lib/labels";
 import { useLease } from "@/features/leases/hooks";
 import { primaryTenant } from "@/features/leases/stats";
 import { useAddCharge } from "@/features/ledger/hooks";
+import type { ChargePrefill } from "@/features/ledger/reenter";
 import type { Lease } from "@/types/lease";
 import type { ChargeCreateBody, ChargeType } from "@/types/ledger";
 
@@ -64,15 +65,18 @@ function chargeBody(v: FormOutput, month: string): ChargeCreateBody {
 
 export interface AddChargeModalProps {
   leaseId: string;
-  /** "YYYY-MM": the Rent charge's periodMonth and due date month (Rent Roll: the page month; lease drawer: current UTC month). */
+  /** "YYYY-MM": the Rent charge's periodMonth and due date month (Rent Roll: the page month; lease page: current UTC month). */
   month: string;
+  /** Re-enter a voided charge: its values (a RENT periodMonth replaces `month`) and its number, for the title and toast. */
+  reentry?: { from: string; values: ChargePrefill };
   onClose: () => void;
 }
 
 /** "Add charge" modal: Rent, Late fee or Other. Loads the lease (usually cached) for the prefills. Mount it only while open. */
-export function AddChargeModal({ leaseId, month, onClose }: AddChargeModalProps) {
+export function AddChargeModal({ leaseId, month, reentry, onClose }: AddChargeModalProps) {
   const lease = useLease(leaseId);
-  if (lease.data) return <ChargeForm lease={lease.data} month={month} onClose={onClose} />;
+  const chargeMonth = reentry?.values.periodMonth ?? month;
+  if (lease.data) return <ChargeForm lease={lease.data} month={chargeMonth} reentry={reentry} onClose={onClose} />;
   return (
     <Modal open onOpenChange={(open) => !open && onClose()} title="Add charge" footer={<Button onClick={onClose}>Cancel</Button>}>
       {lease.isError ? (
@@ -84,7 +88,7 @@ export function AddChargeModal({ leaseId, month, onClose }: AddChargeModalProps)
   );
 }
 
-function ChargeForm({ lease, month, onClose }: { lease: Lease; month: string; onClose: () => void }) {
+function ChargeForm({ lease, month, reentry, onClose }: { lease: Lease; month: string; reentry?: AddChargeModalProps["reentry"]; onClose: () => void }) {
   const add = useAddCharge();
   const [formErrors, setFormErrors] = useState<string[]>([]);
 
@@ -97,7 +101,9 @@ function ChargeForm({ lease, month, onClose }: { lease: Lease; month: string; on
     formState: { errors, isDirty, isSubmitting },
   } = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(schema),
-    defaultValues: { type: "RENT", ...typeDefaults("RENT", lease, month) },
+    defaultValues: reentry
+      ? { type: reentry.values.type, description: reentry.values.description, amount: reentry.values.amount, dueDate: reentry.values.dueDate }
+      : { type: "RENT", ...typeDefaults("RENT", lease, month) },
     mode: "onTouched",
   });
   const type = useWatch({ control, name: "type" });
@@ -119,7 +125,7 @@ function ChargeForm({ lease, month, onClose }: { lease: Lease; month: string; on
     setFormErrors([]);
     try {
       const saved = await add.mutateAsync({ leaseId: lease.id, body: chargeBody(v, month) });
-      toast.success(`Charge ${saved.invoiceNumber} added`);
+      toast.success(reentry ? `Re-entered as ${saved.invoiceNumber}` : `Charge ${saved.invoiceNumber} added`);
       onClose();
     } catch (err) {
       // 409 "Rent for {month} already exists" belongs next to Type.
@@ -138,7 +144,7 @@ function ChargeForm({ lease, month, onClose }: { lease: Lease; month: string; on
       open
       onOpenChange={(open) => !open && onClose()}
       confirmClose={confirmClose}
-      title="Add charge"
+      title={reentry ? `Re-enter charge ${reentry.from}` : "Add charge"}
       description={`${tenant} · Unit ${lease.unit.unitNumber}, ${lease.unit.property.name}`}
       footer={
         <>
@@ -146,7 +152,7 @@ function ChargeForm({ lease, month, onClose }: { lease: Lease; month: string; on
             Cancel
           </Button>
           <Button type="submit" form="charge-form" variant="primary" disabled={isSubmitting} aria-busy={isSubmitting || undefined}>
-            {isSubmitting ? "Adding..." : "Add charge"}
+            {isSubmitting ? "Adding..." : reentry ? "Re-enter charge" : "Add charge"}
           </Button>
         </>
       }

@@ -1,6 +1,6 @@
 # src/features/ledger
 
-The lease ledger, shared by the Rent Roll ledger drawer and the lease drawer's Payments tab: charges, payments, voids. Every change refreshes the rent roll, every lease query (lists, details, ledgers) and tenants.
+The lease ledger (lease page, Ledger tab): charges, payments, voids and re-entries. Every change refreshes the rent roll, every lease query (lists, details, ledgers) and tenants.
 
 ## hooks.ts
 - `refreshAfterMoneyChange(qc)`: invalidates `["rent-roll"]`, `["leases"]` and `["tenants"]`. Also used by Generate rent.
@@ -15,14 +15,24 @@ The lease ledger, shared by the Rent Roll ledger drawer and the lease drawer's P
 - `BalanceText`: a balance number, danger and bold when owed, success "Credit {amount}" when negative.
 
 ## LedgerView.tsx
-- `LedgerView({ leaseId, canVoid })`: 3 cards (Current balance, Monthly rent, Total paid) and a compact table newest first (date, description + number, method, charge, payment, running balance). Voided rows are muted with a strikethrough, a "Voided" badge and the reason. Kebab "Void charge / Void payment" only with `canVoid`. Loading, error and empty states.
+- `LedgerView({ lease, canVoid, canCharge, canPay })`: compact full-width table newest first (date, description + number, method, charge, payment, running balance). The balance cards are tiles on the lease page now. Voided rows are muted with a strikethrough, a "Voided" badge and the reason. Kebab: "Void charge / payment" on live rows (`canVoid`), "Re-enter charge / payment" on voided rows (`canCharge` / `canPay`), which opens Add charge / Record Payment prefilled. Loading, error and empty states.
 
 ## VoidEntryModal.tsx
-- `VoidEntryModal`: Modal with the required Reason (trimmed, max 300) and a danger "Void charge" / "Void payment" button. Errors (409 already voided) stay inside. Toast "Charge INV-... voided".
+- `VoidEntryModal`: Modal with the required Reason (trimmed, max 300) and a danger "Void charge" / "Void payment" button. Errors (409 already voided) stay inside. Toast "Charge INV-... voided" with Undo for 10 seconds: re-creates the entry ("Re-entered as INV-..."), errors in a toast.
 
 ## AddChargeModal.tsx
-- `AddChargeModal({ leaseId, month, onClose })`: loads the lease (usually cached), then Type (Rent, Late fee, Other) with per-type prefills (description, amount, due date = `dayInMonth(month, rentDueDay)` for Rent, else today), Description, Amount, Due date. Sends `periodMonth = month` only for Rent. 409 "Rent for ... already exists" shows under Type.
+- `AddChargeModal({ leaseId, month, onClose })`: loads the lease (usually cached), then Type (Rent, Late fee, Other) with per-type prefills (description, amount, due date = `dayInMonth(month, rentDueDay)` for Rent, else today), Description, Amount, Due date. Sends `periodMonth = month` only for Rent. 409 "Rent for ... already exists" shows under Type. Optional `reentry` ({ from, values }): prefilled from a voided charge (a Rent re-entry uses its due date's month), title "Re-enter charge INV-...", toast "Re-entered as INV-...".
 
 ## RecordPaymentModal.tsx
-- `RecordPaymentModal({ targets, presetLeaseId, onClose })`: Tenant (Select, or read-only when preset) with "Balance due" help, Amount (prefilled with the balance) with a live note (open / in full / credit), Payment date (today), Method (ACH default), Reference, Notes. Overpayment allowed.
+- `RecordPaymentModal({ targets, presetLeaseId, onClose })`: Tenant (Select, or read-only when preset) with "Balance due" help, Amount (prefilled with the balance) with a live note (open / in full / credit), Payment date (today), Method (ACH default), Reference, Notes. Overpayment allowed. Optional `reentry` ({ from, values }): prefilled from a voided payment with the re-entry note, title "Re-enter payment PMT-...", toast "Re-entered as PMT-...".
 - `PaymentTarget`: one choosable lease (`leaseId`, `label`, `unitNumber`, `balance`).
+
+## reenter.ts
+Voids stay permanent; a re-entry is a new entry with a new number. Plain functions, so the toast's Undo works after the void modal closed.
+- `reentryNote(number, notes)`: "Re-entered after an accidental void of PMT-...", plus the original notes when both fit in 1000 characters.
+- `PaymentPrefill`, `ChargePrefill`: modal prefill values.
+- `paymentPrefill(payment)`: payment values with the re-entry note. `prefillFromEntry(entry)`: a voided ledger row's prefill (Rent: `periodMonth` = due date's month).
+- `reenterPayment(qc, voided)`, `reenterCharge(qc, voided)`: Undo; POST the same values from the void response, then `refreshAfterMoneyChange(qc)`.
+
+## targets.ts
+- `leasePaymentTarget(lease, balance)`: the one Record Payment target on the lease page.

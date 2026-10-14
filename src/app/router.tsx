@@ -5,6 +5,7 @@ import { NotFoundPage } from "@/app/NotFoundPage";
 import { RouteErrorPage } from "@/app/RouteErrorPage";
 import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
 import { LoginPage } from "@/features/auth/LoginPage";
+import { LeasePage } from "@/features/leases/LeasePage";
 import { LeasesPage } from "@/features/leases/LeasesPage";
 import { PublicOnly } from "@/features/auth/PublicOnly";
 import { RequireAuth } from "@/features/auth/RequireAuth";
@@ -24,6 +25,8 @@ const settingsHandle: RouteHandle = { title: "Settings", nav: "settings" };
 const propertiesHandle: RouteHandle = { title: "Properties", nav: "properties" };
 // The detail page replaces this title with the property name (usePageTitle).
 const propertyHandle: RouteHandle = { title: "Property", nav: "properties" };
+// The lease page replaces this title with "Lease {leaseNumber}".
+const leaseHandle: RouteHandle = { title: "Lease", nav: "leases" };
 
 /** All routes (library / data mode). */
 export const router = createBrowserRouter([
@@ -55,6 +58,7 @@ export const router = createBrowserRouter([
                   { path: "units", handle: unitsHandle, element: <UnitsPage /> },
                   { path: "tenants", handle: tenantsHandle, element: <TenantsPage /> },
                   { path: "leases", handle: leasesHandle, element: <LeasesPage /> },
+                  { path: "leases/:id", handle: leaseHandle, element: <LeasePage /> },
                   { path: "rent-roll", handle: rentRollHandle, element: <RentRollPage /> },
                   { path: "settings", handle: settingsHandle, element: <SettingsPage /> },
                   { path: "*", handle: notFoundHandle, element: <NotFoundPage /> },

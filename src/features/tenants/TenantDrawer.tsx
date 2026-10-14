@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { Plus, UserX } from "lucide-react";
 import { Button, Caption, Dash, H3, Num, Skeleton } from "@/components/atoms";
 import { Card, EmptyState, InlineError, KeyValueList, Tabs } from "@/components/molecules";
@@ -21,6 +22,8 @@ import type { TenantDetail } from "@/types/tenant";
 
 type Tab = "overview" | "leases";
 
+const leasePath = (l: Lease) => `/leases/${encodeURIComponent(l.id)}`;
+
 const orDash = (value: string | null | undefined) => (value ? value : <Dash />);
 
 export interface TenantDrawerProps {
@@ -31,6 +34,7 @@ export interface TenantDrawerProps {
 
 /**
  * One tenant (lg drawer): Overview (current ACTIVE lease cards, Details with the ID number) and Leases tabs.
+ * "Open lease" and a Leases row click go to /leases/:id.
  * Footer: Delete (OWNER) and Edit tenant. Mount it only while open; it closes itself after a delete.
  */
 export function TenantDrawer({ row, onClose }: TenantDrawerProps) {
@@ -123,6 +127,7 @@ export function TenantDrawer({ row, onClose }: TenantDrawerProps) {
 
 /** Current ACTIVE lease: a summary card, then Rent / Balance / Lease ends cards (same notes as the unit drawer). */
 function ActiveLease({ lease }: { lease: Lease }) {
+  const navigate = useNavigate();
   const due = dueState(lease);
   return (
     <div className="flex flex-col gap-3">
@@ -131,7 +136,12 @@ function ActiveLease({ lease }: { lease: Lease }) {
           <div className="truncate font-semibold text-text-primary">{unitLine(lease)}</div>
           <Caption className="block truncate">{[`Lease ${lease.leaseNumber}`, leasePeriod(lease)].filter(Boolean).join(" · ")}</Caption>
         </div>
-        <LeaseBadge lease={lease} />
+        <div className="flex shrink-0 items-center gap-2">
+          <LeaseBadge lease={lease} />
+          <Button size="sm" variant="ghost" onClick={() => void navigate(leasePath(lease))}>
+            Open lease
+          </Button>
+        </div>
       </Card>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <StatCard label="Rent" value={formatCurrency(lease.rent)} note={paymentFrequencyLabels[lease.paymentFrequency]} />
@@ -171,6 +181,7 @@ function Details({ tenant }: { tenant: TenantDetail }) {
 
 /** Every visible lease that includes the tenant, with their role on it. "Add lease" (primary tenant preset) when allowed. */
 function LeasesTab({ tenantId, leases, onAddLease }: { tenantId: string; leases: Lease[]; onAddLease?: () => void }) {
+  const navigate = useNavigate();
   const columns: Column<Lease>[] = [
     { key: "number", header: "Lease", cell: (l) => <span className="font-semibold">{l.leaseNumber}</span> },
     {
@@ -199,6 +210,7 @@ function LeasesTab({ tenantId, leases, onAddLease }: { tenantId: string; leases:
         columns={columns}
         rows={leases}
         rowKey={(l) => l.id}
+        onRowClick={(l) => void navigate(leasePath(l))}
         density="compact"
         caption="Leases"
         state={leases.length === 0 ? "empty" : "ideal"}

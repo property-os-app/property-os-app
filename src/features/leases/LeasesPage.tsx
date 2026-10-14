@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
+import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { Plus } from "lucide-react";
 import { Badge, Button, Select, Skeleton } from "@/components/atoms";
 import { KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
@@ -9,10 +10,10 @@ import { plural, signatureStatusLabels } from "@/lib/labels";
 import { useClientTable, type SortColumn } from "@/lib/useClientTable";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
-import { useActivateAction, useLeases, type ActivateError } from "@/features/leases/hooks";
+import { useActivateAction, useLeases } from "@/features/leases/hooks";
 import { LeaseDeleteDialog } from "@/features/leases/LeaseDeleteDialog";
-import { LeaseDrawer } from "@/features/leases/LeaseDrawer";
 import { LeaseEndModal } from "@/features/leases/LeaseEndModal";
+import type { LeasePageState } from "@/features/leases/LeasePage";
 import { LeasesTable } from "@/features/leases/LeasesTable";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
 import { compareLeasesDefault, expiresWithin, isClosed, isPastEnd, pastEndNote, primaryTenant, startedThisMonth } from "@/features/leases/stats";
@@ -52,8 +53,17 @@ const sorts: Record<string, SortColumn<Lease>> = {
   balance: { kind: "money", value: (l) => l.balance },
 };
 
-/** /leases: KPIs, toolbar (status segments, search, Property = sidebar scope, e-sign) and the leases table. Row click opens the drawer. */
+/** /leases: KPIs, toolbar (status segments, search, Property = sidebar scope, e-sign) and the leases table. Row click opens /leases/:id. */
 export function LeasesPage() {
+  const [params] = useSearchParams();
+  // Old links: /leases?lease=ID -> /leases/ID.
+  const legacyId = params.get("lease");
+  if (legacyId) return <Navigate to={`/leases/${encodeURIComponent(legacyId)}`} replace />;
+  return <LeasesList />;
+}
+
+function LeasesList() {
+  const navigate = useNavigate();
   const { me } = useAuth();
   const role = me!.role;
   const canCreate = can(role, "lease.create");
@@ -64,7 +74,6 @@ export function LeasesPage() {
   const leases = useLeases({ propertyId: scope ?? undefined });
   const activate = useActivateAction();
 
-  const [open, setOpen] = useState<{ id: string; activateError?: ActivateError } | null>(null);
   const [adding, setAdding] = useState(false);
   const [editLease, setEditLease] = useState<Lease | null>(null);
   const [endLease, setEndLease] = useState<Lease | null>(null);
@@ -124,8 +133,8 @@ export function LeasesPage() {
 
   const onActivate = async (l: Lease) => {
     const failure = await activate.run(l.id);
-    // A failed activation opens the drawer with the reason and the "Edit lease" button.
-    if (failure) setOpen({ id: l.id, activateError: failure });
+    // A failed activation opens the lease page with the reason and the "Edit lease" button.
+    if (failure) void navigate(`/leases/${encodeURIComponent(l.id)}`, { state: { fromList: true, activateError: failure } satisfies LeasePageState });
   };
 
   return (
@@ -206,22 +215,13 @@ export function LeasesPage() {
             <Pagination page={table.page} pageCount={table.pageCount} onPageChange={table.setPage} summary={table.summary} />
           ) : undefined
         }
-        onOpen={(l) => setOpen({ id: l.id })}
+        onOpen={(l) => void navigate(`/leases/${encodeURIComponent(l.id)}`, { state: { fromList: true } satisfies LeasePageState })}
         onEdit={canEdit ? setEditLease : undefined}
         onActivate={canEdit ? (l) => void onActivate(l) : undefined}
         onEnd={canEdit ? setEndLease : undefined}
         onDelete={canEdit ? setDeleteLease : undefined}
       />
 
-      {open && (
-        <LeaseDrawer
-          key={open.id}
-          leaseId={open.id}
-          placeholder={leases.data?.find((l) => l.id === open.id)}
-          initialActivateError={open.activateError}
-          onClose={() => setOpen(null)}
-        />
-      )}
       {adding && <LeaseWizard onClose={() => setAdding(false)} />}
       {editLease && <LeaseWizard lease={editLease} onClose={() => setEditLease(null)} />}
       {endLease && <LeaseEndModal lease={endLease} onClose={() => setEndLease(null)} />}

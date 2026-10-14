@@ -4,7 +4,7 @@ import { LogOut, SlidersHorizontal } from "lucide-react";
 import { defaultNavGroups, type ModuleKey, type NavGroup, type NavItem, type SidebarProps } from "@/components/organisms";
 import { WorkspaceShell } from "@/components/templates";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
-import { PageTitleContext } from "@/app/pageTitle";
+import { PageNavContext, PageTitleContext } from "@/app/pageTitle";
 import { useAuth } from "@/features/auth/authContext";
 import { roleLabel, toSidebarRole } from "@/features/auth/permissions";
 import { ScopeProvider } from "@/features/scope/ScopeProvider";
@@ -55,6 +55,8 @@ function AppShell() {
   // A page may replace the route title (usePageTitle), e.g. the property detail shows the property name.
   const [pageTitle, setPageTitle] = useState<string | null>(null);
   const title = pageTitle ?? handle.title;
+  // A page may also replace the Sidebar item (usePageNav), e.g. a lease opened from the Rent Roll highlights Rent Roll.
+  const [pageNav, setPageNav] = useState<ModuleKey | null>(null);
   useDocumentTitle(title);
 
   // RequireAuth renders this layout only when status is "ready", so me is set.
@@ -65,7 +67,7 @@ function AppShell() {
       sidebar={{
         role: toSidebarRole(me.role),
         // "dashboard" is not in our groups, so pages without a nav key highlight nothing.
-        active: handle.nav ?? "dashboard",
+        active: pageNav ?? handle.nav ?? "dashboard",
         user: { name: me.name, roleLabel: roleLabel(me.role) },
         scope: label,
         onScopeClick: openPicker,
@@ -86,7 +88,9 @@ function AppShell() {
       }}
     >
       <PageTitleContext value={setPageTitle}>
-        <Outlet />
+        <PageNavContext value={setPageNav}>
+          <Outlet />
+        </PageNavContext>
       </PageTitleContext>
     </WorkspaceShell>
   );

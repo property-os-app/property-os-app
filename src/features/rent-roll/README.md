@@ -1,6 +1,6 @@
 # src/features/rent-roll
 
-The /rent-roll page: the month's rows per lease, KPIs from the summary, Generate rent, and the ledger drawer. Charges, payments and the ledger itself live in `src/features/ledger`.
+The /rent-roll page: the month's rows per lease, KPIs from the summary, Generate rent. A row opens the lease page (`/leases/:id?tab=ledger&from=rent-roll&month=`). Charges, payments and the ledger itself live in `src/features/ledger`.
 
 ## keys.ts
 - `rentRollKeys`: `all` (the shared `["rent-roll"]` prefix) and `month(month, propertyId)`.
@@ -21,13 +21,10 @@ The /rent-roll page: the month's rows per lease, KPIs from the summary, Generate
 - `rowLabel(row)`, `paymentTargets(rows)`: Record Payment choices.
 
 ## RentRollPage.tsx
-- `RentRollPage`: header with the month switcher (prev, current month, next; kept in ?month=), Generate rent (disabled after next UTC month, with "You can generate rent up to {Month YYYY}." in the header and the banner) and Record Payment; 4 KPIs (Deposits held says "as of today" off the current month); status segments, search and Property (scope); banners by NOT_BILLED rows ("not generated yet" when all, "{n} leases aren't billed" with a link to the Not billed segment when some); the table (no Property column when one property is picked); drawer and modals.
+- `RentRollPage`: header with the month switcher (prev, current month, next; kept in ?month=), Generate rent (disabled after next UTC month, with "You can generate rent up to {Month YYYY}." in the header and the banner) and Record Payment; 4 KPIs (Deposits held says "as of today" off the current month); status segments, search and Property (scope); banners by NOT_BILLED rows ("not generated yet" when all, "{n} leases aren't billed" with a link to the Not billed segment when some); the table (no Property column when one property is picked); a row click or "Open ledger" goes to the lease page, Ledger tab; kebab Record payment and Add charge open their modals here.
 
 ## RentRollTable.tsx
 - `RentRollTable`: columns (tenant + lease number + Ended/Terminated badge, unit, property (optional), previous balance, rent due, paid + caption, balance, status, status date), kebab (Open ledger, Record payment, Add charge) and the totals row over all filtered rows ("{n} billed", sums, "after {credits} in credits").
 
 ## GenerateRentModal.tsx
 - `GenerateRentModal`: "Generate rent for {Month}" confirm, with a warning for past months and next month; result toast with the created and skipped counts.
-
-## LedgerDrawer.tsx
-- `LedgerDrawer`: lg drawer with avatar + tenant, "Unit {n}, {property} · Lease to {end}", the month's status; Ledger tab (`LedgerView`) and Lease tab (key values + "Open in Leases"); footer Add charge / Record Payment by permission.

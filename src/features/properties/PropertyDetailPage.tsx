@@ -1,12 +1,11 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { Building2, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
-import { Avatar, Button, Caption, Dash, H1, Num, Overline, Skeleton, Small } from "@/components/atoms";
+import { Building2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Avatar, Button, Caption, Dash, H1, Num, Skeleton, Small } from "@/components/atoms";
 import { Card, CardHeader, EmptyState, InlineError, KebabMenu, KeyValueList, Tabs, toast } from "@/components/molecules";
 import { ConfirmDialog } from "@/components/organisms";
 import { usePageTitle } from "@/app/pageTitle";
 import { ApiError, errorText } from "@/lib/api";
-import { cn } from "@/lib/cn";
 import { centsToAmount, formatCompactCurrency, formatCurrency, formatDate, formatPercent } from "@/lib/format";
 import { plural, propertyTypeLabels } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
@@ -17,6 +16,7 @@ import { PropertyImage } from "@/features/properties/PropertyCard";
 import { PropertyFormModal } from "@/features/properties/PropertyFormModal";
 import { PropertyManagersCard } from "@/features/properties/PropertyManagersCard";
 import { PropertyUnitsTable } from "@/features/properties/PropertyUnitsTable";
+import { Breadcrumb, Tile } from "@/features/shared/DetailParts";
 import { activeRentCentsByProperty, buildUnitRows, countUnits, formatAddress, needsAttention, occupancy } from "@/features/properties/stats";
 import { useUnits } from "@/features/units/hooks";
 import { UnitDrawer } from "@/features/units/UnitDrawer";
@@ -25,28 +25,7 @@ import type { Property } from "@/types/property";
 
 type Tab = "overview" | "units";
 
-function Breadcrumb({ name }: { name: ReactNode }) {
-  return (
-    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-small">
-      <Link to="/properties" className="text-text-secondary no-underline hover:text-text-primary focus-visible:focus-ring">
-        Properties
-      </Link>
-      <ChevronRight aria-hidden size={14} strokeWidth={1.5} className="shrink-0 text-text-muted" />
-      <span className="truncate text-text-primary">{name}</span>
-    </nav>
-  );
-}
-
-/** Small KPI tile inside the header card. */
-function Tile({ label, value, note, loading, className }: { label: string; value: ReactNode; note: ReactNode; loading: boolean; className?: string }) {
-  return (
-    <div className="flex flex-col gap-1 rounded-control border border-border-subtle p-4">
-      <Overline>{label}</Overline>
-      {loading ? <Skeleton className="h-7 w-20" /> : <Num className={cn("text-h2 font-bold text-text-primary", className)}>{value}</Num>}
-      <Caption>{loading ? " " : note}</Caption>
-    </div>
-  );
-}
+const propertiesCrumb = [{ label: "Properties", to: "/properties" }];
 
 /** /properties/:id: header card with KPIs and managers (embedded in the property; the Managers card fetches emails), Overview and Units tabs, edit and delete (OWNER). */
 export function PropertyDetailPage() {
@@ -58,7 +37,7 @@ export function PropertyDetailPage() {
   if (property.error instanceof ApiError && property.error.status === 404) {
     return (
       <>
-        <Breadcrumb name="Not found" />
+        <Breadcrumb links={propertiesCrumb} current="Not found" />
         <Card padding="none">
           <EmptyState
             icon={<Building2 strokeWidth={1.5} />}
@@ -77,7 +56,7 @@ export function PropertyDetailPage() {
   if (property.isError) {
     return (
       <>
-        <Breadcrumb name="Property" />
+        <Breadcrumb links={propertiesCrumb} current="Property" />
         <InlineError title="Couldn't load this property" description={errorText(property.error)} onRetry={() => void property.refetch()} />
       </>
     );
@@ -85,7 +64,7 @@ export function PropertyDetailPage() {
   if (property.isPending) {
     return (
       <>
-        <Breadcrumb name={<Skeleton className="inline-block h-3 w-24" />} />
+        <Breadcrumb links={propertiesCrumb} current={<Skeleton className="inline-block h-3 w-24" />} />
         <Card>
           <div className="flex flex-col gap-6 md:flex-row">
             <Skeleton className="h-[180px] w-full shrink-0 md:w-[280px]" />
@@ -151,7 +130,7 @@ function PropertyDetail({ property }: { property: Property }) {
 
   return (
     <>
-      <Breadcrumb name={property.name} />
+      <Breadcrumb links={propertiesCrumb} current={property.name} />
 
       <Card padding="none">
         <div className="flex flex-col gap-6 p-6 md:flex-row">
