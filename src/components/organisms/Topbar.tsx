@@ -26,11 +26,13 @@ export interface TopbarProps {
   showAi?: boolean;
   /** Shows the "Open menu" button below the lg breakpoint (where the sidebar is hidden). */
   onMenu?: () => void;
+  /** Extra content just left of the avatar (e.g. a ThemeSwitch). */
+  endSlot?: React.ReactNode;
   className?: string;
 }
 
 /** 64px sticky top bar: page title and scope chip, global search (⌘K), Ask AI, bell, quick add, profile. */
-export function Topbar({ title, scope, user, unreadNotifications = 0, onSearch, onAskAi, onNotifications, onQuickAdd, onProfile, profileMenu, showAi = true, onMenu, className }: TopbarProps) {
+export function Topbar({ title, scope, user, unreadNotifications = 0, onSearch, onAskAi, onNotifications, onQuickAdd, onProfile, profileMenu, showAi = true, onMenu, endSlot, className }: TopbarProps) {
   return (
     <header className={cn("sticky top-0 z-10 flex h-topbar shrink-0 items-center gap-4 border-b border-border-subtle bg-bg px-4 lg:px-8", className)}>
       <div className="flex min-w-0 items-center gap-3">
@@ -70,6 +72,7 @@ export function Topbar({ title, scope, user, unreadNotifications = 0, onSearch, 
           </Button>
         )}
         {onQuickAdd && <Button variant="primary" iconOnly aria-label="Quick add: payment, lease, expense, ticket, tenant" onClick={onQuickAdd} icon={<Plus size={20} strokeWidth={1.5} />} />}
+        {endSlot}
         {profileMenu ? (
           <KebabMenu items={profileMenu} label="Profile menu" trigger={<Avatar name={user.name} src={user.avatarUrl} />} />
         ) : (

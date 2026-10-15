@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Outlet, ScrollRestoration, useLocation, useMatches, useNavigate, useNavigation } from "react-router";
 import { LogOut, SlidersHorizontal } from "lucide-react";
 import { defaultNavGroups, type ModuleKey, type NavGroup, type NavItem, type SidebarProps } from "@/components/organisms";
+import { ThemeSwitch } from "@/components/molecules";
 import { WorkspaceShell } from "@/components/templates";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { PageNavContext, PageTitleContext } from "@/app/pageTitle";
@@ -10,6 +11,8 @@ import { useAuth } from "@/features/auth/authContext";
 import { roleLabel, toSidebarRole } from "@/features/auth/permissions";
 import { ScopeProvider } from "@/features/scope/ScopeProvider";
 import { useScope } from "@/features/scope/scopeContext";
+import { useTheme } from "@/features/settings/themeContext";
+import { changeThemeWithReveal } from "@/features/settings/themeReveal";
 
 /** Put on each route as `handle`: the page title (Topbar + tab) and the Sidebar item to highlight. */
 export interface RouteHandle {
@@ -52,6 +55,7 @@ export function AppLayout() {
 function AppShell() {
   const { me, signOut } = useAuth();
   const { label, openPicker } = useScope();
+  const { resolved, setPreference } = useTheme();
   const handle = useRouteHandle();
   const navigate = useNavigate();
   // A page may replace the route title (usePageTitle), e.g. the property detail shows the property name.
@@ -97,6 +101,8 @@ function AppShell() {
         scope: label,
         user: { name: me.name },
         showAi: false,
+        // Flips what is showing now (also from "system"); Settings shows the new Light / Dark choice.
+        endSlot: <ThemeSwitch checked={resolved === "dark"} onChange={(dark, e) => changeThemeWithReveal(e.currentTarget, dark, setPreference)} />,
         profileMenu: [
           { label: me.email, disabled: true, onSelect: () => {} },
           { label: "Settings", icon: <SlidersHorizontal strokeWidth={1.5} />, onSelect: () => void navigate("/settings") },

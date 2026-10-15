@@ -17,5 +17,8 @@ User preferences saved on this device. For now only the theme (Light / Dark / Sy
 ## ThemeProvider.tsx
 - `ThemeProvider`: holds the preference, applies the `dark` class, and on "system" follows the computer's setting live. Mounted at the app root (`src/app/providers.tsx`), so the login page uses it too. Sign-out does not clear it.
 
+## themeReveal.ts
+- `changeThemeWithReveal(origin, dark, setPreference)`: saves "light" or "dark" (same key as Settings) and shows the new theme in a circle growing from `origin` over 400 ms (View Transitions API). No support or reduced motion: instant. Used by the Topbar ThemeSwitch; Settings stays instant. The CSS that turns off the default cross-fade is in `src/index.css`.
+
 ## SettingsPage.tsx
 - `SettingsPage`: `/settings`. PageHeader, `SettingsLayout` with one section ("General"), and an "Appearance" card with a Theme `SegmentedControl` (Dark / Light / System). Applies right away, no Save button, no toast.

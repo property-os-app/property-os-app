@@ -7,3 +7,4 @@ export * from "./Feedback";
 export * from "./Stepper";
 export * from "./FileDropzone";
 export * from "./Menu";
+export * from "./ThemeSwitch";

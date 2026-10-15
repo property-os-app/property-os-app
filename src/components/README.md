@@ -62,6 +62,7 @@ Atoms combined to do one job.
 | `Stepper` | Horizontal numbered steps | `steps`, `current` | Multi-step modals. |
 | `StatusTracker` | Vertical steps | `steps`, `current` | Renter ticket progress. |
 | `FileDropzone` | Drag-and-drop upload list | `files`, `onFiles`, `onRemove` | File uploads. |
+| `ThemeSwitch` | Light/dark switch that looks like a Topbar ghost icon button (40×40, 44×44 tap area). One icon in `currentColor` morphs sun ↔ crescent moon (rays shrink and fade, circle becomes a crescent, small turn, 300 ms ease-out). Reduced motion: instant | `checked` (true = dark), `onChange(checked, event)`. Has `role="switch"`, name "Dark mode" and a "Switch to dark/light mode" tooltip | Topbar `endSlot`. Holds no theme logic; the app saves the choice. |
 | `KebabMenu` | "⋮" row actions menu | `items` (label, icon, onSelect, destructive, disabled), `trigger` (custom opener, e.g. an Avatar) | Row actions in tables; Topbar profile menu. |
 | `AiActionItem`, `AiHeading` | AI finding row / AI card header | `finding`, `reason`, `onAction` | AI surfaces. |
 | `TimelineItem`, `TimelineDay` | Activity row / day header | `icon`, `tone`, `meta` | Activity feeds. |
@@ -74,7 +75,7 @@ Page sections. They own no data.
 | Component | What it does | Main props | When to use |
 | --- | --- | --- | --- |
 | `Sidebar` | Left nav, filtered by role | `role`, `active` (optional: nothing highlighted), `user`, `scope`, `onScopeClick`, `groups`, `brand`, `renderLink`, `badges`, `collapsed`, `onNavigate` (after a nav click), `onClose` ("Close menu" button) | Inside `WorkspaceShell` and its mobile menu. |
-| `Topbar` | 64px top bar: title, scope chip, avatar; search, bell and quick add only when their handler is passed | `title`, `scope`, `user`, `showAi`, `onSearch`, `onNotifications`, `onQuickAdd`, `profileMenu` (or `onProfile`), `onMenu` ("Open menu" button below lg) | Inside `WorkspaceShell`. |
+| `Topbar` | 64px top bar: title, scope chip, avatar; search, bell and quick add only when their handler is passed | `title`, `scope`, `user`, `showAi`, `onSearch`, `onNotifications`, `onQuickAdd`, `profileMenu` (or `onProfile`), `onMenu` ("Open menu" button below lg), `endSlot` (content just left of the avatar) | Inside `WorkspaceShell`. |
 | `PageHeader` | Page title, description, actions (wrap under the title on narrow screens) | `title`, `description`, `actions`, `breadcrumb` | Top of every page. Primary action last. |
 | `Toolbar` | Wrapping row | `children` | Search + filters above a table. |
 | `KpiRow` | Grid of up to 4 cards | `children` | Row of `KpiCard`s. |
@@ -137,7 +138,7 @@ Based on docs/BRIEF.md (admin portal: login, Properties, Units, Tenants, Leases,
 
 **Used**
 - Atoms: Button, LinkButton, Badge, Tag, Count, Delta, Typography (H1-H3, Body, Small, Caption, Overline, Display, Num, Dash), Input, Textarea, Select, CurrencyInput, Checkbox, Toggle, Avatar, Skeleton, Divider, CollectionProgress, Bar
-- Molecules: StatusBadge, FormField, SearchInput, SegmentedControl, Tabs, FilterChip, Card, CardHeader, KpiCard, HeroStatCard, KeyValueList, EmptyState, InlineError, Toaster + toast, KebabMenu, Stepper (Add Lease wizard)
+- Molecules: StatusBadge, FormField, SearchInput, SegmentedControl, Tabs, FilterChip, Card, CardHeader, KpiCard, HeroStatCard, KeyValueList, EmptyState, InlineError, Toaster + toast, KebabMenu, Stepper (Add Lease wizard), ThemeSwitch (Topbar)
 - Organisms: Sidebar, Topbar, PageHeader, Toolbar, KpiRow, DataTable, Pagination, Drawer, Modal, ConfirmDialog, BarChart, StackedBar
 - Templates: WorkspaceShell, AuthLayout, SettingsLayout
 - Dashboard: HeroStatCard, CollectionProgress, BarChart, StackedBar (RentCollectionHero is not used: see Known gaps)
@@ -212,3 +213,5 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | 2026-10-15 | `organisms/Overlays.tsx` (`Modal`, `Drawer`) | Without a `description`, Content gets `aria-describedby={undefined}` (was only for a bare Drawer). With a description nothing changes. | Radix logged "Missing Description or aria-describedby" for every modal and drawer without one. |
 | 2026-10-15 | `templates/Shells.tsx` (`WorkspaceShell`) | Content column gets `overflow-x-clip`; `main` gets `min-w-0`. | The Rent Roll made the whole page scroll sideways on desktop. `clip` (not `hidden`) keeps the sticky Topbar working; wide tables still scroll inside their own card. |
 | 2026-10-15 | `lib/format.ts` | Added `formatShortDate` ("Oct 14", date-only, no year). Nothing else changed. | Rent Roll captions ("Starts Oct 14 · first rent Nov 1") and the prorated rent description. |
+| 2026-10-15 | `molecules/ThemeSwitch.tsx` (new), `molecules/index.ts` | New `ThemeSwitch`: a ghost icon button (same `buttonVariants` ghost / icon-only as the other Topbar buttons, so same size, shape, hover and keyboard-only focus ring) with one SVG icon in `currentColor` that morphs sun ↔ crescent moon (rays scale to 0 and fade, a mask circle slides over the disc, 45° turn, 300 ms ease-out). `role="switch"`, `aria-checked`, name "Dark mode", tooltip; 44×44 tap area via `after:`; `motion-reduce`: no transitions. No new tokens. | A clean light/dark switch in the Topbar; `Toggle` is a form switch, not a Topbar icon button. A first pill version (tracks, knob, stars, own tokens) was replaced the same day as too busy. |
+| 2026-10-15 | `organisms/Topbar.tsx` (`Topbar`) | Optional `endSlot` (ReactNode), rendered just left of the avatar. Without it nothing changes. | Place the ThemeSwitch next to the avatar without the Topbar knowing about themes. |
