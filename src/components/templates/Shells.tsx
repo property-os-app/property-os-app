@@ -33,10 +33,11 @@ export function WorkspaceShell({ sidebar, topbar, banner, menuOpen, onMenuOpenCh
         <Sidebar {...sidebar} />
       </div>
       <NavMenuDrawer open={open} onOpenChange={setOpen} sidebar={sidebar} />
-      <div className="flex min-w-0 flex-1 flex-col">
+      {/* overflow-x-clip (not hidden, so the Topbar stays sticky): nothing makes the page scroll sideways; wide tables scroll in their card. */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-x-clip">
         <Topbar onMenu={() => setOpen(true)} {...topbar} />
         {banner}
-        <main className="mx-auto flex w-full max-w-content flex-col gap-6 p-4 md:p-8">{children}</main>
+        <main className="mx-auto flex w-full min-w-0 max-w-content flex-col gap-6 p-4 md:p-8">{children}</main>
       </div>
     </div>
   );
@@ -136,7 +137,7 @@ export function SettingsLayout({ sections, active, renderLink, children, classNa
           <React.Fragment key={s.key}>
             {link(s.href, {
               "aria-current": s.key === active ? "page" : undefined,
-              className: cn("rounded-control px-3 py-2.5 no-underline", s.key === active ? "bg-surface-3 text-text-primary" : "text-text-secondary hover:bg-surface-3 hover:text-text-primary"),
+              className: cn("rounded-control px-3 py-2.5 no-underline focus-visible:focus-ring", s.key === active ? "bg-surface-3 text-text-primary" : "text-text-secondary hover:bg-surface-3 hover:text-text-primary"),
               children: s.label,
             })}
           </React.Fragment>

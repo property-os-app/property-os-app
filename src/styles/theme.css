@@ -207,3 +207,8 @@
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
+/* For inline text links: no gap, so the ring stays clear of the next word. */
+@utility focus-ring-tight {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 0;
+}

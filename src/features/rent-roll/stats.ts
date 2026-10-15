@@ -60,7 +60,8 @@ export const owingCount = (rows: RentRollRow[]) => rows.filter((r) => toCents(r.
 
 /**
  * Totals row over the visible rows, in integer cents. `billed`: rows that are not NOT_BILLED.
- * `balanceCents` is net (credits subtract); `creditCents` is the sum of the credits as a positive number.
+ * `owedCents` sums the positive balances (like the summary's `outstandingBalance`, so it matches the Outstanding KPI when
+ * nothing is filtered); `creditCents` sums the credits (negative balances) as a positive number.
  */
 export function rowTotals(rows: RentRollRow[]) {
   return rows.reduce(
@@ -71,11 +72,11 @@ export function rowTotals(rows: RentRollRow[]) {
         openingCents: t.openingCents + toCents(r.openingBalance),
         chargedCents: t.chargedCents + toCents(r.charged),
         paidCents: t.paidCents + toCents(r.paid),
-        balanceCents: t.balanceCents + balance,
+        owedCents: t.owedCents + (balance > 0 ? balance : 0),
         creditCents: t.creditCents + (balance < 0 ? -balance : 0),
       };
     },
-    { billed: 0, openingCents: 0, chargedCents: 0, paidCents: 0, balanceCents: 0, creditCents: 0 },
+    { billed: 0, openingCents: 0, chargedCents: 0, paidCents: 0, owedCents: 0, creditCents: 0 },
   );
 }
 
@@ -108,3 +109,34 @@ export const rowLabel = (r: RentRollRow) => `${r.primaryTenant?.fullName ?? "No 
 /** Record Payment choices from the month's rows (balance = the row's balance at month end). */
 export const paymentTargets = (rows: RentRollRow[]): PaymentTarget[] =>
   rows.map((r) => ({ leaseId: r.leaseId, label: rowLabel(r), unitNumber: r.unit.unitNumber, balance: r.balance }));
+
+/** What part of the month's payments went to older balances or ahead of this month's charges (integer cents). */
+export interface CollectionBreakdown {
+  towardEarlierCents: number;
+  inAdvanceCents: number;
+}
+
+/**
+ * Per row: towardEarlier = min(paid, max(openingBalance, 0)); inAdvance = max(0, paid - max(openingBalance, 0) - charged).
+ * Summed over all rows of the month (not the filtered ones), so it matches `summary.collected`.
+ */
+export function collectionBreakdown(rows: RentRollRow[]): CollectionBreakdown {
+  let towardEarlierCents = 0;
+  let inAdvanceCents = 0;
+  for (const r of rows) {
+    const paid = toCents(r.paid);
+    const owedBefore = Math.max(toCents(r.openingBalance), 0);
+    towardEarlierCents += Math.min(paid, owedBefore);
+    inAdvanceCents += Math.max(0, paid - owedBefore - toCents(r.charged));
+  }
+  return { towardEarlierCents, inAdvanceCents };
+}
+
+/** "Includes $200.00 toward earlier balances and $50.00 paid in advance" (non-zero parts only); null when both are 0. */
+export function collectionNote({ towardEarlierCents, inAdvanceCents }: CollectionBreakdown): string | null {
+  const parts = [
+    towardEarlierCents > 0 ? `${formatCurrency(centsToAmount(towardEarlierCents))} toward earlier balances` : null,
+    inAdvanceCents > 0 ? `${formatCurrency(centsToAmount(inAdvanceCents))} paid in advance` : null,
+  ].filter(Boolean);
+  return parts.length > 0 ? `Includes ${parts.join(" and ")}` : null;
+}

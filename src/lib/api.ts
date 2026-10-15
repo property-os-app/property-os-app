@@ -1,4 +1,5 @@
 import { env } from "@/lib/env";
+import type { User } from "firebase/auth";
 import { auth, authReady } from "@/lib/firebase";
 
 type QueryValue = string | number | boolean | null | undefined;
@@ -32,6 +33,13 @@ export class ApiError extends Error {
   }
 }
 
+/** Shown when the server can't be reached (backend down, offline). Modals keep the form and show it at the top. */
+export const OFFLINE_MESSAGE = "Can't reach the server. Check your connection and try again.";
+/** Shown for any 5xx: the backend body is always "Internal server error". */
+export const SERVER_ERROR_MESSAGE = "Something went wrong on the server. Try again in a moment.";
+/** Shown for 403 FORBIDDEN_ROLE instead of the backend text. */
+export const FORBIDDEN_MESSAGE = "You don't have permission to do this.";
+
 /** One display text for any thrown value (ApiError, Error or unknown). */
 export function errorText(err: unknown): string {
   if (err instanceof ApiError) return err.messages.length > 0 ? err.messages.join(". ") : err.error || `Request failed (${err.status})`;
@@ -57,6 +65,23 @@ function toMessages(message: unknown): string[] {
   return [];
 }
 
+/** The Firebase token; refreshing it offline fails with auth/network-request-failed, which becomes the offline error. */
+async function getToken(user: User): Promise<string> {
+  try {
+    return await user.getIdToken();
+  } catch (err) {
+    if ((err as { code?: unknown })?.code === "auth/network-request-failed") throw new ApiError(0, [OFFLINE_MESSAGE]);
+    throw err;
+  }
+}
+
+/** Friendly texts for 5xx and FORBIDDEN_ROLE; other errors keep the backend message. */
+function friendlyMessages(status: number, code: string | undefined, messages: string[]): string[] {
+  if (status >= 500) return [SERVER_ERROR_MESSAGE];
+  if (code === "FORBIDDEN_ROLE") return [FORBIDDEN_MESSAGE];
+  return messages;
+}
+
 /** Calls the backend: adds the Firebase token when signed in, parses JSON, throws ApiError on failure. */
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const { method = "GET", body, query, signal } = options;
@@ -64,7 +89,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   await authReady;
   const headers: Record<string, string> = { Accept: "application/json" };
   const user = auth.currentUser;
-  if (user) headers.Authorization = `Bearer ${await user.getIdToken()}`;
+  if (user) headers.Authorization = `Bearer ${await getToken(user)}`;
   if (body !== undefined) headers["Content-Type"] = "application/json";
 
   let res: Response;
@@ -77,7 +102,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     });
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
-    throw new ApiError(0, ["Cannot reach the server. Is the backend running?"]);
+    throw new ApiError(0, [OFFLINE_MESSAGE]);
   }
 
   const text = res.status === 204 ? "" : await res.text();
@@ -92,12 +117,13 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
 
   if (!res.ok) {
     const obj = typeof data === "object" && data !== null ? (data as { message?: unknown; error?: unknown; code?: unknown }) : {};
+    const code = typeof obj.code === "string" ? obj.code : undefined;
     const messages = typeof data === "string" ? toMessages(data) : toMessages(obj.message);
     throw new ApiError(
       res.status,
-      messages,
+      friendlyMessages(res.status, code, messages),
       typeof obj.error === "string" ? obj.error : res.statusText || undefined,
-      typeof obj.code === "string" ? obj.code : undefined,
+      code,
     );
   }
 

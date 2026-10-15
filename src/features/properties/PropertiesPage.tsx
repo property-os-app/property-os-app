@@ -1,6 +1,6 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { Building2, LayoutGrid, List, Plus, SearchX } from "lucide-react";
-import { Button, Select, Skeleton } from "@/components/atoms";
+import { useMemo, type ReactNode } from "react";
+import { LayoutGrid, List, Plus, SearchX } from "lucide-react";
+import { Button, Dash, Select, Skeleton } from "@/components/atoms";
 import { Card, EmptyState, InlineError, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
 import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
@@ -11,10 +11,10 @@ import { useStoredView } from "@/lib/useStoredView";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { useLeases } from "@/features/leases/hooks";
+import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
 import { useManagers, useProperties } from "@/features/properties/hooks";
 import { PropertiesTable } from "@/features/properties/PropertiesTable";
 import { PropertyCard, PropertyCardSkeleton, type PropertyRow } from "@/features/properties/PropertyCard";
-import { PropertyFormModal } from "@/features/properties/PropertyFormModal";
 import {
   activeRentCentsByProperty,
   countUnits,
@@ -25,8 +25,8 @@ import {
   unitCountsByProperty,
   unitStatusNote,
 } from "@/features/properties/stats";
+import { NoProperties } from "@/features/shared/NoProperties";
 import { useUnits } from "@/features/units/hooks";
-import { UnitFormModal } from "@/features/units/UnitFormModal";
 
 type View = "cards" | "table";
 type Filters = { type: string; manager: string };
@@ -65,9 +65,7 @@ export function PropertiesPage() {
   const managers = useManagers();
 
   const [view, setView] = useStoredView<View>(VIEW_KEY, VIEWS, "cards");
-  const [formOpen, setFormOpen] = useState(false);
-  // "Add unit {index} of {total}" after creating a property with a number of units. null = no chain.
-  const [chain, setChain] = useState<{ propertyId: string; index: number; total: number } | null>(null);
+  const addProperty = useAddPropertyFlow();
 
   const countsByProperty = useMemo(() => unitCountsByProperty(units.data ?? []), [units.data]);
   const rentByProperty = useMemo(() => activeRentCentsByProperty(leases.data ?? []), [leases.data]);
@@ -109,7 +107,7 @@ export function PropertiesPage() {
   const totalUnits = useMemo(() => (properties.data ?? []).reduce((sum, p) => sum + p.unitCount, 0), [properties.data]);
   const totalValueCents = useMemo(() => sumCents(properties.data?.map((p) => p.propertyValue) ?? []), [properties.data]);
   const ready = !isLoading && !failed;
-  const kpi = (value: ReactNode) => (ready ? value : <Skeleton className="h-10 w-24" />);
+  const kpi = (value: ReactNode) => (ready ? value : failed ? <Dash /> : <Skeleton className="h-10 w-24" />);
 
   const state: "loading" | "error" | "empty" | "ideal" = failed
     ? "error"
@@ -118,35 +116,39 @@ export function PropertiesPage() {
       : table.total === 0
         ? "empty"
         : "ideal";
-  const noProperties = (properties.data?.length ?? 0) === 0;
 
-  const addButton = (variant: "primary" | "secondary") =>
-    canCreate ? (
-      <Button variant={variant} icon={<Plus size={16} strokeWidth={1.5} />} onClick={() => setFormOpen(true)}>
-        Add Property
-      </Button>
-    ) : undefined;
+  const addButton = canCreate ? (
+    <Button variant="primary" icon={<Plus size={16} strokeWidth={1.5} />} onClick={addProperty.open}>
+      Add Property
+    </Button>
+  ) : undefined;
 
-  const empty = noProperties
-    ? isOwner
-      ? { title: "No properties yet", description: "Add your first property to start tracking units and leases.", action: addButton("secondary") }
-      : { title: "No properties yet", description: "No properties are assigned to you yet." }
-    : {
-        title: "No properties match your filters",
-        description: "Try another search or filter.",
-        action: <Button onClick={table.clearFilters}>Clear filters</Button>,
-      };
+  const empty = {
+    title: "No properties match your filters",
+    description: "Try another search or filter.",
+    action: <Button onClick={table.clearFilters}>Clear filters</Button>,
+  };
   const error = { title: "Couldn't load properties", description: failed ? errorText(failed.error) : undefined, onRetry: retry };
   const pagination = table.showPagination ? (
     <Pagination page={table.page} pageCount={table.pageCount} onPageChange={table.setPage} summary={table.summary} />
   ) : undefined;
+
+  if (properties.data?.length === 0) {
+    return (
+      <>
+        <PageHeader title="Properties" />
+        <NoProperties onAdd={addProperty.open} />
+        {addProperty.modals}
+      </>
+    );
+  }
 
   return (
     <>
       <PageHeader
         title="Properties"
         description={ready ? `${plural(properties.data?.length ?? 0, "property", "properties")}, ${plural(totalUnits, "unit")}.` : undefined}
-        actions={addButton("primary")}
+        actions={addButton}
       />
 
       <KpiRow>
@@ -214,7 +216,7 @@ export function PropertiesPage() {
           <InlineError {...error} />
         ) : state === "empty" ? (
           <Card padding="none">
-            <EmptyState icon={noProperties ? <Building2 strokeWidth={1.5} /> : <SearchX strokeWidth={1.5} />} {...empty} />
+            <EmptyState icon={<SearchX strokeWidth={1.5} />} {...empty} />
           </Card>
         ) : (
           <>
@@ -228,24 +230,7 @@ export function PropertiesPage() {
         )}
       </div>
 
-      {formOpen && (
-        <PropertyFormModal
-          onClose={() => setFormOpen(false)}
-          onCreated={(property, unitCount) => {
-            if (unitCount > 0) setChain({ propertyId: property.id, index: 1, total: unitCount });
-          }}
-        />
-      )}
-      {chain && (
-        <UnitFormModal
-          // A new key per step gives each unit a fresh form.
-          key={chain.index}
-          defaultPropertyId={chain.propertyId}
-          step={{ index: chain.index, total: chain.total }}
-          onSaved={() => setChain((c) => (c && c.index < c.total ? { ...c, index: c.index + 1 } : null))}
-          onClose={() => setChain(null)}
-        />
-      )}
+      {addProperty.modals}
     </>
   );
 }

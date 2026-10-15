@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { Plus } from "lucide-react";
-import { Badge, Button, Select, Skeleton } from "@/components/atoms";
+import { Badge, Button, Dash, Select, Skeleton } from "@/components/atoms";
 import { KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
 import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
@@ -17,9 +17,11 @@ import type { LeasePageState } from "@/features/leases/LeasePage";
 import { LeasesTable } from "@/features/leases/LeasesTable";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
 import { compareLeasesDefault, expiresWithin, isClosed, isPastEnd, pastEndNote, primaryTenant, startedThisMonth } from "@/features/leases/stats";
+import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
 import { useProperties } from "@/features/properties/hooks";
 import { sumCents } from "@/features/properties/stats";
 import { useScope } from "@/features/scope/scopeContext";
+import { NoProperties } from "@/features/shared/NoProperties";
 import type { Lease, SignatureStatus } from "@/types/lease";
 
 type StatusFilter = "all" | "active" | "expiring" | "draft" | "ended";
@@ -80,6 +82,7 @@ function LeasesList() {
   const [editLease, setEditLease] = useState<Lease | null>(null);
   const [endLease, setEndLease] = useState<Lease | null>(null);
   const [deleteLease, setDeleteLease] = useState<Lease | null>(null);
+  const addProperty = useAddPropertyFlow();
 
   // Default order: ACTIVE by soonest end, then DRAFT newest first, then ENDED / TERMINATED latest end first.
   const rows = useMemo(() => (leases.data ? [...leases.data].sort(compareLeasesDefault) : undefined), [leases.data]);
@@ -117,7 +120,7 @@ function LeasesList() {
   );
 
   const ready = leases.isSuccess;
-  const kpi = (value: ReactNode) => (ready ? value : <Skeleton className="h-10 w-24" />);
+  const kpi = (value: ReactNode) => (ready ? value : leases.isError ? <Dash /> : <Skeleton className="h-10 w-24" />);
   const state: "loading" | "error" | "empty" | "ideal" = leases.isError ? "error" : leases.isPending ? "loading" : table.total === 0 ? "empty" : "ideal";
 
   const addButton = (variant: "primary" | "secondary") =>
@@ -146,6 +149,16 @@ function LeasesList() {
     // A failed activation opens the lease page with the reason and the "Edit lease" button.
     if (failure) void navigate(`/leases/${encodeURIComponent(l.id)}`, { state: { from: "leases", activateError: failure } satisfies LeasePageState });
   };
+
+  if (properties.data?.length === 0) {
+    return (
+      <>
+        <PageHeader title="Leases" />
+        <NoProperties onAdd={addProperty.open} />
+        {addProperty.modals}
+      </>
+    );
+  }
 
   return (
     <>

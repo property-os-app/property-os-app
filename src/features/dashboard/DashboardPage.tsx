@@ -1,8 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
-import { Building2 } from "lucide-react";
 import { Dash, Skeleton } from "@/components/atoms";
-import { Card, EmptyState, InlineError, KpiCard, type KpiCardProps } from "@/components/molecules";
+import { InlineError, KpiCard, type KpiCardProps } from "@/components/molecules";
 import { KpiRow, PageHeader } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { formatCurrency, formatPercent } from "@/lib/format";
@@ -13,11 +12,13 @@ import { BilledCollectedChart, ExpirationsChart, UnitsByStatusChart } from "@/fe
 import { AtRiskLeasesTable, OverdueRentTable } from "@/features/dashboard/DashboardTables";
 import { useDashboardStats } from "@/features/dashboard/hooks";
 import { NeedsAttention } from "@/features/dashboard/NeedsAttention";
+import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
 import { RentCollectionCard } from "@/features/dashboard/RentCollectionCard";
 import { greeting, vacantNote } from "@/features/dashboard/stats";
 import { GenerateRentModal } from "@/features/rent-roll/GenerateRentModal";
 import { canGenerateRent } from "@/features/rent-roll/stats";
 import { useScope } from "@/features/scope/scopeContext";
+import { NoProperties } from "@/features/shared/NoProperties";
 
 /** KpiCard links through the router (no full page reload). */
 const renderLink: KpiCardProps["renderLink"] = (href, props) => <Link to={href} {...props} />;
@@ -25,7 +26,8 @@ const renderLink: KpiCardProps["renderLink"] = (href, props) => <Link to={href} 
 /**
  * "/": the home page. Greeting + scope description, the rent collection card, 4 KPIs, then the design's
  * 8/4 grid (billed vs collected, at-risk leases, overdue rent, expirations | needs attention, units by status).
- * Every number comes from useDashboardStats (sidebar scope, current UTC month); each section loads and fails on its own.
+ * Every number comes from useDashboardStats (sidebar scope, current UTC month); each section loads and fails on its own,
+ * except when the properties / units header fails or every section fails: then one page-level error with Retry.
  */
 export function DashboardPage() {
   const { me } = useAuth();
@@ -35,29 +37,33 @@ export function DashboardPage() {
   const { month, header, rent, kpis } = stats;
 
   const [generating, setGenerating] = useState(false);
+  const addProperty = useAddPropertyFlow();
   const canGenerate = can(role, "charge.create") && canGenerateRent(month);
 
   const title = greeting(me!.name);
 
   if (header.data?.noProperties) {
-    const isOwner = role === "OWNER";
     return (
       <>
         <PageHeader title={title} />
-        <Card padding="none">
-          <EmptyState
-            icon={<Building2 strokeWidth={1.5} />}
-            title={isOwner ? "No properties yet" : "No properties assigned to you yet"}
-            description={isOwner ? "Add a property to start tracking units, leases and rent." : "Ask the owner to assign you a property."}
-            action={
-              isOwner ? (
-                <Link to="/properties" className="text-small font-semibold text-success hover:underline focus-visible:focus-ring">
-                  Go to Properties
-                </Link>
-              ) : undefined
-            }
-          />
-        </Card>
+        <NoProperties onAdd={addProperty.open} />
+        {addProperty.modals}
+      </>
+    );
+  }
+
+  // Backend down: every section fails the same way, so show it once. The header failing also leaves nothing to show.
+  const sections = [header, rent, kpis, stats.atRisk, stats.overdue, stats.billed, stats.expirations, stats.unitStatus, stats.attention];
+  const pageError = header.error ?? (sections.every((s) => s.error != null) ? sections[0].error : null);
+  if (pageError != null) {
+    return (
+      <>
+        <PageHeader title={title} />
+        <InlineError
+          title="Couldn't load the dashboard"
+          description={errorText(pageError)}
+          onRetry={() => sections.forEach((s) => s.error != null && s.retry())}
+        />
       </>
     );
   }
@@ -71,7 +77,6 @@ export function DashboardPage() {
         title={title}
         description={header.data?.description ?? (header.isPending ? <Skeleton className="inline-block h-4 w-80 max-w-full" /> : undefined)}
       />
-      {header.error != null && <InlineError title="Couldn't load your properties" description={errorText(header.error)} onRetry={header.retry} />}
 
       <RentCollectionCard month={month} rent={rent} onGenerate={canGenerate ? () => setGenerating(true) : undefined} />
 

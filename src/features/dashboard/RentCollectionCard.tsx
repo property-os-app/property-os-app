@@ -48,7 +48,17 @@ export function RentCollectionCard({ month, rent, onGenerate }: RentCollectionCa
         <>
           <div className="grid gap-4 md:grid-cols-3">
             <HeroStatCard label="Total due" value={formatCurrency(r.totalRentDue)} note={`${plural(r.billedCount, "lease")} billed`} />
-            <HeroStatCard label="Collected" tone="success" value={formatCurrency(r.collected)} note={`${r.paidCount} paid in full`} />
+            <HeroStatCard
+              label="Collected"
+              tone="success"
+              value={formatCurrency(r.collected)}
+              note={
+                <>
+                  {r.paidCount} paid in full
+                  {r.collectedNote && <span className="block">{r.collectedNote}</span>}
+                </>
+              }
+            />
             <HeroStatCard label="Outstanding" tone="danger" value={formatCurrency(r.outstandingBalance)} note={`${r.overdueCount} overdue`} />
           </div>
           <CollectionProgress value={r.rate} className="mt-5" />

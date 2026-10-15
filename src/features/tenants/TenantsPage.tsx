@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { LayoutGrid, List, Plus, SearchX, Users } from "lucide-react";
-import { Button, Select, Skeleton } from "@/components/atoms";
+import { Button, Dash, Select, Skeleton } from "@/components/atoms";
 import { Card, EmptyState, FilterChip, InlineError, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
 import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
@@ -113,7 +113,7 @@ export function TenantsPage() {
     };
   }, [allRows]);
   const balanceCount = useMemo(() => (scopedRows ?? []).filter(hasBalance).length, [scopedRows]);
-  const kpi = (value: ReactNode) => (ready ? value : <Skeleton className="h-10 w-24" />);
+  const kpi = (value: ReactNode) => (ready ? value : failed ? <Dash /> : <Skeleton className="h-10 w-24" />);
 
   const state: "loading" | "error" | "empty" | "ideal" = failed ? "error" : isLoading ? "loading" : table.total === 0 ? "empty" : "ideal";
   const noTenants = total === 0;

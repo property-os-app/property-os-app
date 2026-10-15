@@ -16,6 +16,7 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - `apiFetch<T>(path, { method, body, query, signal })`: calls `VITE_API_URL + path`, adds `Authorization: Bearer <token>` when signed in, sends `body` as JSON, builds the query string (skips undefined, null, ""), returns `undefined` for 204 or empty bodies.
 - `ApiError`: thrown on error responses: `status`, `messages: string[]` (backend message is a string or an array), `error`, `code` (only on the 5 auth errors, e.g. `INVALID_TOKEN`; switch on it, never on message text). `status` 0 means the server could not be reached.
 - `errorText(err)`: one display text for any error.
+- Friendly texts instead of the backend's: `OFFLINE_MESSAGE` (status 0: server unreachable, or Firebase `auth/network-request-failed` while getting the token), `SERVER_ERROR_MESSAGE` (any 5xx), `FORBIDDEN_MESSAGE` (403 `FORBIDDEN_ROLE`). Other errors keep the backend message.
 - `ApiFetchOptions`: options type.
 
 ## useDocumentTitle.ts

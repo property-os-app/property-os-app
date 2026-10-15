@@ -43,8 +43,8 @@ export function Drawer({ open, onOpenChange, title, description, status, tabs, f
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-scrim data-[state=open]:animate-in data-[state=closed]:animate-out" />
         <Dialog.Content
-          // A bare drawer without a description: no aria-describedby (silences Radix's missing-description warning).
-          {...(bare && !description ? { "aria-describedby": undefined } : {})}
+          // No description: no aria-describedby (silences Radix's missing-description warning).
+          {...(!description ? { "aria-describedby": undefined } : {})}
           className={cn(
             "fixed inset-y-0 z-50 flex flex-col bg-overlay shadow-overlay outline-none",
             "transition-transform duration-overlay ease-overlay data-[state=open]:translate-x-0",
@@ -107,6 +107,8 @@ export function Modal({ open, onOpenChange, title, description, footer, size = "
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-scrim" />
         <Dialog.Content
+          // No description: no aria-describedby (silences Radix's missing-description warning).
+          {...(!description ? { "aria-describedby": undefined } : {})}
           className={cn(
             "fixed z-50 flex max-h-[90vh] flex-col bg-overlay shadow-overlay outline-none",
             "inset-x-0 bottom-0 rounded-t-overlay md:inset-x-auto md:bottom-auto md:left-1/2 md:top-24 md:-translate-x-1/2 md:rounded-overlay md:border md:border-border-subtle",

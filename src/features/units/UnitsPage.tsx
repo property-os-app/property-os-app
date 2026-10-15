@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
-import { Button, Select, Skeleton } from "@/components/atoms";
+import { Button, Dash, Select, Skeleton } from "@/components/atoms";
 import { KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
 import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
@@ -10,9 +10,11 @@ import { useClientTable, type SortColumn } from "@/lib/useClientTable";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { useLeases } from "@/features/leases/hooks";
+import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
 import { useProperties } from "@/features/properties/hooks";
 import { countUnits, occupancy, sumCents } from "@/features/properties/stats";
 import { useScope } from "@/features/scope/scopeContext";
+import { NoProperties } from "@/features/shared/NoProperties";
 import { UnitDeleteDialog } from "@/features/units/UnitDeleteDialog";
 import { UnitDrawer } from "@/features/units/UnitDrawer";
 import { UnitFormModal } from "@/features/units/UnitFormModal";
@@ -50,6 +52,7 @@ export function UnitsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editUnit, setEditUnit] = useState<Unit | null>(null);
   const [deleteRow, setDeleteRow] = useState<UnitListRow | null>(null);
+  const addProperty = useAddPropertyFlow();
 
   const names = useMemo(() => new Map(properties.data?.map((p) => [p.id, p.name])), [properties.data]);
   const rows = useMemo(
@@ -80,7 +83,7 @@ export function UnitsPage() {
     [units.data],
   );
   const propertyCount = scope ? 1 : (properties.data?.length ?? 0);
-  const kpi = (value: ReactNode) => (ready ? value : <Skeleton className="h-10 w-24" />);
+  const kpi = (value: ReactNode) => (ready ? value : failed ? <Dash /> : <Skeleton className="h-10 w-24" />);
 
   const state: "loading" | "error" | "empty" | "ideal" = failed ? "error" : isLoading ? "loading" : table.total === 0 ? "empty" : "ideal";
   const noUnits = counts.total === 0;
@@ -102,6 +105,16 @@ export function UnitsPage() {
   const error = { title: "Couldn't load units", description: failed ? errorText(failed.error) : undefined, onRetry: retry };
 
   const openRow = rows?.find((r) => r.unit.id === openId);
+
+  if (properties.data?.length === 0) {
+    return (
+      <>
+        <PageHeader title="Units" />
+        <NoProperties onAdd={addProperty.open} />
+        {addProperty.modals}
+      </>
+    );
+  }
 
   return (
     <>

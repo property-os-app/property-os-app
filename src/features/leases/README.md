@@ -37,7 +37,7 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 - `serverErrorStep`: the step to show after a server error (field, overlap, missing, ACTIVE-needs / closed: first named field).
 
 ## LeasesPage.tsx
-- `LeasesPage`: /leases. KPIs (Active, Expiring in 60 days, Past end date, Monthly rent), toolbar (status segments, search, Property = sidebar scope, e-sign), the table with its 5 states, wizard, end and delete. A row click opens /leases/:id. Kebab actions open their modal on the list; a failed kebab Activate opens the lease page with the reason (router state `LeasePageState`). Old `/leases?lease=ID` links redirect to `/leases/ID`. Search, filters, sort and page live in the URL (`useClientTable` `inUrl`): `?q=&status=&esign=&sort=&page=`.
+- `LeasesPage`: /leases. KPIs (Active, Expiring in 60 days, Past end date, Monthly rent), toolbar (status segments, search, Property = sidebar scope, e-sign), the table with its 5 states, wizard, end and delete. A row click opens /leases/:id. Kebab actions open their modal on the list; a failed kebab Activate opens the lease page with the reason (router state `LeasePageState`). Old `/leases?lease=ID` links redirect to `/leases/ID`. Search, filters, sort and page live in the URL (`useClientTable` `inUrl`): `?q=&status=&esign=&sort=&page=`. With no properties (GET /properties returned []) the page shows only the header and `NoProperties` (owner: Add property via `useAddPropertyFlow`). KPIs show a Dash when loading failed.
 
 ## LeasesTable.tsx
 - `LeasesTable`: DataTable columns (tenant, unit, rent, term, status, tags, e-signature, expires, balance via the ledger's `BalanceText`) and the kebab (Open, Edit, Activate, End lease, Delete draft).

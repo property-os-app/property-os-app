@@ -7,9 +7,11 @@ import { sendPasswordResetEmail } from "firebase/auth";
 import { ArrowLeft } from "lucide-react";
 import { Body, Button, Input } from "@/components/atoms";
 import { FormField, InlineError } from "@/components/molecules";
+import { cn } from "@/lib/cn";
 import { auth } from "@/lib/firebase";
 import { AuthShell } from "@/features/auth/AuthShell";
 import { resetEmailErrorText } from "@/features/auth/firebaseErrors";
+import { textLink } from "@/features/shared/linkClass";
 
 const schema = z.object({
   email: z.string().trim().pipe(z.email("Enter a valid email.")),
@@ -17,7 +19,7 @@ const schema = z.object({
 
 function BackToSignIn() {
   return (
-    <Link to="/login" className="inline-flex items-center gap-1.5 self-start text-small font-semibold text-success hover:underline focus-visible:focus-ring">
+    <Link to="/login" className={cn("inline-flex items-center gap-1.5 self-start", textLink)}>
       <ArrowLeft size={16} strokeWidth={1.5} />
       Back to sign in
     </Link>

@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { ChevronRight } from "lucide-react";
 import { Caption, Num, Overline, Skeleton } from "@/components/atoms";
 import { cn } from "@/lib/cn";
+import { linkFocus } from "@/features/shared/linkClass";
 
 /** One breadcrumb link: `to` is a router path (may include a query, e.g. "/rent-roll?month=2026-10"). */
 export interface Crumb {
@@ -16,7 +17,7 @@ export function Breadcrumb({ links, current }: { links: Crumb[]; current: ReactN
     <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-small">
       {links.map((l, i) => (
         <span key={i} className="flex shrink-0 items-center gap-1.5">
-          <Link to={l.to} className="text-text-secondary no-underline hover:text-text-primary focus-visible:focus-ring">
+          <Link to={l.to} className={cn("text-text-secondary no-underline hover:text-text-primary", linkFocus)}>
             {l.label}
           </Link>
           <ChevronRight aria-hidden size={14} strokeWidth={1.5} className="shrink-0 text-text-muted" />

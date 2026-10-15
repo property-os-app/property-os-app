@@ -16,8 +16,9 @@ import { PropertyImage } from "@/features/properties/PropertyCard";
 import { PropertyFormModal } from "@/features/properties/PropertyFormModal";
 import { PropertyManagersCard } from "@/features/properties/PropertyManagersCard";
 import { PropertyUnitsTable } from "@/features/properties/PropertyUnitsTable";
-import { Breadcrumb, Tile } from "@/features/shared/DetailParts";
 import { activeRentCentsByProperty, buildUnitRows, countUnits, formatAddress, needsAttention, occupancy } from "@/features/properties/stats";
+import { Breadcrumb, Tile } from "@/features/shared/DetailParts";
+import { textLink } from "@/features/shared/linkClass";
 import { useUnits } from "@/features/units/hooks";
 import { UnitDrawer } from "@/features/units/UnitDrawer";
 import { UnitFormModal } from "@/features/units/UnitFormModal";
@@ -44,7 +45,7 @@ export function PropertyDetailPage() {
             title="Property not found"
             description="It doesn't exist, was deleted, or isn't assigned to you."
             action={
-              <Link to="/properties" className="text-small font-semibold text-success hover:underline focus-visible:focus-ring">
+              <Link to="/properties" className={textLink}>
                 Back to Properties
               </Link>
             }
@@ -223,11 +224,7 @@ function PropertyDetail({ property }: { property: Property }) {
                 title="Units needing attention"
                 action={
                   units.data && units.data.length > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => setTab("units")}
-                      className="text-small font-semibold text-success hover:underline focus-visible:focus-ring"
-                    >
+                    <button type="button" onClick={() => setTab("units")} className={textLink}>
                       All {plural(units.data.length, "unit")}
                     </button>
                   ) : undefined

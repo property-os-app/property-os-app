@@ -9,6 +9,7 @@ import type { Section } from "@/features/dashboard/hooks";
 import { expiresBadge } from "@/features/dashboard/stats";
 import type { LeasePageState } from "@/features/leases/LeasePage";
 import { primaryTenant } from "@/features/leases/stats";
+import { textLink } from "@/features/shared/linkClass";
 import type { Lease } from "@/types/lease";
 import type { RentRollRow } from "@/types/rentRoll";
 
@@ -39,7 +40,7 @@ function TableCard({ title, viewAll, children }: { title: string; viewAll: strin
         <CardHeader
           title={title}
           action={
-            <Link to={viewAll} className="text-small font-semibold text-success hover:underline focus-visible:focus-ring">
+            <Link to={viewAll} className={textLink}>
               View all
             </Link>
           }

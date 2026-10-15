@@ -11,7 +11,7 @@ Pure functions; only `hooks.ts` calls them.
 - `greeting(name)`: "Good morning / afternoon / evening, {first name}" (local hour).
 - `headerDescription(...)`: owner, manager or one-property sentence.
 - `shortMonth(month)` ("Oct"), `monthRange(from, count, forward?)`: month lists.
-- `RentCollection`, `rentCollection(roll)`: summary money, rate (null when nothing billed), billed and paid-in-full counts.
+- `RentCollection`, `rentCollection(roll)`: summary money, rate (null when nothing billed), billed and paid-in-full counts, `collectedNote` (rent-roll `collectionNote`).
 - `UnitCounts`, `unitCounts(units)`, `vacantNote(counts)`: counts by status and the Vacant units note.
 - `atRiskLeases(leases)`: ACTIVE leases past their end or ending within 60 days (UTC today), soonest first. `expiresBadge(lease)`: "Ended n days ago" / "n days" with a danger or warning tone (local days).
 - `expirationsByMonth(leases, months)`: ACTIVE leases per end month.
@@ -20,10 +20,10 @@ Pure functions; only `hooks.ts` calls them.
 - `AttentionItem`, `AttentionAction`, `attentionItems(...)`: not billed, overdue, past end, ending within 30 days, drafts (in that order).
 
 ## DashboardPage.tsx
-- `DashboardPage`: header with the greeting and the description only (no actions), rent collection card, 4 KPI cards (router links), the 8/4 grid, the Generate rent modal. One EmptyState for a user with no properties.
+- `DashboardPage`: header with the greeting and the description only (no actions), rent collection card, 4 KPI cards (router links), the 8/4 grid, the Generate rent modal. With no properties: only the header and `NoProperties` (owner: Add property via `useAddPropertyFlow`). When the header (properties, units) fails, or every section fails (backend down), one page-level InlineError with a Retry for all failed sections instead of one per section.
 
 ## RentCollectionCard.tsx
-- `RentCollectionCard`: Total due, Collected, Outstanding (HeroStatCard), the collection bar; nothing billed: empty bar, "Rent for {Month} hasn't been generated yet." and Generate rent when allowed. "Open Rent Roll" is a router link.
+- `RentCollectionCard`: Total due, Collected, Outstanding (HeroStatCard), the collection bar; nothing billed: empty bar, "Rent for {Month} hasn't been generated yet." and Generate rent when allowed. "Open Rent Roll" is a router link. Collected shows `collectedNote` under "{n} paid in full".
 
 ## DashboardTables.tsx
 - `AtRiskLeasesTable`: tenant, unit, Expires badge; row opens the lease page ("← Dashboard").

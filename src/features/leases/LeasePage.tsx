@@ -5,6 +5,7 @@ import { Avatar, Button, Dash, H1, Skeleton, Small } from "@/components/atoms";
 import { Card, EmptyState, InlineError, StatusBadge, Tabs } from "@/components/molecules";
 import { usePageNav, usePageTitle } from "@/app/pageTitle";
 import { ApiError, errorText } from "@/lib/api";
+import { cn } from "@/lib/cn";
 import { currentMonthUTC, daysUntil, formatCurrency, formatDate, formatMonth, isMonth, ordinal, toCents } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
@@ -24,6 +25,7 @@ import { LedgerView } from "@/features/ledger/LedgerView";
 import { RecordPaymentModal } from "@/features/ledger/RecordPaymentModal";
 import { leasePaymentTarget } from "@/features/ledger/targets";
 import { Breadcrumb, Tile, type Crumb } from "@/features/shared/DetailParts";
+import { linkFocus, textLink } from "@/features/shared/linkClass";
 import type { Lease } from "@/types/lease";
 
 type Tab = "ledger" | "details" | "tenants";
@@ -100,7 +102,7 @@ export function LeasePage() {
             title="Lease not found"
             description="It doesn't exist, was deleted, or isn't on a property assigned to you."
             action={
-              <Link to="/leases" className="text-small font-semibold text-success hover:underline focus-visible:focus-ring">
+              <Link to="/leases" className={textLink}>
                 Back to Leases
               </Link>
             }
@@ -263,7 +265,7 @@ function LeaseDetail({ lease }: { lease: Lease }) {
 
   /* ---------- Tiles ---------- */
   const ledgerRetry = (
-    <button type="button" onClick={() => void ledger.refetch()} className="text-caption font-semibold text-success hover:underline focus-visible:focus-ring">
+    <button type="button" onClick={() => void ledger.refetch()} className={cn("text-caption font-semibold text-success hover:underline", linkFocus)}>
       Couldn't load. Retry
     </button>
   );

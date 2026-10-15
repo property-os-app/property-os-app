@@ -2,7 +2,7 @@
 import { addMonthsYM, daysUntil, formatCurrency, formatMonth, formatPercent, toCents } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import { expiresWithin, isPastEnd } from "@/features/leases/stats";
-import { canGenerateRent, statusDate } from "@/features/rent-roll/stats";
+import { canGenerateRent, collectionBreakdown, collectionNote, statusDate } from "@/features/rent-roll/stats";
 import type { Lease } from "@/types/lease";
 import type { RentRollResponse, RentRollRow } from "@/types/rentRoll";
 import type { Unit, UnitStatus } from "@/types/unit";
@@ -46,6 +46,8 @@ export interface RentCollection {
   billedCount: number;
   /** PAID rows. */
   paidCount: number;
+  /** "Includes $X toward earlier balances and $Y paid in advance", or null (see collectionNote). */
+  collectedNote: string | null;
 }
 
 export function rentCollection(roll: RentRollResponse): RentCollection {
@@ -60,6 +62,7 @@ export function rentCollection(roll: RentRollResponse): RentCollection {
     rate: s.collectionRate === null ? null : Number(s.collectionRate),
     billedCount: roll.rows.filter((r) => r.status !== "NOT_BILLED").length,
     paidCount: roll.rows.filter((r) => r.status === "PAID").length,
+    collectedNote: collectionNote(collectionBreakdown(roll.rows)),
   };
 }
 

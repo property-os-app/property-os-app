@@ -1,10 +1,11 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { Button, Caption, Select, Skeleton } from "@/components/atoms";
+import { Button, Caption, Dash, Select, Skeleton } from "@/components/atoms";
 import { Card, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
 import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
+import { cn } from "@/lib/cn";
 import { addMonthsYM, currentMonthUTC, formatCompactCurrency, formatPercent, formatMonth } from "@/lib/format";
 import { plural, rentStatusLabels } from "@/lib/labels";
 import { useClientTable, type SortColumn } from "@/lib/useClientTable";
@@ -12,6 +13,7 @@ import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { AddChargeModal } from "@/features/ledger/AddChargeModal";
 import { RecordPaymentModal } from "@/features/ledger/RecordPaymentModal";
+import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
 import { useProperties } from "@/features/properties/hooks";
 import { GenerateRentModal } from "@/features/rent-roll/GenerateRentModal";
 import { useRentRoll } from "@/features/rent-roll/hooks";
@@ -19,6 +21,8 @@ import { RentRollTable } from "@/features/rent-roll/RentRollTable";
 import type { LeasePageState } from "@/features/leases/LeasePage";
 import {
   canGenerateRent,
+  collectionBreakdown,
+  collectionNote,
   isPastMonth,
   lastGeneratableMonth,
   monthFromParam,
@@ -30,6 +34,8 @@ import {
   type StatusFilter,
 } from "@/features/rent-roll/stats";
 import { useScope } from "@/features/scope/scopeContext";
+import { linkFocus } from "@/features/shared/linkClass";
+import { NoProperties } from "@/features/shared/NoProperties";
 import type { RentRollRow } from "@/types/rentRoll";
 
 type Filters = { status: StatusFilter };
@@ -91,10 +97,12 @@ export function RentRollPage() {
   });
   const counts = useMemo(() => statusCounts(allRows), [allRows]);
   const targets = useMemo(() => paymentTargets(allRows), [allRows]);
+  const collectedNote = useMemo(() => collectionNote(collectionBreakdown(allRows)), [allRows]);
 
   const [generating, setGenerating] = useState(false);
   const [chargeFor, setChargeFor] = useState<string | null>(null);
   const [payment, setPayment] = useState<PaymentOpen | null>(null);
+  const addProperty = useAddPropertyFlow();
 
   // The lease page, Ledger tab, with a breadcrumb back to this month.
   // `from` shows the lease page's back arrow.
@@ -102,7 +110,7 @@ export function RentRollPage() {
     void navigate(`/leases/${encodeURIComponent(r.leaseId)}?tab=ledger&from=rent-roll&month=${month}`, { state: { from: "rent-roll" } satisfies LeasePageState });
 
   const ready = rentRoll.isSuccess;
-  const kpi = (value: ReactNode) => (ready ? value : <Skeleton className="h-10 w-24" />);
+  const kpi = (value: ReactNode) => (ready ? value : rentRoll.isError ? <Dash /> : <Skeleton className="h-10 w-24" />);
   const state: "loading" | "error" | "empty" | "ideal" = rentRoll.isError ? "error" : rentRoll.isPending ? "loading" : table.total === 0 ? "empty" : "ideal";
   // Banner by NOT_BILLED rows: all of them -> "not generated", some -> "partly billed", none -> no banner.
   const notBilled = counts.NOT_BILLED;
@@ -133,6 +141,16 @@ export function RentRollPage() {
     </Button>
   ) : null;
   const isCurrent = month === currentMonthUTC();
+
+  if (properties.data?.length === 0) {
+    return (
+      <>
+        <PageHeader title="Rent Roll" />
+        <NoProperties onAdd={addProperty.open} />
+        {addProperty.modals}
+      </>
+    );
+  }
 
   return (
     <>
@@ -172,7 +190,14 @@ export function RentRollPage() {
           tone="success"
           value={kpi(formatCompactCurrency(summary?.collected))}
           delta={ready && summary?.collectionRate !== null ? { direction: "up", label: formatPercent(summary?.collectionRate) } : undefined}
-          note={ready ? (summary?.collectionRate === null ? "Nothing billed yet" : `of ${formatCompactCurrency(summary?.totalRentDue)} due`) : undefined}
+          note={
+            ready ? (
+              <>
+                {summary?.collectionRate === null ? "Nothing billed yet" : `of ${formatCompactCurrency(summary?.totalRentDue)} due`}
+                {collectedNote && <span className="block">{collectedNote}</span>}
+              </>
+            ) : undefined
+          }
         />
         <KpiCard
           label="Outstanding balance"
@@ -233,7 +258,7 @@ export function RentRollPage() {
         <Card padding="compact" className="flex flex-wrap items-center justify-between gap-3 border-warning/40 bg-warning-soft">
           <div className="flex flex-col">
             <span className="font-semibold text-warning">
-              <button type="button" className="cursor-pointer underline underline-offset-2 focus-ring rounded-badge" onClick={() => table.setFilter("status", "NOT_BILLED")}>
+              <button type="button" className={cn("cursor-pointer underline underline-offset-2", linkFocus)} onClick={() => table.setFilter("status", "NOT_BILLED")}>
                 {plural(notBilled, "lease")}
               </button>{" "}
               {notBilled === 1 ? "isn't" : "aren't"} billed for {monthLabel} yet. Generating again skips leases that are already billed.

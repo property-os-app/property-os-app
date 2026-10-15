@@ -19,7 +19,7 @@ Units: the /units list, the unit drawer (also opened from the property detail pa
 - `rentDiffNote(leaseRent, listedRent)`: "Current rent" card note. The other drawer helpers (`dueState`, `dueNote`, `leaseEndsNote`, `leasePeriod`, `LeaseBadge`, `StatCard`) live in `features/leases`.
 
 ## UnitsPage.tsx
-- `UnitsPage`: /units. PageHeader with "Add Unit", 4 KPIs, toolbar (search, Property select bound to the scope, status segments with counts), table with all states, drawer, add / edit modals and delete dialog. Search, filters, sort and page live in the URL (`useClientTable` `inUrl`): `?q=&status=&sort=&page=`.
+- `UnitsPage`: /units. PageHeader with "Add Unit", 4 KPIs, toolbar (search, Property select bound to the scope, status segments with counts), table with all states, drawer, add / edit modals and delete dialog. Search, filters, sort and page live in the URL (`useClientTable` `inUrl`): `?q=&status=&sort=&page=`. With no properties (GET /properties returned []) the page shows only the header and `NoProperties` (owner: Add property via `useAddPropertyFlow`). KPIs show a Dash when loading failed.
 
 ## UnitsTable.tsx
 - `UnitsTable`: the list DataTable (Unit, Listed rent, Current rent sortable; kebab with Edit / Delete when allowed). Row click calls `onOpen`.

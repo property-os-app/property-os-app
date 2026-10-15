@@ -121,7 +121,7 @@ Page layouts.
 | Type scale | `text-hero` 48, `text-display` 32, `text-h1` 24, `text-h2` 20, `text-h3` 16, `text-body` 14, `text-body-lg` 16, `text-small` 13, `text-caption` 12, `text-overline` 11 |
 | Radius | `rounded-badge` 6, `rounded-control` 8, `rounded-card` 12, `rounded-overlay` 16, `rounded-pill` |
 | Sizes | `w-sidebar` 264, `h-topbar` 64, `w-drawer` 480 / `-lg` 640 / `-xl` 800, `w-modal` 480 / `-lg` 640, `max-w-content` 1440 |
-| Extras | `tabular` (number figures), `focus-ring`, `shadow-overlay`, `duration-fast/overlay/draw`, `animate-shimmer`, `hazard-fill` |
+| Extras | `tabular` (number figures), `focus-ring`, `focus-ring-tight` (inline links), `shadow-overlay`, `duration-fast/overlay/draw`, `animate-shimmer`, `hazard-fill` |
 
 **`src/tokens/index.ts`**: the same values as JS (`colors`, `typography`, `spacing`, `radius`, `layout`, `motion`, `chartPalette()`), for places CSS can't reach. Keep in sync with theme.css.
 
@@ -207,3 +207,7 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | 2026-10-14 | `organisms/Topbar.tsx` (`Topbar`) | Optional `onMenu`: "Open menu" icon button, hidden from lg. Padding `px-4 lg:px-8` (was `px-8`); the title truncates instead of `whitespace-nowrap`. | Mobile menu opener; 32px side padding and a long unbreakable title wasted or overflowed a phone screen. |
 | 2026-10-14 | `organisms/Topbar.tsx` (`PageHeader`) | Title row and actions wrap (`flex-wrap`); the title block has `min-w-0`. | The Rent Roll header (month switcher, Generate rent, Record Payment) overflowed at 390px. |
 | 2026-10-14 | `molecules/SegmentedControl.tsx` | `max-w-full overflow-x-auto` on the group, segments don't shrink or wrap their text. | 5-6 status segments with counts (Units, Leases, Rent Roll) made the page scroll sideways at 390px; now only the control scrolls. |
+| 2026-10-15 | `styles/theme.css` | New `focus-ring-tight` utility: same 2px ring as `focus-ring`, offset 0. `focus-ring` unchanged. | On inline text links the 2px offset pushed the ring onto the next word or separator. |
+| 2026-10-15 | `templates/Shells.tsx` (`SettingsLayout`) | Section links get `focus-visible:focus-ring`. | They had no visible keyboard focus at all. |
+| 2026-10-15 | `organisms/Overlays.tsx` (`Modal`, `Drawer`) | Without a `description`, Content gets `aria-describedby={undefined}` (was only for a bare Drawer). With a description nothing changes. | Radix logged "Missing Description or aria-describedby" for every modal and drawer without one. |
+| 2026-10-15 | `templates/Shells.tsx` (`WorkspaceShell`) | Content column gets `overflow-x-clip`; `main` gets `min-w-0`. | The Rent Roll made the whole page scroll sideways on desktop. `clip` (not `hidden`) keeps the sticky Topbar working; wide tables still scroll inside their own card. |
