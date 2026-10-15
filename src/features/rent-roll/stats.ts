@@ -1,12 +1,108 @@
-import { addMonthsYM, centsToAmount, currentMonthUTC, daysUntil, formatCurrency, formatDate, isMonth, toCents } from "@/lib/format";
-import { plural } from "@/lib/labels";
+import {
+  addMonthsYM,
+  centsToAmount,
+  currentMonthUTC,
+  dayInMonth,
+  daysUntil,
+  formatCurrency,
+  formatDate,
+  formatMonth,
+  formatShortDate,
+  isMonth,
+  todayUTC,
+  toCents,
+} from "@/lib/format";
+import { paymentFrequencyLabels, plural } from "@/lib/labels";
+import { firstRentDate, primaryTenant } from "@/features/leases/stats";
 import type { PaymentTarget } from "@/features/ledger/RecordPaymentModal";
+import type { Lease } from "@/types/lease";
 import type { RentRollRow, RentRollStatus } from "@/types/rentRoll";
 
-export type StatusFilter = "all" | RentRollStatus;
+/** UPCOMING: NOT_BILLED rows that Generate rent skips (see billingKind). UI only, not a backend status. */
+export type StatusFilter = "all" | RentRollStatus | "UPCOMING";
 
-/** Segment order from the design. */
-export const STATUS_FILTERS: StatusFilter[] = ["all", "PAID", "PARTIAL", "UNPAID", "OVERDUE", "NOT_BILLED"];
+/** Segment order from the design, plus Upcoming (shown only when such rows exist). */
+export const STATUS_FILTERS: StatusFilter[] = ["all", "PAID", "PARTIAL", "UNPAID", "OVERDUE", "NOT_BILLED", "UPCOMING"];
+
+/**
+ * How Generate rent treats a lease this month (API.md, POST /rent-roll/generate), in the backend's order:
+ * not MONTHLY -> "not-monthly"; due date before the start -> "starts-late"; after the end -> "ends-early"; else "generatable".
+ */
+export type BillingKind = "generatable" | "starts-late" | "ends-early" | "not-monthly";
+
+type BillingLease = Pick<Lease, "startDate" | "endDate" | "paymentFrequency">;
+
+export function billingKind(dueDate: string | null, lease: BillingLease | undefined): BillingKind {
+  if (!lease) return "generatable";
+  if (lease.paymentFrequency !== "MONTHLY") return "not-monthly";
+  if (dueDate && lease.startDate && dueDate < lease.startDate) return "starts-late";
+  if (dueDate && lease.endDate && dueDate > lease.endDate) return "ends-early";
+  return "generatable";
+}
+
+/** A NOT_BILLED row that Generate rent won't bill: its kind and the caption under the "Upcoming" badge. */
+export interface UpcomingRow {
+  kind: Exclude<BillingKind, "generatable">;
+  caption: string;
+}
+
+/**
+ * Why a lease isn't billed this month: "Starts Oct 14 · first rent Nov 1", "Ended Oct 20 · no October rent due"
+ * ("Ends" while the end date is still ahead), "Pays weekly · add charges by hand".
+ */
+export function upcomingCaption(kind: UpcomingRow["kind"], lease: Lease, month: string, today = todayUTC()): string {
+  if (kind === "starts-late") return `Starts ${formatShortDate(lease.startDate)} · first rent ${formatShortDate(firstRentDate(lease.startDate, lease.rentDueDay))}`;
+  if (kind === "ends-early") {
+    const end = lease.endDate ?? "";
+    return `${end < today ? "Ended" : "Ends"} ${formatShortDate(end)} · no ${formatMonth(month).split(" ")[0]} rent due`;
+  }
+  return `Pays ${paymentFrequencyLabels[lease.paymentFrequency].toLowerCase()} · add charges by hand`;
+}
+
+/** NOT_BILLED rows that Generate rent skips, by leaseId. Rows whose lease isn't in `leases` count as billable. */
+export function upcomingRows(rows: RentRollRow[], leases: Lease[], month: string): Map<string, UpcomingRow> {
+  const byId = new Map(leases.map((l) => [l.id, l]));
+  const out = new Map<string, UpcomingRow>();
+  for (const r of rows) {
+    if (r.status !== "NOT_BILLED") continue;
+    const lease = byId.get(r.leaseId);
+    const kind = billingKind(r.dueDate, lease);
+    if (lease && kind !== "generatable") out.set(r.leaseId, { kind, caption: upcomingCaption(kind, lease, month) });
+  }
+  return out;
+}
+
+/** The row's segment: UPCOMING for skipped NOT_BILLED rows, else its status. */
+export const rowFilterStatus = (r: RentRollRow, upcoming: Map<string, UpcomingRow> | null): Exclude<StatusFilter, "all"> =>
+  upcoming?.has(r.leaseId) ? "UPCOMING" : r.status;
+
+/** "Sophia Nguyen (starts Oct 14, first rent Nov 1)": an ACTIVE lease Generate rent skips for the month. */
+export interface SkippedLease {
+  name: string;
+  reason: string;
+}
+
+/**
+ * ACTIVE leases overlapping `month` that Generate rent skips (not monthly, or due date outside the term), sorted by name.
+ * Same rule as the backend, so it names the leases behind skippedNonMonthly + skippedOutsideTerm.
+ */
+export function skippedLeases(leases: Lease[], month: string, today = todayUTC()): SkippedLease[] {
+  const first = `${month}-01`;
+  const last = dayInMonth(month, 31);
+  if (!last) return [];
+  const out: SkippedLease[] = [];
+  for (const l of leases) {
+    if (l.status !== "ACTIVE" || !l.startDate || !l.endDate || l.startDate > last || l.endDate < first) continue;
+    const due = l.rentDueDay !== null ? dayInMonth(month, l.rentDueDay) : null;
+    const kind = billingKind(due, l);
+    if (kind === "generatable") continue;
+    // The row caption in toast form: "starts Oct 14, first rent Nov 1", "ended Oct 20, no October rent due", "pays weekly".
+    const caption = upcomingCaption(kind, l, month, today);
+    const reason = kind === "not-monthly" ? caption.split(" · ")[0] : caption.replace(" · ", ", ");
+    out.push({ name: primaryTenant(l)?.fullName ?? l.leaseNumber, reason: reason.charAt(0).toLowerCase() + reason.slice(1) });
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
 
 /** The ?month= value when it is a valid "YYYY-MM", else the current UTC month (the backend's default). */
 export function monthFromParam(param: string | null): string {
@@ -45,10 +141,10 @@ export function paidCaption(r: RentRollRow): string | null {
   return null;
 }
 
-/** Rows per segment (all rows of the month, before search). */
-export function statusCounts(rows: RentRollRow[]): Record<StatusFilter, number> {
-  const counts: Record<StatusFilter, number> = { all: rows.length, PAID: 0, PARTIAL: 0, UNPAID: 0, OVERDUE: 0, NOT_BILLED: 0 };
-  for (const r of rows) counts[r.status] += 1;
+/** Rows per segment (all rows of the month, before search). NOT_BILLED counts only rows Generate rent would bill. */
+export function statusCounts(rows: RentRollRow[], upcoming: Map<string, UpcomingRow> | null): Record<StatusFilter, number> {
+  const counts: Record<StatusFilter, number> = { all: rows.length, PAID: 0, PARTIAL: 0, UNPAID: 0, OVERDUE: 0, NOT_BILLED: 0, UPCOMING: 0 };
+  for (const r of rows) counts[rowFilterStatus(r, upcoming)] += 1;
   return counts;
 }
 

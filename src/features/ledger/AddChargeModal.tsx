@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -7,11 +7,12 @@ import { FormField, InlineError, SegmentedControl, toast } from "@/components/mo
 import { Modal } from "@/components/organisms";
 import { ApiError, errorText } from "@/lib/api";
 import { applyServerError } from "@/lib/forms";
-import { centsToAmount, dayInMonth, formatMonth, todayISO, toCents } from "@/lib/format";
+import { centsToAmount, dayInMonth, formatCurrency, formatMonth, formatShortDate, todayISO, toCents } from "@/lib/format";
 import { chargeTypeLabels, labelOptions } from "@/lib/labels";
 import { useLease } from "@/features/leases/hooks";
 import { primaryTenant } from "@/features/leases/stats";
 import { useAddCharge } from "@/features/ledger/hooks";
+import { rentDescription, rentProration, type RentProration } from "@/features/ledger/proration";
 import type { ChargePrefill } from "@/features/ledger/reenter";
 import type { Lease } from "@/types/lease";
 import type { ChargeCreateBody, ChargeType } from "@/types/ledger";
@@ -43,14 +44,23 @@ function moneyValue(value: string | null): number | "" {
   return cents > 0 ? centsToAmount(cents) : "";
 }
 
-/** Description, amount and due date for a type: Rent -> "Monthly Rent - {Month YYYY}", the rent, the month's due date. */
-function typeDefaults(type: ChargeType, lease: Lease, month: string): Pick<FormInput, "description" | "amount" | "dueDate"> {
+/** Rent for a month the lease starts or ends in: prorated by days, or the full month. */
+type RentMode = "prorated" | "full";
+
+/** Rent description and amount for the mode: "... (prorated, Oct 14–Oct 31)" and the prorated cents, or the full rent. */
+function rentAmount(lease: Lease, month: string, p: RentProration | null, mode: RentMode): Pick<FormInput, "description" | "amount"> {
+  if (p && mode === "prorated") return { description: rentDescription(month, p), amount: centsToAmount(p.proratedCents) };
+  return { description: rentDescription(month), amount: moneyValue(lease.rent) };
+}
+
+/**
+ * Description, amount and due date for a type: Rent -> "Monthly Rent - {Month YYYY}", the rent, the month's due date.
+ * When the month's due date is outside the lease term (partial month), Rent is due on the later of the start and the 1st.
+ */
+function typeDefaults(type: ChargeType, lease: Lease, month: string, p: RentProration | null, mode: RentMode): Pick<FormInput, "description" | "amount" | "dueDate"> {
   if (type === "RENT") {
-    return {
-      description: `Monthly Rent - ${formatMonth(month)}`,
-      amount: moneyValue(lease.rent),
-      dueDate: (lease.rentDueDay !== null ? dayInMonth(month, lease.rentDueDay) : null) ?? todayISO(),
-    };
+    const dueDate = p?.dueOutsideTerm ? p.from : lease.rentDueDay !== null ? dayInMonth(month, lease.rentDueDay) : null;
+    return { ...rentAmount(lease, month, p, mode), dueDate: dueDate ?? todayISO() };
   }
   if (type === "LATE_FEE") return { description: "Late fee", amount: moneyValue(lease.lateFeeAmount), dueDate: todayISO() };
   return { description: "", amount: "", dueDate: todayISO() };
@@ -91,6 +101,9 @@ export function AddChargeModal({ leaseId, month, reentry, onClose }: AddChargeMo
 function ChargeForm({ lease, month, reentry, onClose }: { lease: Lease; month: string; reentry?: AddChargeModalProps["reentry"]; onClose: () => void }) {
   const add = useAddCharge();
   const [formErrors, setFormErrors] = useState<string[]>([]);
+  // Lease starts or ends inside the month: offer prorated or full rent. Prorated by default when Generate rent skips the month.
+  const proration = useMemo(() => (reentry ? null : rentProration(lease, month)), [reentry, lease, month]);
+  const [rentMode, setRentMode] = useState<RentMode>(proration?.dueOutsideTerm ? "prorated" : "full");
 
   const {
     register,
@@ -103,17 +116,24 @@ function ChargeForm({ lease, month, reentry, onClose }: { lease: Lease; month: s
     resolver: zodResolver(schema),
     defaultValues: reentry
       ? { type: reentry.values.type, description: reentry.values.description, amount: reentry.values.amount, dueDate: reentry.values.dueDate }
-      : { type: "RENT", ...typeDefaults("RENT", lease, month) },
+      : { type: "RENT", ...typeDefaults("RENT", lease, month, proration, rentMode) },
     mode: "onTouched",
   });
   const type = useWatch({ control, name: "type" });
 
   const changeType = (next: ChargeType) => {
     setValue("type", next, { shouldDirty: true });
-    const d = typeDefaults(next, lease, month);
+    const d = typeDefaults(next, lease, month, proration, rentMode);
     setValue("description", d.description, { shouldDirty: true });
     setValue("amount", d.amount, { shouldDirty: true });
     setValue("dueDate", d.dueDate, { shouldDirty: true });
+  };
+
+  const changeRentMode = (next: RentMode) => {
+    setRentMode(next);
+    const d = rentAmount(lease, month, proration, next);
+    setValue("description", d.description, { shouldDirty: true, shouldValidate: true });
+    setValue("amount", d.amount, { shouldDirty: true, shouldValidate: true });
   };
 
   const confirmClose = () => !isDirty || window.confirm("Discard changes?");
@@ -169,6 +189,26 @@ function ChargeForm({ lease, month, reentry, onClose }: { lease: Lease; month: s
             className="w-fit"
           />
         </FormField>
+        {type === "RENT" && proration && (
+          <FormField
+            label="Rent amount"
+            help={`The lease covers ${formatShortDate(proration.from)}–${formatShortDate(proration.to)} of ${formatMonth(month)}.`}
+          >
+            <SegmentedControl<RentMode>
+              aria-label="Rent amount"
+              value={rentMode}
+              onChange={changeRentMode}
+              segments={[
+                {
+                  value: "prorated",
+                  label: `Prorated: ${formatCurrency(centsToAmount(proration.proratedCents))} (${proration.days} of ${proration.daysInMonth} days)`,
+                },
+                { value: "full", label: `Full month: ${formatCurrency(lease.rent)}` },
+              ]}
+              className="w-fit max-w-full flex-wrap"
+            />
+          </FormField>
+        )}
         <FormField label="Description" htmlFor="ch-description" required error={errors.description?.message}>
           <Input id="ch-description" maxLength={MAX_DESCRIPTION} autoComplete="off" {...register("description")} />
         </FormField>

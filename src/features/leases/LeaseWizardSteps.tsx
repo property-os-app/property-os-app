@@ -2,11 +2,11 @@ import { Controller, type UseFormReturn } from "react-hook-form";
 import { Plus } from "lucide-react";
 import { Body, Button, Caption, CurrencyInput, Dash, Input, Num, Select, Textarea, Toggle } from "@/components/atoms";
 import { Card, FormField, KeyValueList, SegmentedControl } from "@/components/molecules";
-import { centsToAmount, formatCurrency, formatDate, ordinal, todayISO, toCents } from "@/lib/format";
+import { centsToAmount, formatCurrency, formatDate, ordinal, parseDateOnly, todayISO, toCents } from "@/lib/format";
 import { paymentFrequencyLabels, plural, signatureStatusLabels, labelOptions, unitStatusLabels } from "@/lib/labels";
 import { compareNatural } from "@/lib/sort";
 import { formMissing, type FormInput, type FormOutput } from "@/features/leases/form";
-import { termEndDate, termMonthsOf } from "@/features/leases/stats";
+import { firstRentDate, termEndDate, termMonthsOf } from "@/features/leases/stats";
 import { TagEditor } from "@/features/leases/TagEditor";
 import { CoTenantPicker, TenantPicker, type PickedTenant } from "@/features/leases/TenantPicker";
 import type { Property } from "@/types/property";
@@ -31,6 +31,15 @@ export interface StepContext {
   lookupTenant: (id: string) => PickedTenant | undefined;
   /** Opens TenantFormModal over the wizard; the new tenant becomes the primary or a co-tenant. */
   onAddTenant: (role: "primary" | "co") => void;
+  /** The user typed a due day (or edits a lease that has one): the start date no longer sets it. */
+  dueDayManual: boolean;
+  onDueDayEdited: () => void;
+}
+
+/** The due day as a number, or null when the field isn't a whole number from 1 to 31. */
+function dueDayOf(value: string): number | null {
+  const v = value.trim();
+  return /^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 31 ? Number(v) : null;
 }
 
 const TERMS = ["3", "6", "9", "12", "24"] as const;
@@ -171,20 +180,35 @@ export function PartiesStep(ctx: StepContext) {
 
 /* ---------- Step 2: Terms ---------- */
 
-export function TermsStep({ form, closed, units }: StepContext) {
+export function TermsStep({ form, closed, units, dueDayManual, onDueDayEdited }: StepContext) {
   const { register, control, watch, setValue, getValues, formState: { errors } } = form;
   const start = watch("startDate");
   const end = watch("endDate");
   const unit = units?.find((u) => u.id === watch("unitId"));
   const months = termMonthsOf(start, end);
   const term: Term = months !== null && (TERMS as readonly string[]).includes(String(months)) ? (String(months) as Term) : "";
+  const dueDay = dueDayOf(watch("rentDueDay"));
+  const firstRent = firstRentDate(start, dueDay);
+
+  /** Rent is billed on the move-in day: the due day follows the start date until the user sets it by hand. */
+  const followStart = (from: string) => {
+    const day = parseDateOnly(from)?.d;
+    if (dueDayManual || day === undefined) return;
+    setValue("rentDueDay", String(day), { shouldDirty: true, shouldValidate: Boolean(errors.rentDueDay) });
+  };
 
   const pickTerm = (value: Term) => {
     if (!value) return;
     const from = getValues("startDate") || todayISO();
     setValue("startDate", from, { shouldDirty: true });
     setValue("endDate", termEndDate(from, Number(value)) ?? "", { shouldDirty: true, shouldValidate: true });
+    followStart(from);
   };
+
+  const dueHelp =
+    dueDay === null
+      ? "Defaults to the day of the start date."
+      : `Rent is billed on the ${ordinal(dueDay)} of each month${start ? `, starting ${formatDate(start)}` : ""}.${dueDay >= 29 ? " In shorter months, the last day of the month." : ""}`;
 
   if (closed) {
     const v = form.getValues();
@@ -205,7 +229,7 @@ export function TermsStep({ form, closed, units }: StepContext) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       <FormField label="Start date" htmlFor="lw-start" required error={errors.startDate?.message}>
-        <Input id="lw-start" type="date" {...register("startDate", { deps: ["endDate"] })} />
+        <Input id="lw-start" type="date" {...register("startDate", { deps: ["endDate"], onChange: (e) => followStart(e.target.value) })} />
       </FormField>
       <FormField label="End date" htmlFor="lw-end" required error={errors.endDate?.message}>
         <Input id="lw-end" type="date" {...register("endDate")} />
@@ -240,10 +264,16 @@ export function TermsStep({ form, closed, units }: StepContext) {
         <ReadOnly id="lw-frequency" value={paymentFrequencyLabels[watch("paymentFrequency")]} />
       </FormField>
 
-      <FormField label="Rent due day" htmlFor="lw-due" required error={errors.rentDueDay?.message} help="31 means the last day of shorter months.">
-        <Input id="lw-due" inputMode="numeric" {...register("rentDueDay")} />
+      <FormField label="Rent due day" htmlFor="lw-due" required error={errors.rentDueDay?.message} help={dueHelp}>
+        <Input id="lw-due" inputMode="numeric" {...register("rentDueDay", { onChange: onDueDayEdited })} />
       </FormField>
-      <div className="hidden md:block" />
+      {firstRent && firstRent !== start ? (
+        <Caption className="md:pt-7">
+          The first rent date is {formatDate(firstRent)}. The days from {formatDate(start)} to then aren't billed automatically; you can bill them from the Rent Roll.
+        </Caption>
+      ) : (
+        <div className="hidden md:block" />
+      )}
 
       <FormField label="Late fee" htmlFor="lw-fee" error={errors.lateFeeAmount?.message}>
         <Controller
@@ -338,7 +368,8 @@ export function ReviewStep({ form, closed, units, unitLine, lookupTenant, isCrea
   const months = termMonthsOf(v.startDate, v.endDate);
   const missing = closed ? [] : formMissing(v);
   const coNames = v.coTenantIds.map((id) => lookupTenant(id)?.fullName ?? "").filter(Boolean);
-  const dueDay = /^\d+$/.test(v.rentDueDay.trim()) ? Number(v.rentDueDay.trim()) : null;
+  const dueDay = dueDayOf(v.rentDueDay);
+  const firstRent = firstRentDate(v.startDate, dueDay);
   const lateFee = v.lateFeeAmount === "" ? 0 : v.lateFeeAmount;
 
   const missingNote = isCreate
@@ -379,9 +410,17 @@ export function ReviewStep({ form, closed, units, unitLine, lookupTenant, isCrea
               ),
           },
           {
-            label: "Monthly rent",
+            label: "Rent",
             value:
-              v.rent === "" ? <Dash /> : <Num>{formatCurrency(v.rent)}{dueDay !== null ? `, due on the ${ordinal(dueDay)}` : ""}</Num>,
+              v.rent === "" ? (
+                <Dash />
+              ) : (
+                <Num>
+                  {formatCurrency(v.rent)}
+                  {dueDay !== null ? `, billed on the ${ordinal(dueDay)} of each month` : ""}
+                  {firstRent ? `, first rent ${formatDate(firstRent)}` : ""}
+                </Num>
+              ),
           },
           { label: "Payment frequency", value: paymentFrequencyLabels[v.paymentFrequency] },
           {

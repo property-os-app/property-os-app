@@ -127,7 +127,7 @@ Page layouts.
 
 **`src/lib/cn.ts`**: `cn(...classes)` merges class lists (clsx + tailwind-merge, taught our custom classes). Use it for every `className`.
 
-**`src/lib/format.ts`**: `formatCurrency`, `formatCompactCurrency`, `formatPercent`, `formatDate`, `formatRelative`, `leaseCountdown`, `initials`, `EMPTY`, plus our `toCents`, `centsToAmount`, `todayISO`, `todayUTC`, `daysUntil`, `currentMonth`, `currentMonthUTC`, `isMonth`, `formatMonth`, `addMonthsYM`, `dayInMonth`, `addMonthsISO`, `addDaysISO`, `ordinal`. Takes API money strings and "YYYY-MM-DD" dates; details in [src/lib/README.md](../lib/README.md).
+**`src/lib/format.ts`**: `formatCurrency`, `formatCompactCurrency`, `formatPercent`, `formatDate`, `formatRelative`, `leaseCountdown`, `initials`, `EMPTY`, plus our `toCents`, `centsToAmount`, `todayISO`, `todayUTC`, `daysUntil`, `currentMonth`, `currentMonthUTC`, `isMonth`, `formatMonth`, `addMonthsYM`, `dayInMonth`, `addMonthsISO`, `addDaysISO`, `formatShortDate`, `ordinal`. Takes API money strings and "YYYY-MM-DD" dates; details in [src/lib/README.md](../lib/README.md).
 
 ---
 
@@ -211,3 +211,4 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | 2026-10-15 | `templates/Shells.tsx` (`SettingsLayout`) | Section links get `focus-visible:focus-ring`. | They had no visible keyboard focus at all. |
 | 2026-10-15 | `organisms/Overlays.tsx` (`Modal`, `Drawer`) | Without a `description`, Content gets `aria-describedby={undefined}` (was only for a bare Drawer). With a description nothing changes. | Radix logged "Missing Description or aria-describedby" for every modal and drawer without one. |
 | 2026-10-15 | `templates/Shells.tsx` (`WorkspaceShell`) | Content column gets `overflow-x-clip`; `main` gets `min-w-0`. | The Rent Roll made the whole page scroll sideways on desktop. `clip` (not `hidden`) keeps the sticky Topbar working; wide tables still scroll inside their own card. |
+| 2026-10-15 | `lib/format.ts` | Added `formatShortDate` ("Oct 14", date-only, no year). Nothing else changed. | Rent Roll captions ("Starts Oct 14 · first rent Nov 1") and the prorated rent description. |

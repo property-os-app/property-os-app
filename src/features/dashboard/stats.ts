@@ -2,7 +2,7 @@
 import { addMonthsYM, daysUntil, formatCurrency, formatMonth, formatPercent, toCents } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import { expiresWithin, isPastEnd } from "@/features/leases/stats";
-import { canGenerateRent, collectionBreakdown, collectionNote, statusDate } from "@/features/rent-roll/stats";
+import { canGenerateRent, collectionBreakdown, collectionNote, statusDate, upcomingRows } from "@/features/rent-roll/stats";
 import type { Lease } from "@/types/lease";
 import type { RentRollResponse, RentRollRow } from "@/types/rentRoll";
 import type { Unit, UnitStatus } from "@/types/unit";
@@ -161,11 +161,13 @@ export function attentionItems(p: { month: string; roll: RentRollResponse; lease
   const items: AttentionItem[] = [];
   const month = formatMonth(p.month);
   const rows = p.roll.rows;
-  const notBilled = rows.filter((r) => r.status === "NOT_BILLED").length;
+  // Only rows Generate rent would bill (not the ones it skips: outside the term, not monthly), like the Rent Roll banner.
+  const notBilledRows = rows.filter((r) => r.status === "NOT_BILLED");
+  const notBilled = notBilledRows.length - upcomingRows(rows, p.leases, p.month).size;
   if (p.canCharge && canGenerateRent(p.month) && notBilled > 0) {
     items.push({
       key: "not-billed",
-      title: notBilled === rows.length ? `Rent for ${month} isn't billed yet` : `${plural(notBilled, "lease")} ${notBilled === 1 ? "isn't" : "aren't"} billed for ${month} yet`,
+      title: notBilledRows.length === rows.length ? `Rent for ${month} isn't billed yet` : `${plural(notBilled, "lease")} can be billed for ${month}`,
       text: "Generate it so balances are up to date.",
       action: { label: "Generate rent", generate: true },
     });

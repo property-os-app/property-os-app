@@ -113,6 +113,12 @@ export function formatDate(date: Date | string | null | undefined): string {
   return p ? ymdLabel(p) : EMPTY;
 }
 
+/** "Oct 14" (no year) for date-only values, in captions where the month is clear. Empty or invalid -> "-". */
+export function formatShortDate(date: string | null | undefined): string {
+  const p = parseDateOnly(date);
+  return p ? `${MONTHS[p.m - 1]} ${p.d}` : EMPTY;
+}
+
 /** "Oct 12, 2026": the LOCAL day of an ISO timestamp (createdAt, updatedAt, voidedAt). Empty or invalid -> "-". */
 export function formatTimestampDate(timestamp: string | null | undefined): string {
   if (!timestamp) return EMPTY;

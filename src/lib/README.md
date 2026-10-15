@@ -38,6 +38,7 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - `daysUntil(date)`: calendar days from local today to a "YYYY-MM-DD" date (negative in the past, null if invalid).
 - `addMonthsISO(date, n)`: "YYYY-MM-DD" + n months on year/month/day numbers; the day is clamped to the month's last day.
 - `addDaysISO(date, n)`: "YYYY-MM-DD" + n days (no time zone math).
+- `formatShortDate(date)`: "Oct 14" (no year) for captions.
 - `ordinal(n)`: "1st", "2nd", "3rd", "31st".
 - `isMonth(value)`: true for a valid "YYYY-MM".
 - `currentMonthUTC()`: UTC "YYYY-MM", the backend's default month (Rent Roll, generate rent).

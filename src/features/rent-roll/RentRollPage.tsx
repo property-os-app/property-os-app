@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button, Caption, Dash, Select, Skeleton } from "@/components/atoms";
@@ -17,6 +17,7 @@ import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
 import { useProperties } from "@/features/properties/hooks";
 import { GenerateRentModal } from "@/features/rent-roll/GenerateRentModal";
 import { useRentRoll } from "@/features/rent-roll/hooks";
+import { useLeases } from "@/features/leases/hooks";
 import { RentRollTable } from "@/features/rent-roll/RentRollTable";
 import type { LeasePageState } from "@/features/leases/LeasePage";
 import {
@@ -28,10 +29,12 @@ import {
   monthFromParam,
   owingCount,
   paymentTargets,
+  rowFilterStatus,
   rowSearchText,
   STATUS_FILTERS,
   statusCounts,
   type StatusFilter,
+  upcomingRows,
 } from "@/features/rent-roll/stats";
 import { useScope } from "@/features/scope/scopeContext";
 import { linkFocus } from "@/features/shared/linkClass";
@@ -41,7 +44,6 @@ import type { RentRollRow } from "@/types/rentRoll";
 type Filters = { status: StatusFilter };
 
 const initialFilters: Filters = { status: "all" };
-const matchFilters = (r: RentRollRow, f: Filters) => f.status === "all" || r.status === f.status;
 
 const sorts: Record<string, SortColumn<RentRollRow>> = {
   tenant: { kind: "text", value: (r) => r.primaryTenant?.fullName },
@@ -85,6 +87,14 @@ export function RentRollPage() {
   const rentRoll = useRentRoll(month, scope);
   const allRows = useMemo(() => rentRoll.data?.rows ?? [], [rentRoll.data]);
   const summary = rentRoll.data?.summary;
+  // Leases tell which NOT_BILLED rows Generate rent skips ("Upcoming"). null while they load (no banner, no Upcoming yet);
+  // if they fail, every NOT_BILLED row counts as billable, as before.
+  const leases = useLeases({ propertyId: scope ?? undefined });
+  const upcoming = useMemo(
+    () => (leases.isSuccess ? upcomingRows(allRows, leases.data, month) : leases.isError ? new Map() : null),
+    [leases.isSuccess, leases.isError, leases.data, allRows, month],
+  );
+  const matchFilters = useCallback((r: RentRollRow, f: Filters) => f.status === "all" || rowFilterStatus(r, upcoming) === f.status, [upcoming]);
   // API order (property, unit, lease number) is the default; status and search are filtered here.
   const table = useClientTable<RentRollRow, Filters>({
     rows: rentRoll.data?.rows,
@@ -95,7 +105,7 @@ export function RentRollPage() {
     inUrl: true,
     filterValues: { status: STATUS_FILTERS },
   });
-  const counts = useMemo(() => statusCounts(allRows), [allRows]);
+  const counts = useMemo(() => statusCounts(allRows, upcoming), [allRows, upcoming]);
   const targets = useMemo(() => paymentTargets(allRows), [allRows]);
   const collectedNote = useMemo(() => collectionNote(collectionBreakdown(allRows)), [allRows]);
 
@@ -112,10 +122,10 @@ export function RentRollPage() {
   const ready = rentRoll.isSuccess;
   const kpi = (value: ReactNode) => (ready ? value : rentRoll.isError ? <Dash /> : <Skeleton className="h-10 w-24" />);
   const state: "loading" | "error" | "empty" | "ideal" = rentRoll.isError ? "error" : rentRoll.isPending ? "loading" : table.total === 0 ? "empty" : "ideal";
-  // Banner by NOT_BILLED rows: all of them -> "not generated", some -> "partly billed", none -> no banner.
-  const notBilled = counts.NOT_BILLED;
-  const notGenerated = ready && notBilled > 0 && notBilled === allRows.length;
-  const partlyBilled = ready && notBilled > 0 && notBilled < allRows.length;
+  // Banner only when Generate rent would bill something: nothing billed yet -> "not generated", else "{n} leases can be billed".
+  const billable = counts.NOT_BILLED;
+  const nothingBilled = counts.NOT_BILLED + counts.UPCOMING === allRows.length;
+  const showBanner = ready && upcoming !== null && billable > 0;
   const pastMonth = isPastMonth(month);
 
   const empty =
@@ -135,8 +145,16 @@ export function RentRollPage() {
   // The backend only bills up to next month (UTC); later months keep the button disabled with a note.
   const generateAllowed = canGenerateRent(month);
   const generateLimitNote = `You can generate rent up to ${formatMonth(lastGeneratableMonth())}.`;
+  // Nothing left: every row of the month (in the scope) is billed or skipped by generate. Unknown while leases load.
+  const nothingLeft = ready && upcoming !== null && billable === 0;
+  const scopeName = scope ? properties.data?.find((p) => p.id === scope)?.name : undefined;
+  const nothingLeftNote = scopeName ? `Nothing left to bill for ${scopeName} in ${monthLabel}` : `Nothing left to bill for ${monthLabel}`;
   const generateButton = canCharge ? (
-    <Button disabled={!generateAllowed} title={generateAllowed ? undefined : generateLimitNote} onClick={() => setGenerating(true)}>
+    <Button
+      disabled={!generateAllowed || nothingLeft}
+      title={!generateAllowed ? generateLimitNote : nothingLeft ? nothingLeftNote : undefined}
+      onClick={() => setGenerating(true)}
+    >
       Generate rent
     </Button>
   ) : null;
@@ -224,7 +242,11 @@ export function RentRollPage() {
           aria-label="Rent status"
           value={table.filters.status}
           onChange={(v) => table.setFilter("status", v)}
-          segments={STATUS_FILTERS.map((s) => ({ value: s, label: s === "all" ? "All" : rentStatusLabels[s], count: counts[s] }))}
+          segments={STATUS_FILTERS.filter((s) => s !== "UPCOMING" || counts.UPCOMING > 0 || table.filters.status === "UPCOMING").map((s) => ({
+            value: s,
+            label: s === "all" ? "All" : s === "UPCOMING" ? "Upcoming" : rentStatusLabels[s],
+            count: counts[s],
+          }))}
           className="max-w-full flex-wrap"
         />
         <SearchInput placeholder="Search tenant, unit or lease number" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />
@@ -240,10 +262,21 @@ export function RentRollPage() {
         </div>
       </Toolbar>
 
-      {notGenerated && (
+      {showBanner && (
         <Card padding="compact" className="flex flex-wrap items-center justify-between gap-3 border-warning/40 bg-warning-soft">
           <div className="flex flex-col">
-            <span className="font-semibold text-warning">Rent for {monthLabel} hasn't been generated yet.</span>
+            <span className="font-semibold text-warning">
+              {nothingBilled ? (
+                `Rent for ${monthLabel} hasn't been generated yet.`
+              ) : (
+                <>
+                  <button type="button" className={cn("cursor-pointer underline underline-offset-2", linkFocus)} onClick={() => table.setFilter("status", "NOT_BILLED")}>
+                    {plural(billable, "lease")}
+                  </button>{" "}
+                  can be billed for {monthLabel}.
+                </>
+              )}
+            </span>
             {canCharge && (
               <Caption className="text-text-primary">
                 {generateAllowed ? "Generating bills every property you can see, not only the one selected." : generateLimitNote}
@@ -254,29 +287,11 @@ export function RentRollPage() {
         </Card>
       )}
 
-      {partlyBilled && (
-        <Card padding="compact" className="flex flex-wrap items-center justify-between gap-3 border-warning/40 bg-warning-soft">
-          <div className="flex flex-col">
-            <span className="font-semibold text-warning">
-              <button type="button" className={cn("cursor-pointer underline underline-offset-2", linkFocus)} onClick={() => table.setFilter("status", "NOT_BILLED")}>
-                {plural(notBilled, "lease")}
-              </button>{" "}
-              {notBilled === 1 ? "isn't" : "aren't"} billed for {monthLabel} yet. Generating again skips leases that are already billed.
-            </span>
-            {canCharge && (
-              <Caption className="text-text-primary">
-                Leases that generate skips (not monthly, or starting after their due date) can be billed by hand with Add charge, Rent.
-              </Caption>
-            )}
-          </div>
-          {generateAllowed && generateButton}
-        </Card>
-      )}
-
       <div id={table.listId} className="scroll-mt-24">
         <RentRollTable
           showProperty={!scope}
           pastMonth={pastMonth}
+          upcoming={upcoming}
           rows={table.pageRows}
           totalRows={table.filteredRows}
           state={state}

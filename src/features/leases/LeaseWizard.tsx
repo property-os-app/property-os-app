@@ -65,6 +65,8 @@ export function LeaseWizard({ lease, presetUnit, presetTenantId, onSaved, onClos
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [addingTenant, setAddingTenant] = useState<"primary" | "co" | null>(null);
   const [newTenants, setNewTenants] = useState<PickedTenant[]>([]);
+  // The due day follows the start date's day until set by hand. Edit keeps the saved value (follows only when it is empty).
+  const [dueDayManual, setDueDayManual] = useState(lease ? lease.rentDueDay !== null : false);
 
   const form = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(schema),
@@ -159,6 +161,8 @@ export function LeaseWizard({ lease, presetUnit, presetTenantId, onSaved, onClos
     unitLine: lease ? leaseUnitLine(lease) : "",
     lookupTenant,
     onAddTenant: setAddingTenant,
+    dueDayManual,
+    onDueDayEdited: () => setDueDayManual(true),
   };
 
   const blockedBySave = !isCreate && lease?.status === "ACTIVE" && missing.length > 0;

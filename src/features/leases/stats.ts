@@ -1,5 +1,5 @@
 /** Lease money and date helpers shared by the leases page, the unit drawer and the tenants page. Money math in integer cents. */
-import { addDaysISO, addMonthsISO, currentMonth, daysUntil, formatDate, todayUTC, toCents } from "@/lib/format";
+import { addDaysISO, addMonthsISO, addMonthsYM, currentMonth, dayInMonth, daysUntil, formatDate, parseDateOnly, todayUTC, toCents } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import type { Lease, LeaseStatus, LeaseTenant } from "@/types/lease";
 
@@ -56,6 +56,17 @@ export function leaseEndsNote(lease: Lease): string {
 /* ---------- Leases page ---------- */
 
 /** Primary tenant first (the API sends it first; isPrimary is checked anyway). */
+/**
+ * The first rent due date on or after the start: the due day in the start month (clamped to its last day),
+ * or in the next month when that is before the start. ("2026-10-14", 1) -> "2026-11-01". null when either is missing.
+ */
+export function firstRentDate(start: string | null | undefined, dueDay: number | null | undefined): string | null {
+  if (!start || !parseDateOnly(start) || !dueDay) return null;
+  const month = start.slice(0, 7);
+  const here = dayInMonth(month, dueDay);
+  return here !== null && here >= start ? here : dayInMonth(addMonthsYM(month, 1), dueDay);
+}
+
 export function primaryTenant(lease: Lease): LeaseTenant | undefined {
   return lease.tenants.find((t) => t.isPrimary);
 }

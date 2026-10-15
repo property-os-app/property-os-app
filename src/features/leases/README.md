@@ -25,6 +25,7 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 - `leaseFieldLabels`, `leaseFieldLabel(field)`: friendly names for every lease field.
 - `LeaseFieldsMessage`, `parseLeaseFieldsMessage(msg)`: reads "Cannot activate lease: missing ...", "Lease X is ACTIVE, so it needs: ..." and the ENDED / TERMINATED "Not allowed: ..." message.
 - `friendlyLeaseMessage(msg)`: those three with friendly field names; other messages unchanged.
+- `firstRentDate(start, dueDay)`: first due date on or after the start (clamped to the month's last day).
 - `termMonthsOf(start, end)`: whole months, end date included. `termEndDate(start, months)`: start + months - 1 day.
 - `MAX_TAGS`, `MAX_TAG_LENGTH`, `normalizeTag`: the tag rules.
 
@@ -54,10 +55,10 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 - `TenantsTab`: the lease's tenants (avatar, name, email, Primary / Co-tenant), or "No tenants yet".
 
 ## LeaseWizard.tsx
-- `LeaseWizard`: the Add / Edit Lease modal (Stepper, Back / Cancel / Save as draft / Continue or Create & activate / Save changes). Opens TenantFormModal over itself for "Add new tenant".
+- `LeaseWizard`: the Add / Edit Lease modal (Stepper, Back / Cancel / Save as draft / Continue or Create & activate / Save changes). Opens TenantFormModal over itself for "Add new tenant". Keeps the "due day set by hand" flag (on in edit mode unless the saved due day is empty).
 
 ## LeaseWizardSteps.tsx
-- `PartiesStep`, `TermsStep`, `DepositStep`, `ReviewStep`: the 4 step bodies. `StepContext`: what they get from the wizard.
+- `PartiesStep`, `TermsStep`, `DepositStep`, `ReviewStep`: the 4 step bodies. `StepContext`: what they get from the wizard. Terms: the due day follows the start date's day (date field and term buttons) until edited by hand; help "Rent is billed on the {nth} of each month, starting {date}." and a first-rent note when it differs from the start. Review: "Rent: {amount}, billed on the {nth} of each month, first rent {date}".
 
 ## TenantPicker.tsx
 - `TenantPicker`: primary tenant (search, results, chosen card with Change). `CoTenantPicker`: co-tenants as removable tags + search. `PickedTenant`: id, name, email.

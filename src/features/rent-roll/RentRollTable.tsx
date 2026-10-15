@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from "react";
-import { Eye, Plus, Wallet } from "lucide-react";
+import { CalendarRange, Eye, Plus, Wallet } from "lucide-react";
 import { Avatar, Badge, Caption, Dash, Num } from "@/components/atoms";
 import { KebabMenu, StatusBadge, type MenuItem } from "@/components/molecules";
 import { DataTable, type Column, type DataTableProps } from "@/components/organisms";
@@ -8,7 +8,7 @@ import { centsToAmount, formatCurrency, toCents, type MoneyInput } from "@/lib/f
 import { leaseStatusLabels } from "@/lib/labels";
 import { BalanceText } from "@/features/ledger/LedgerParts";
 import { balanceText } from "@/features/ledger/balance";
-import { paidCaption, rowTotals, statusDate } from "@/features/rent-roll/stats";
+import { paidCaption, rowTotals, statusDate, type UpcomingRow } from "@/features/rent-roll/stats";
 import type { RentRollRow } from "@/types/rentRoll";
 
 type Props = Pick<DataTableProps<RentRollRow>, "rows" | "state" | "sort" | "onSortChange" | "empty" | "error" | "footer" | "caption"> & {
@@ -18,6 +18,8 @@ type Props = Pick<DataTableProps<RentRollRow>, "rows" | "state" | "sort" | "onSo
   showProperty: boolean;
   /** A month before the current UTC month: OVERDUE rows say "Unpaid at month end". */
   pastMonth: boolean;
+  /** NOT_BILLED rows Generate rent skips, by leaseId: "Upcoming" badge and caption. null while the leases load. */
+  upcoming: Map<string, UpcomingRow> | null;
   onOpen: (row: RentRollRow) => void;
   /** Omit to hide the item (role can't do it). */
   onRecordPayment?: (row: RentRollRow) => void;
@@ -55,7 +57,7 @@ function WithCaption({ children, caption }: { children: ReactNode; caption: stri
  * The Rent Roll table: tenant, unit (property name under it), previous balance, rent due, paid, balance,
  * status (status date under it), kebab, and the totals row over all filtered rows.
  */
-export function RentRollTable({ totalRows, showProperty, pastMonth, onOpen, onRecordPayment, onAddCharge, ...props }: Props) {
+export function RentRollTable({ totalRows, showProperty, pastMonth, upcoming, onOpen, onRecordPayment, onAddCharge, ...props }: Props) {
   const columns = useMemo<Column<RentRollRow>[]>(
     () => [
       {
@@ -104,6 +106,15 @@ export function RentRollTable({ totalRows, showProperty, pastMonth, onOpen, onRe
         key: "status",
         header: "Status",
         cell: (r) => {
+          const next = upcoming?.get(r.leaseId);
+          if (next) {
+            return (
+              <span className="flex flex-col items-start gap-0.5">
+                <Badge tone="info">Upcoming</Badge>
+                <Caption className="whitespace-nowrap">{next.caption}</Caption>
+              </span>
+            );
+          }
           const d = statusDate(r, pastMonth);
           return (
             <span className="flex flex-col items-start gap-0.5">
@@ -120,12 +131,18 @@ export function RentRollTable({ totalRows, showProperty, pastMonth, onOpen, onRe
         cell: (r) => {
           const items: MenuItem[] = [{ label: "Open ledger", icon: <Eye strokeWidth={1.5} />, onSelect: () => onOpen(r) }];
           if (onRecordPayment) items.push({ label: "Record payment", icon: <Wallet strokeWidth={1.5} />, onSelect: () => onRecordPayment(r) });
-          if (onAddCharge) items.push({ label: "Add charge", icon: <Plus strokeWidth={1.5} />, onSelect: () => onAddCharge(r) });
+          // Leases starting or ending inside the month: the same Add charge modal, prefilled with prorated rent.
+          const partial = upcoming?.get(r.leaseId)?.kind;
+          if (onAddCharge && (partial === "starts-late" || partial === "ends-early")) {
+            items.push({ label: "Bill partial month", icon: <CalendarRange strokeWidth={1.5} />, onSelect: () => onAddCharge(r) });
+          } else if (onAddCharge) {
+            items.push({ label: "Add charge", icon: <Plus strokeWidth={1.5} />, onSelect: () => onAddCharge(r) });
+          }
           return <KebabMenu label={`Actions for lease ${r.leaseNumber}`} items={items} />;
         },
       },
     ],
-    [showProperty, pastMonth, onOpen, onRecordPayment, onAddCharge],
+    [showProperty, pastMonth, upcoming, onOpen, onRecordPayment, onAddCharge],
   );
 
   // One cell per column, by key, so the row stays aligned with the columns.
