@@ -1,0 +1,319 @@
+import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useNavigate, useSearchParams } from "react-router";
+import { Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Button, Caption, Dash, Select, Skeleton } from "@/components/atoms";
+import { Card, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
+import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
+import { errorText } from "@/lib/api";
+import { cn } from "@/lib/cn";
+import { addMonthsYM, currentMonthUTC, formatCompactCurrency, formatPercent, formatMonth } from "@/lib/format";
+import { plural, rentStatusLabels } from "@/lib/labels";
+import { useClientTable, type SortColumn } from "@/lib/useClientTable";
+import { useAuth } from "@/features/auth/authContext";
+import { can } from "@/features/auth/permissions";
+import { AddChargeModal } from "@/features/ledger/AddChargeModal";
+import { RecordPaymentModal } from "@/features/ledger/RecordPaymentModal";
+import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
+import { useProperties } from "@/features/properties/hooks";
+import { GenerateRentModal } from "@/features/rent-roll/GenerateRentModal";
+import { useRentRoll } from "@/features/rent-roll/hooks";
+import { useLeases } from "@/features/leases/hooks";
+import { RentRollTable } from "@/features/rent-roll/RentRollTable";
+import type { LeasePageState } from "@/features/leases/LeasePage";
+import {
+  canGenerateRent,
+  collectionBreakdown,
+  collectionNote,
+  isPastMonth,
+  lastGeneratableMonth,
+  monthFromParam,
+  owingCount,
+  paymentTargets,
+  rowFilterStatus,
+  rowSearchText,
+  STATUS_FILTERS,
+  statusCounts,
+  type StatusFilter,
+  upcomingRows,
+} from "@/features/rent-roll/stats";
+import { useScope } from "@/features/scope/scopeContext";
+import { linkFocus } from "@/features/shared/linkClass";
+import { NoProperties } from "@/features/shared/NoProperties";
+import type { RentRollRow } from "@/types/rentRoll";
+
+type Filters = { status: StatusFilter };
+
+const initialFilters: Filters = { status: "all" };
+
+const sorts: Record<string, SortColumn<RentRollRow>> = {
+  tenant: { kind: "text", value: (r) => r.primaryTenant?.fullName },
+  unit: { kind: "text", value: (r) => r.unit.unitNumber },
+  opening: { kind: "money", value: (r) => r.openingBalance },
+  paid: { kind: "money", value: (r) => r.paid },
+  balance: { kind: "money", value: (r) => r.balance },
+};
+
+/** Record Payment: from the header (choose a tenant) or preset to one lease. */
+type PaymentOpen = { leaseId?: string };
+
+/**
+ * /rent-roll: month switcher (?month=YYYY-MM), KPIs from the summary, status segments + search (client-side) + Property scope,
+ * the table with totals, Generate rent, Add charge and Record Payment. A row (or "Open ledger") opens the lease page, Ledger tab.
+ */
+export function RentRollPage() {
+  const { me } = useAuth();
+  const role = me!.role;
+  const canCharge = can(role, "charge.create");
+  const canPay = can(role, "payment.create");
+  const navigate = useNavigate();
+  const { propertyId: scope, setPropertyId } = useScope();
+
+  const [params, setParams] = useSearchParams();
+  const month = monthFromParam(params.get("month"));
+  const monthLabel = formatMonth(month);
+  // Another month starts on page 1 and keeps the scroll position (the switcher is in the header).
+  const setMonth = (next: string) =>
+    setParams(
+      (prev) => {
+        const out = new URLSearchParams(prev);
+        out.set("month", next);
+        out.delete("page");
+        return out;
+      },
+      { preventScrollReset: true },
+    );
+
+  const properties = useProperties();
+  const rentRoll = useRentRoll(month, scope);
+  const allRows = useMemo(() => rentRoll.data?.rows ?? [], [rentRoll.data]);
+  const summary = rentRoll.data?.summary;
+  // Leases tell which NOT_BILLED rows Generate rent skips ("Upcoming"). null while they load (no banner, no Upcoming yet);
+  // if they fail, every NOT_BILLED row counts as billable, as before.
+  const leases = useLeases({ propertyId: scope ?? undefined });
+  const upcoming = useMemo(
+    () => (leases.isSuccess ? upcomingRows(allRows, leases.data, month) : leases.isError ? new Map() : null),
+    [leases.isSuccess, leases.isError, leases.data, allRows, month],
+  );
+  const matchFilters = useCallback((r: RentRollRow, f: Filters) => f.status === "all" || rowFilterStatus(r, upcoming) === f.status, [upcoming]);
+  // API order (property, unit, lease number) is the default; status and search are filtered here.
+  const table = useClientTable<RentRollRow, Filters>({
+    rows: rentRoll.data?.rows,
+    searchText: rowSearchText,
+    initialFilters,
+    matchFilters,
+    sorts,
+    inUrl: true,
+    filterValues: { status: STATUS_FILTERS },
+  });
+  const counts = useMemo(() => statusCounts(allRows, upcoming), [allRows, upcoming]);
+  const targets = useMemo(() => paymentTargets(allRows), [allRows]);
+  const collectedNote = useMemo(() => collectionNote(collectionBreakdown(allRows)), [allRows]);
+
+  const [generating, setGenerating] = useState(false);
+  const [chargeFor, setChargeFor] = useState<string | null>(null);
+  const [payment, setPayment] = useState<PaymentOpen | null>(null);
+  const addProperty = useAddPropertyFlow();
+
+  // The lease page, Ledger tab, with a breadcrumb back to this month.
+  // `from` shows the lease page's back arrow.
+  const openLedger = (r: RentRollRow) =>
+    void navigate(`/leases/${encodeURIComponent(r.leaseId)}?tab=ledger&from=rent-roll&month=${month}`, { state: { from: "rent-roll" } satisfies LeasePageState });
+
+  const ready = rentRoll.isSuccess;
+  const kpi = (value: ReactNode) => (ready ? value : rentRoll.isError ? <Dash /> : <Skeleton className="h-10 w-24" />);
+  const state: "loading" | "error" | "empty" | "ideal" = rentRoll.isError ? "error" : rentRoll.isPending ? "loading" : table.total === 0 ? "empty" : "ideal";
+  // Banner only when Generate rent would bill something: nothing billed yet -> "not generated", else "{n} leases can be billed".
+  const billable = counts.NOT_BILLED;
+  const nothingBilled = counts.NOT_BILLED + counts.UPCOMING === allRows.length;
+  const showBanner = ready && upcoming !== null && billable > 0;
+  const pastMonth = isPastMonth(month);
+
+  const empty =
+    allRows.length === 0
+      ? {
+          title: `No leases to bill in ${monthLabel}`,
+          description: "Only active leases, and ended leases with a balance, show here.",
+          action: <Button onClick={() => void navigate("/leases")}>Go to Leases</Button>,
+        }
+      : {
+          title: "No rows match your filters",
+          description: "Try another search or status.",
+          action: <Button onClick={table.clearFilters}>Clear filters</Button>,
+        };
+  const error = { title: "Couldn't load the rent roll", description: rentRoll.isError ? errorText(rentRoll.error) : undefined, onRetry: () => void rentRoll.refetch() };
+
+  // The backend only bills up to next month (UTC); later months keep the button disabled with a note.
+  const generateAllowed = canGenerateRent(month);
+  const generateLimitNote = `You can generate rent up to ${formatMonth(lastGeneratableMonth())}.`;
+  // Nothing left: every row of the month (in the scope) is billed or skipped by generate. Unknown while leases load.
+  const nothingLeft = ready && upcoming !== null && billable === 0;
+  const scopeName = scope ? properties.data?.find((p) => p.id === scope)?.name : undefined;
+  const nothingLeftNote = scopeName ? `Nothing left to bill for ${scopeName} in ${monthLabel}` : `Nothing left to bill for ${monthLabel}`;
+  const generateButton = canCharge ? (
+    <Button
+      disabled={!generateAllowed || nothingLeft}
+      title={!generateAllowed ? generateLimitNote : nothingLeft ? nothingLeftNote : undefined}
+      onClick={() => setGenerating(true)}
+    >
+      Generate rent
+    </Button>
+  ) : null;
+  const isCurrent = month === currentMonthUTC();
+
+  if (properties.data?.length === 0) {
+    return (
+      <>
+        <PageHeader title="Rent Roll" />
+        <NoProperties onAdd={addProperty.open} />
+        {addProperty.modals}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <PageHeader
+        title="Rent Roll"
+        description={
+          canCharge && !generateAllowed
+            ? `Unit-by-unit payment ledger for the ${monthLabel} collection period. ${generateLimitNote}`
+            : `Unit-by-unit payment ledger for the ${monthLabel} collection period.`
+        }
+        actions={
+          <>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" iconOnly aria-label="Previous month" icon={<ChevronLeft size={16} strokeWidth={1.5} />} onClick={() => setMonth(addMonthsYM(month, -1))} />
+              <Button
+                icon={<Calendar size={16} strokeWidth={1.5} />}
+                title={isCurrent ? undefined : "Back to the current month"}
+                onClick={() => setMonth(currentMonthUTC())}
+              >
+                {monthLabel}
+              </Button>
+              <Button variant="ghost" iconOnly aria-label="Next month" icon={<ChevronRight size={16} strokeWidth={1.5} />} onClick={() => setMonth(addMonthsYM(month, 1))} />
+            </div>
+            {generateButton}
+            {canPay && (
+              <Button variant="primary" icon={<Plus size={16} strokeWidth={1.5} />} disabled={allRows.length === 0} onClick={() => setPayment({})}>
+                Record Payment
+              </Button>
+            )}
+          </>
+        }
+      />
+
+      <KpiRow>
+        <KpiCard
+          label="Total collected"
+          tone="success"
+          value={kpi(formatCompactCurrency(summary?.collected))}
+          delta={ready && summary?.collectionRate !== null ? { direction: "up", label: formatPercent(summary?.collectionRate) } : undefined}
+          note={
+            ready ? (
+              <>
+                {summary?.collectionRate === null ? "Nothing billed yet" : `of ${formatCompactCurrency(summary?.totalRentDue)} due`}
+                {collectedNote && <span className="block">{collectedNote}</span>}
+              </>
+            ) : undefined
+          }
+        />
+        <KpiCard
+          label="Outstanding balance"
+          tone="danger"
+          value={kpi(formatCompactCurrency(summary?.outstandingBalance))}
+          delta={ready ? { direction: "down", label: plural(owingCount(allRows), "lease") } : undefined}
+          note={ready ? `${summary?.overdueCount ?? 0} overdue` : undefined}
+        />
+        <KpiCard
+          label="Overdue"
+          tone="danger"
+          value={kpi(formatCompactCurrency(summary?.overdueTotal))}
+          note={ready ? `${plural(summary?.overdueCount ?? 0, "lease")} past their due date` : undefined}
+        />
+        <KpiCard
+          label="Deposits held"
+          value={kpi(formatCompactCurrency(summary?.securityDepositsHeld))}
+          note={ready ? `${plural(summary?.activeDepositCount ?? 0, "active lease")}${isCurrent ? "" : ", as of today"}` : undefined}
+        />
+      </KpiRow>
+
+      <Toolbar>
+        <SegmentedControl<StatusFilter>
+          aria-label="Rent status"
+          value={table.filters.status}
+          onChange={(v) => table.setFilter("status", v)}
+          segments={STATUS_FILTERS.filter((s) => s !== "UPCOMING" || counts.UPCOMING > 0 || table.filters.status === "UPCOMING").map((s) => ({
+            value: s,
+            label: s === "all" ? "All" : s === "UPCOMING" ? "Upcoming" : rentStatusLabels[s],
+            count: counts[s],
+          }))}
+          className="max-w-full flex-wrap"
+        />
+        <SearchInput placeholder="Search tenant, unit or lease number" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />
+        <div className="w-52">
+          <Select aria-label="Property" value={scope ?? "all"} onChange={(e) => setPropertyId(e.target.value === "all" ? null : e.target.value)}>
+            <option value="all">All properties</option>
+            {properties.data?.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </Toolbar>
+
+      {showBanner && (
+        <Card padding="compact" className="flex flex-wrap items-center justify-between gap-3 border-warning/40 bg-warning-soft">
+          <div className="flex flex-col">
+            <span className="font-semibold text-warning">
+              {nothingBilled ? (
+                `Rent for ${monthLabel} hasn't been generated yet.`
+              ) : (
+                <>
+                  <button type="button" className={cn("cursor-pointer underline underline-offset-2", linkFocus)} onClick={() => table.setFilter("status", "NOT_BILLED")}>
+                    {plural(billable, "lease")}
+                  </button>{" "}
+                  can be billed for {monthLabel}.
+                </>
+              )}
+            </span>
+            {canCharge && (
+              <Caption className="text-text-primary">
+                {generateAllowed ? "Generating bills every property you can see, not only the one selected." : generateLimitNote}
+              </Caption>
+            )}
+          </div>
+          {generateButton}
+        </Card>
+      )}
+
+      <div id={table.listId} className="scroll-mt-24">
+        <RentRollTable
+          showProperty={!scope}
+          pastMonth={pastMonth}
+          upcoming={upcoming}
+          rows={table.pageRows}
+          totalRows={table.filteredRows}
+          state={state}
+          sort={table.sort}
+          onSortChange={table.setSort}
+          empty={empty}
+          error={error}
+          caption={`Rent roll, ${monthLabel}`}
+          footer={
+            table.showPagination ? (
+              <Pagination page={table.page} pageCount={table.pageCount} onPageChange={table.setPage} summary={table.summary} />
+            ) : undefined
+          }
+          onOpen={openLedger}
+          onRecordPayment={canPay ? (r) => setPayment({ leaseId: r.leaseId }) : undefined}
+          onAddCharge={canCharge ? (r) => setChargeFor(r.leaseId) : undefined}
+        />
+      </div>
+
+      {generating && <GenerateRentModal month={month} onClose={() => setGenerating(false)} />}
+      {chargeFor && <AddChargeModal leaseId={chargeFor} month={month} onClose={() => setChargeFor(null)} />}
+      {payment && <RecordPaymentModal targets={targets} presetLeaseId={payment.leaseId} onClose={() => setPayment(null)} />}
+    </>
+  );
+}

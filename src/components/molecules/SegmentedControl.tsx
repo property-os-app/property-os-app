@@ -17,10 +17,10 @@ export interface SegmentedControlProps<V extends string> {
   className?: string;
 }
 
-/** Status filtering (Paid, Partial, Late...) and view switching. Shows a count per segment. */
+/** Status filtering (Paid, Partial, Late...) and view switching. Shows a count per segment. Scrolls sideways inside itself when too wide. */
 export function SegmentedControl<V extends string>({ value, onChange, segments, className, ...props }: SegmentedControlProps<V>) {
   return (
-    <div role="group" aria-label={props["aria-label"]} className={cn("inline-flex gap-0.5 rounded-control border border-border-subtle bg-surface-2 p-1", className)}>
+    <div role="group" aria-label={props["aria-label"]} className={cn("inline-flex max-w-full gap-0.5 overflow-x-auto rounded-control border border-border-subtle bg-surface-2 p-1", className)}>
       {segments.map((s) => {
         const on = s.value === value;
         return (
@@ -30,7 +30,7 @@ export function SegmentedControl<V extends string>({ value, onChange, segments, 
             aria-pressed={on}
             onClick={() => onChange(s.value)}
             className={cn(
-              "inline-flex h-8 items-center gap-2 rounded-badge px-3 text-small font-semibold transition-colors duration-fast focus-visible:focus-ring",
+              "inline-flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-badge px-3 text-small font-semibold transition-colors duration-fast focus-visible:focus-ring",
               on ? "bg-surface-3 text-text-primary" : "text-text-secondary hover:text-text-primary",
             )}
           >

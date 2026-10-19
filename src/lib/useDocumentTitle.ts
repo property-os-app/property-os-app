@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 
-/** Sets the browser tab title to "<title> · PropertyOS Admin". */
+/** Sets the browser tab title to "<title> · PropertyOS". */
 export function useDocumentTitle(title: string): void {
   useEffect(() => {
-    document.title = `${title} · PropertyOS Admin`;
+    document.title = `${title} · PropertyOS`;
   }, [title]);
 }

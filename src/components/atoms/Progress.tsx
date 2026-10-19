@@ -2,21 +2,29 @@ import * as React from "react";
 import { cn } from "@/lib/cn";
 
 export interface CollectionProgressProps {
-  /** 0 to 100 */
-  value: number;
+  /** 0 to 100, or null when there is nothing to measure (empty bar, no percentage). */
+  value: number | null;
   label?: string;
   className?: string;
 }
 
 /** Full-width 16px hazard-stripe bar with the collection rate at the right end. */
 export function CollectionProgress({ value, label = "Collection rate", className }: CollectionProgressProps) {
-  const pct = Math.max(0, Math.min(100, value));
+  const pct = value === null ? null : Math.max(0, Math.min(100, value));
   return (
     <div className={cn("flex items-center gap-4", className)}>
-      <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="h-4 flex-1 overflow-hidden rounded-pill bg-surface-2">
-        <div className="h-full rounded-pill hazard-fill animate-hazard transition-[width] duration-draw ease-out" style={{ width: `${pct}%` }} />
+      <div
+        role="progressbar"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={pct ?? undefined}
+        aria-valuetext={pct === null ? "No data" : undefined}
+        className="h-4 flex-1 overflow-hidden rounded-pill bg-surface-2"
+      >
+        {pct !== null && <div className="h-full rounded-pill hazard-fill animate-hazard transition-[width] duration-draw ease-out" style={{ width: `${pct}%` }} />}
       </div>
-      <span className="text-h2 tabular text-text-primary">{pct.toFixed(1)}%</span>
+      {pct !== null && <span className="text-h2 tabular text-text-primary">{pct.toFixed(1)}%</span>}
     </div>
   );
 }

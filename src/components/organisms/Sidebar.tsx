@@ -1,6 +1,6 @@
 import * as React from "react";
 import {
-  LayoutGrid, Activity, Building2, DoorOpen, Users, FileText, DollarSign, Receipt, Landmark, BarChart3,
+  X, LayoutGrid, Activity, Building2, DoorOpen, Users, FileText, DollarSign, Receipt, Landmark, BarChart3,
   Wrench, Truck, Inbox, MessageCircle, ShieldCheck, Database, SlidersHorizontal, CircleHelp, ChevronDown, ChevronLeft, ChevronRight,
   type LucideIcon,
 } from "lucide-react";
@@ -74,7 +74,8 @@ export const roleModules: Record<Role, ModuleKey[]> = {
 
 export interface SidebarProps {
   role: Role;
-  active: ModuleKey;
+  /** The highlighted item; leave it out to highlight nothing (e.g. a "not found" page). */
+  active?: ModuleKey;
   user: { name: string; roleLabel: string; avatarUrl?: string };
   /** Current scope label shown in the scope switcher, e.g. "All properties". */
   scope: string;
@@ -87,10 +88,14 @@ export interface SidebarProps {
   brand?: string;
   /** Render links with your router: (href, props) => <Link to={href} {...props} /> */
   renderLink?: (href: string, props: React.AnchorHTMLAttributes<HTMLAnchorElement> & { children: React.ReactNode }) => React.ReactNode;
+  /** Called after a nav item is clicked (the mobile menu closes itself). */
+  onNavigate?: () => void;
+  /** Shows a "Close menu" button next to the brand (the sidebar inside the mobile menu). */
+  onClose?: () => void;
   className?: string;
 }
 
-export function Sidebar({ role, active, user, scope, onScopeClick, badges = {}, collapsed = false, onToggleCollapsed, groups = defaultNavGroups, brand = "PropOS", renderLink, className }: SidebarProps) {
+export function Sidebar({ role, active, user, scope, onScopeClick, badges = {}, collapsed = false, onToggleCollapsed, groups = defaultNavGroups, brand = "PropOS", renderLink, onNavigate, onClose, className }: SidebarProps) {
   const allowed = roleModules[role];
   const link = renderLink ?? ((href, props) => <a href={href} {...props} />);
   return (
@@ -101,6 +106,11 @@ export function Sidebar({ role, active, user, scope, onScopeClick, badges = {}, 
       <div className={cn("flex h-topbar items-center gap-2.5", collapsed ? "justify-center" : "px-5")}>
         <div className="flex size-7 items-center justify-center rounded-control bg-success text-body font-extrabold text-success-fg">P</div>
         {!collapsed && <div className="text-h3 font-extrabold tracking-tight">{brand}</div>}
+        {onClose && (
+          <button type="button" onClick={onClose} aria-label="Close menu" className="ml-auto rounded-control p-1.5 text-text-secondary hover:bg-surface-3 hover:text-text-primary focus-visible:focus-ring">
+            <X size={20} strokeWidth={1.5} />
+          </button>
+        )}
       </div>
 
       <button
@@ -129,6 +139,7 @@ export function Sidebar({ role, active, user, scope, onScopeClick, badges = {}, 
                     {link(it.href, {
                       "aria-current": on ? "page" : undefined,
                       title: collapsed ? it.label : undefined,
+                      onClick: onNavigate,
                       className: cn(
                         "relative flex h-10 items-center gap-3 rounded-control px-3 text-body font-medium no-underline transition-colors duration-fast focus-visible:focus-ring",
                         on ? "bg-surface-3 text-text-primary shadow-[inset_2px_0_0_var(--success)]" : "text-text-secondary hover:bg-surface-3 hover:text-text-primary",

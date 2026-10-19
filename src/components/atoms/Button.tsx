@@ -16,7 +16,7 @@ export const buttonVariants = cva(
         primary: "bg-success text-success-fg hover:bg-success-dark",
         secondary: "bg-surface-2 border-border-strong text-text-primary hover:bg-surface-3",
         ghost: "bg-transparent text-text-secondary hover:bg-surface-3 hover:text-text-primary",
-        danger: "bg-danger text-white hover:opacity-90",
+        danger: "bg-danger-solid text-white hover:opacity-90",
         /** Violet outline with sparkle, AI actions only. */
         ai: "bg-transparent border-ai text-ai hover:bg-ai-soft",
       },

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Bell, Plus, Sparkles, Building2 } from "lucide-react";
+import { Bell, Plus, Sparkles, Building2, Menu } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/atoms/Button";
 import { Avatar } from "@/components/atoms/Avatar";
@@ -24,15 +24,33 @@ export interface TopbarProps {
   profileMenu?: MenuItem[];
   /** Hide the AI button for roles without AI surfaces. */
   showAi?: boolean;
+  /** Shows the "Open menu" button below the lg breakpoint (where the sidebar is hidden). */
+  onMenu?: () => void;
+  /** Extra content just left of the avatar (e.g. a ThemeSwitch). */
+  endSlot?: React.ReactNode;
   className?: string;
 }
 
 /** 64px sticky top bar: page title and scope chip, global search (⌘K), Ask AI, bell, quick add, profile. */
-export function Topbar({ title, scope, user, unreadNotifications = 0, onSearch, onAskAi, onNotifications, onQuickAdd, onProfile, profileMenu, showAi = true, className }: TopbarProps) {
+export function Topbar({ title, scope, user, unreadNotifications = 0, onSearch, onAskAi, onNotifications, onQuickAdd, onProfile, profileMenu, showAi = true, onMenu, endSlot, className }: TopbarProps) {
   return (
-    <header className={cn("sticky top-0 z-10 flex h-topbar shrink-0 items-center gap-4 border-b border-border-subtle bg-bg px-8", className)}>
+    <header className={cn("sticky top-0 z-10 flex h-topbar shrink-0 items-center gap-4 border-b border-border-subtle bg-bg px-4 lg:px-8", className)}>
       <div className="flex min-w-0 items-center gap-3">
-        <div className="whitespace-nowrap text-h3 font-bold">{title}</div>
+        {onMenu && (
+          <Button
+            variant="ghost"
+            iconOnly
+            aria-label="Open menu"
+            className="-ml-2 shrink-0 lg:hidden"
+            icon={<Menu size={20} strokeWidth={1.5} />}
+            // Focus the button first (Safari doesn't on click), so the menu returns focus here when it closes.
+            onClick={(e) => {
+              e.currentTarget.focus();
+              onMenu();
+            }}
+          />
+        )}
+        <div className="truncate text-h3 font-bold">{title}</div>
         <FilterChip active className="hidden md:inline-flex"><Building2 size={16} strokeWidth={1.5} />{scope}</FilterChip>
       </div>
       {onSearch && (
@@ -54,6 +72,7 @@ export function Topbar({ title, scope, user, unreadNotifications = 0, onSearch, 
           </Button>
         )}
         {onQuickAdd && <Button variant="primary" iconOnly aria-label="Quick add: payment, lease, expense, ticket, tenant" onClick={onQuickAdd} icon={<Plus size={20} strokeWidth={1.5} />} />}
+        {endSlot}
         {profileMenu ? (
           <KebabMenu items={profileMenu} label="Profile menu" trigger={<Avatar name={user.name} src={user.avatarUrl} />} />
         ) : (
@@ -79,12 +98,12 @@ export function PageHeader({ title, description, actions, breadcrumb, className 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       {breadcrumb}
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
           <h1 className="m-0 text-h1">{title}</h1>
           {description && <div className="mt-1 text-text-secondary">{description}</div>}
         </div>
-        {actions && <div className="flex items-center gap-3">{actions}</div>}
+        {actions && <div className="flex flex-wrap items-center gap-3">{actions}</div>}
       </div>
     </div>
   );

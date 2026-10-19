@@ -2,6 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/cn";
 import { Sidebar, type SidebarProps } from "@/components/organisms/Sidebar";
 import { Topbar, type TopbarProps } from "@/components/organisms/Topbar";
+import { Drawer } from "@/components/organisms/Overlays";
 import { OwnerNav, type OwnerNavProps, RenterTabBar, type RenterTab } from "@/components/organisms/PortalNav";
 
 /* ---------- Management Workspace: sidebar + sticky top bar + scrolling content ---------- */
@@ -10,26 +11,64 @@ export interface WorkspaceShellProps {
   topbar: TopbarProps;
   /** Optional banner under the top bar (unsaved / offline). */
   banner?: React.ReactNode;
+  /** Mobile menu open state. Pass both to control it from outside (e.g. a tab bar "More" button); leave out and the shell keeps it. */
+  menuOpen?: boolean;
+  onMenuOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
   className?: string;
 }
 
 /**
  * Page anatomy inside `children`: PageHeader, KpiRow, Toolbar, content, then Drawer/Modal rendered by the page.
- * Content column is capped at 1440px and centered on wide screens.
+ * Content column is capped at 1440px and centered on wide screens. The window scrolls (sidebar and top bar are sticky).
+ * Below lg the sidebar is hidden: the Topbar menu button opens the same Sidebar in a left drawer (NavMenuDrawer).
  */
-export function WorkspaceShell({ sidebar, topbar, banner, children, className }: WorkspaceShellProps) {
+export function WorkspaceShell({ sidebar, topbar, banner, menuOpen, onMenuOpenChange, children, className }: WorkspaceShellProps) {
+  const [ownMenuOpen, setOwnMenuOpen] = React.useState(false);
+  const open = menuOpen ?? ownMenuOpen;
+  const setOpen = onMenuOpenChange ?? setOwnMenuOpen;
   return (
     <div className={cn("flex min-h-screen bg-bg text-text-primary", className)}>
-      <div className="sticky top-0 hidden h-screen md:block">
+      <div className="sticky top-0 hidden h-screen lg:block">
         <Sidebar {...sidebar} />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar {...topbar} />
+      <NavMenuDrawer open={open} onOpenChange={setOpen} sidebar={sidebar} />
+      {/* overflow-x-clip (not hidden, so the Topbar stays sticky): nothing makes the page scroll sideways; wide tables scroll in their card. */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-x-clip">
+        <Topbar onMenu={() => setOpen(true)} {...topbar} />
         {banner}
-        <main className="mx-auto flex w-full max-w-content flex-col gap-6 p-4 md:p-8">{children}</main>
+        <main className="mx-auto flex w-full min-w-0 max-w-content flex-col gap-6 p-4 md:p-8">{children}</main>
       </div>
     </div>
+  );
+}
+
+export interface NavMenuDrawerProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** The same props as the desktop Sidebar. */
+  sidebar: SidebarProps;
+}
+
+/**
+ * The Sidebar (nav, scope picker, user) in a left drawer, for screens below lg. Closes on a nav pick, the close button,
+ * Escape or a tap outside; focus goes back to the button that opened it. Reusable by any opener (menu button, tab bar).
+ */
+export function NavMenuDrawer({ open, onOpenChange, sidebar }: NavMenuDrawerProps) {
+  return (
+    <Drawer side="left" bare title="Menu" open={open} onOpenChange={onOpenChange}>
+      <Sidebar
+        {...sidebar}
+        collapsed={false}
+        onToggleCollapsed={undefined}
+        className={cn("w-full border-r-0", sidebar.className)}
+        onClose={() => onOpenChange(false)}
+        onNavigate={() => {
+          sidebar.onNavigate?.();
+          onOpenChange(false);
+        }}
+      />
+    </Drawer>
   );
 }
 
@@ -80,19 +119,28 @@ export function AuthLayout({ children, aside, className }: { children: React.Rea
 /* ---------- Settings: left sub-navigation + content ---------- */
 export interface SettingsSection { key: string; label: string; href: string }
 
-export function SettingsLayout({ sections, active, children, className }: { sections: SettingsSection[]; active: string; children: React.ReactNode; className?: string }) {
+export interface SettingsLayoutProps {
+  sections: SettingsSection[];
+  active: string;
+  /** Render links with your router: (href, props) => <Link to={href} {...props} />. Default: plain <a>. */
+  renderLink?: SidebarProps["renderLink"];
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function SettingsLayout({ sections, active, renderLink, children, className }: SettingsLayoutProps) {
+  const link = renderLink ?? ((href, props) => <a href={href} {...props} />);
   return (
     <div className={cn("flex flex-wrap gap-8", className)}>
       <nav aria-label="Settings sections" className="flex w-[220px] shrink-0 flex-col gap-1">
         {sections.map((s) => (
-          <a
-            key={s.key}
-            href={s.href}
-            aria-current={s.key === active ? "page" : undefined}
-            className={cn("rounded-control px-3 py-2.5 no-underline", s.key === active ? "bg-surface-3 text-text-primary" : "text-text-secondary hover:bg-surface-3 hover:text-text-primary")}
-          >
-            {s.label}
-          </a>
+          <React.Fragment key={s.key}>
+            {link(s.href, {
+              "aria-current": s.key === active ? "page" : undefined,
+              className: cn("rounded-control px-3 py-2.5 no-underline focus-visible:focus-ring", s.key === active ? "bg-surface-3 text-text-primary" : "text-text-secondary hover:bg-surface-3 hover:text-text-primary"),
+              children: s.label,
+            })}
+          </React.Fragment>
         ))}
       </nav>
       <div className="flex min-w-0 flex-1 basis-[560px] flex-col gap-6">{children}</div>

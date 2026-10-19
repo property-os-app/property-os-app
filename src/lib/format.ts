@@ -1,6 +1,6 @@
 /** Formatting rules from the PropOS guideline, section 11, adapted to our API (money as strings, dates as "YYYY-MM-DD"). */
 
-/** Money as it comes from the API ("1200.00", "-150.00", "2500.5"), or a number from older callers. */
+/** Money as it comes from the API (always 2 decimals: "1200.00", "-150.00"), or a number from older callers. Other decimal counts still parse. */
 export type MoneyInput = string | number | null | undefined;
 
 /** Empty values render as a single dash, never "N/A". */
@@ -69,17 +69,29 @@ export function formatPercent(value: number | string | null | undefined, digits 
 
 /* ---------- Dates (never new Date("YYYY-MM-DD"): it is UTC and shows the day before in US time zones) ---------- */
 
-type Ymd = { y: number; m: number; d: number };
+/** A calendar day as plain numbers (m is 1-12). No time zone. */
+export type Ymd = { y: number; m: number; d: number };
 
-/** Year/month/day from the first 10 characters of a string, or the local calendar day of a Date. */
-function toYmd(date: Date | string): Ymd | null {
-  if (date instanceof Date) {
-    return Number.isNaN(date.getTime()) ? null : { y: date.getFullYear(), m: date.getMonth() + 1, d: date.getDate() };
-  }
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date.slice(0, 10));
+/**
+ * The one parser for date-only API values: exactly "YYYY-MM-DD" and a real calendar day ("2026-02-30" -> null).
+ * Never throws and never goes through the browser's time zone. Anything else (timestamps, "", null) -> null.
+ */
+export function parseDateOnly(value: unknown): Ymd | null {
+  if (typeof value !== "string") return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return null;
   const [y, m, d] = [Number(match[1]), Number(match[2]), Number(match[3])];
-  return m >= 1 && m <= 12 && d >= 1 && d <= 31 ? { y, m, d } : null;
+  return m >= 1 && m <= 12 && d >= 1 && d <= daysInMonth(y, m) ? { y, m, d } : null;
+}
+
+/** The local calendar day of a Date (for "today" and timestamps). null when invalid. */
+function localYmd(date: Date): Ymd | null {
+  return Number.isNaN(date.getTime()) ? null : { y: date.getFullYear(), m: date.getMonth() + 1, d: date.getDate() };
+}
+
+/** A Date gives its local day; a string must be a date-only "YYYY-MM-DD". */
+function toYmd(date: Date | string): Ymd | null {
+  return date instanceof Date ? localYmd(date) : parseDateOnly(date);
 }
 
 /** Whole-day number for a calendar date (no time zone involved), so day differences are exact. */
@@ -89,11 +101,29 @@ function dayNumber({ y, m, d }: Ymd): number {
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
-/** "Nov 1, 2026" in tables. Works for "2026-11-01", "2026-11-01T00:00:00.000Z" and Date. Empty or invalid -> "-". */
+const ymdLabel = (p: Ymd) => `${MONTHS[p.m - 1]} ${p.d}, ${p.y}`;
+
+/**
+ * "Nov 1, 2026" for date-only values ("YYYY-MM-DD", via parseDateOnly) or a Date (its local day).
+ * Empty or invalid (including full timestamps: use formatTimestampDate) -> "-". Never throws.
+ */
 export function formatDate(date: Date | string | null | undefined): string {
   if (date === null || date === undefined || date === "") return EMPTY;
   const p = toYmd(date);
-  return p ? `${MONTHS[p.m - 1]} ${p.d}, ${p.y}` : EMPTY;
+  return p ? ymdLabel(p) : EMPTY;
+}
+
+/** "Oct 14" (no year) for date-only values, in captions where the month is clear. Empty or invalid -> "-". */
+export function formatShortDate(date: string | null | undefined): string {
+  const p = parseDateOnly(date);
+  return p ? `${MONTHS[p.m - 1]} ${p.d}` : EMPTY;
+}
+
+/** "Oct 12, 2026": the LOCAL day of an ISO timestamp (createdAt, updatedAt, voidedAt). Empty or invalid -> "-". */
+export function formatTimestampDate(timestamp: string | null | undefined): string {
+  if (!timestamp) return EMPTY;
+  const p = localYmd(new Date(timestamp));
+  return p ? ymdLabel(p) : EMPTY;
 }
 
 /**
@@ -131,12 +161,97 @@ export function todayISO(now = new Date()): string {
   return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
 }
 
+/** Today as UTC "YYYY-MM-DD" from the UTC parts: the backend's "today" (overdue, endingSoon). */
+export function todayUTC(now = new Date()): string {
+  return `${now.getUTCFullYear()}-${pad2(now.getUTCMonth() + 1)}-${pad2(now.getUTCDate())}`;
+}
+
+/** Calendar days from today (local) to a "YYYY-MM-DD" date: 0 today, negative in the past. null when invalid. */
+export function daysUntil(date: string | null | undefined, now = new Date()): number | null {
+  if (!date) return null;
+  const target = toYmd(date);
+  const today = toYmd(now);
+  return target && today ? dayNumber(target) - dayNumber(today) : null;
+}
+
+/** Days in a month (m is 1-12). Date.UTC is used only as a calendar, no time zone is involved. */
+function daysInMonth(y: number, m: number): number {
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+const ymdISO = ({ y, m, d }: Ymd) => `${y}-${pad2(m)}-${pad2(d)}`;
+
+/**
+ * "YYYY-MM-DD" plus n months (n may be negative), on year/month/day numbers. The day is clamped to the month's last day:
+ * "2026-01-31" + 1 -> "2026-02-28". null when the date is invalid.
+ */
+export function addMonthsISO(date: string, n: number): string | null {
+  const p = toYmd(date);
+  if (!p) return null;
+  const index = p.y * 12 + (p.m - 1) + n;
+  const y = Math.floor(index / 12);
+  const m = index - y * 12 + 1;
+  return ymdISO({ y, m, d: Math.min(p.d, daysInMonth(y, m)) });
+}
+
+/** "YYYY-MM-DD" plus n days (n may be negative): "2027-01-01" - 1 -> "2026-12-31". null when the date is invalid. */
+export function addDaysISO(date: string, n: number): string | null {
+  const p = toYmd(date);
+  if (!p) return null;
+  const d = new Date((dayNumber(p) + n) * 86_400_000);
+  return ymdISO({ y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() });
+}
+
 /** This month as local "YYYY-MM", for the Rent Roll month and periodMonth. */
 export function currentMonth(now = new Date()): string {
   return todayISO(now).slice(0, 7);
 }
 
+/* ---------- Months ("YYYY-MM", no Date math) ---------- */
+
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** True for a valid "YYYY-MM" (month 01-12), the API's month format. */
+export function isMonth(value: string | null | undefined): value is string {
+  return typeof value === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+}
+
+/** This month as UTC "YYYY-MM": the backend's default month (rent roll, generate rent). */
+export function currentMonthUTC(now = new Date()): string {
+  return todayUTC(now).slice(0, 7);
+}
+
+/** "2026-10" -> "October 2026". Invalid -> "-". */
+export function formatMonth(month: string): string {
+  if (!isMonth(month)) return EMPTY;
+  return `${MONTH_NAMES[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`;
+}
+
+/** "YYYY-MM" plus n months (n may be negative), on numbers: "2026-12" + 1 -> "2027-01". Invalid stays as it is. */
+export function addMonthsYM(month: string, n: number): string {
+  if (!isMonth(month)) return month;
+  const index = Number(month.slice(0, 4)) * 12 + Number(month.slice(5, 7)) - 1 + n;
+  const y = Math.floor(index / 12);
+  return `${y}-${pad2(index - y * 12 + 1)}`;
+}
+
+/** Day `day` (1-31) of a "YYYY-MM" month, clamped to its last day: ("2026-02", 31) -> "2026-02-28". null when invalid. */
+export function dayInMonth(month: string, day: number): string | null {
+  if (!isMonth(month) || !Number.isInteger(day) || day < 1) return null;
+  const y = Number(month.slice(0, 4));
+  const m = Number(month.slice(5, 7));
+  return ymdISO({ y, m, d: Math.min(day, daysInMonth(y, m)) });
+}
+
 /* ---------- Text ---------- */
+
+/** Ordinal number: 1 -> "1st", 2 -> "2nd", 3 -> "3rd", 11 -> "11th", 22 -> "22nd", 31 -> "31st". */
+export function ordinal(n: number): string {
+  const lastTwo = n % 100;
+  if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`;
+  const suffix = { 1: "st", 2: "nd", 3: "rd" }[n % 10] ?? "th";
+  return `${n}${suffix}`;
+}
 
 /** Initials for avatars: "Jordan Blake" -> "JB". */
 export function initials(name: string): string {

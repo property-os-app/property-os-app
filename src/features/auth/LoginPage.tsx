@@ -9,6 +9,7 @@ import { useAuth } from "@/features/auth/authContext";
 import { AuthShell } from "@/features/auth/AuthShell";
 import { PasswordInput } from "@/features/auth/PasswordInput";
 import { signInErrorText } from "@/features/auth/firebaseErrors";
+import { textLink } from "@/features/shared/linkClass";
 
 const schema = z.object({
   email: z.string().trim().pipe(z.email("Enter a valid email.")),
@@ -52,7 +53,7 @@ export function LoginPage() {
           htmlFor="password"
           error={errors.password?.message}
           action={
-            <Link to="/forgot-password" className="text-small font-semibold text-success hover:underline focus-visible:focus-ring">
+            <Link to="/forgot-password" className={textLink}>
               Forgot password?
             </Link>
           }

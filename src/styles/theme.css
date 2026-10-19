@@ -4,8 +4,12 @@
  */
 @import "tailwindcss";
 
+/* dark: utilities follow the .dark class (or data-theme="dark"), not the OS setting. */
+@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+
 /* ---------- 1. Raw theme values (switchable at runtime) ---------- */
 :root {
+  color-scheme: light; /* native controls (select lists, date pickers, scrollbars) */
   --bg: #f7f7f9;
   --surface-1: #ffffff;
   --surface-2: #f1f1f4;
@@ -22,6 +26,7 @@
   --success-soft: rgba(5, 150, 105, 0.12);
   --success-fg: #04130d; /* text on a solid success fill, never white */
   --danger: #e11d48;
+  --danger-solid: #e11d48; /* solid fill under white text (4.70:1) */
   --danger-soft: rgba(225, 29, 72, 0.12);
   --warning: #b45309;
   --warning-soft: rgba(180, 83, 9, 0.12);
@@ -37,6 +42,7 @@
 
 .dark,
 [data-theme="dark"] {
+  color-scheme: dark;
   --bg: #0b0b0f;
   --surface-1: #121218;
   --surface-2: #181820;
@@ -53,6 +59,7 @@
   --success-soft: rgba(16, 185, 129, 0.12);
   --success-fg: #04130d;
   --danger: #f43f5e;
+  --danger-solid: #e11d48; /* #f43f5e is only 3.67:1 with white */
   --danger-soft: rgba(244, 63, 94, 0.12);
   --warning: #f59e0b;
   --warning-soft: rgba(245, 158, 11, 0.12);
@@ -84,6 +91,7 @@
   --color-success-soft: var(--success-soft);
   --color-success-fg: var(--success-fg);
   --color-danger: var(--danger);
+  --color-danger-solid: var(--danger-solid);
   --color-danger-soft: var(--danger-soft);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
@@ -198,4 +206,9 @@
 @utility focus-ring {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
+}
+/* For inline text links: no gap, so the ring stays clear of the next word. */
+@utility focus-ring-tight {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 0;
 }
