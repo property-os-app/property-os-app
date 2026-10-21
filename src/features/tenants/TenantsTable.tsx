@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { Avatar, Caption, Dash, Small } from "@/components/atoms";
-import { KebabMenu, type MenuItem } from "@/components/molecules";
-import { DataTable, type Column, type DataTableProps } from "@/components/organisms";
+import { KebabMenu, ListCard, type MenuItem } from "@/components/molecules";
+import { CardList, DataTable, type Column, type DataTableProps } from "@/components/organisms";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { BalanceValue, RentStatusBadge, TenantLeaseBadge } from "@/features/tenants/TenantParts";
-import type { TenantRow } from "@/features/tenants/stats";
+import { rentStatus, unitLine, type TenantRow } from "@/features/tenants/stats";
 
 type Props = Pick<DataTableProps<TenantRow>, "rows" | "state" | "sort" | "onSortChange" | "empty" | "error" | "footer"> & {
   onOpen: (row: TenantRow) => void;
@@ -14,8 +15,22 @@ type Props = Pick<DataTableProps<TenantRow>, "rows" | "state" | "sort" | "onSort
   onDelete?: (row: TenantRow) => void;
 };
 
-/** The Table view of the tenants directory. Row click opens the tenant drawer; Tenant and Balance sort. */
+/**
+ * The Table view of the tenants directory (from md up); on phones the same rows as cards. Row or card opens the
+ * tenant drawer; Tenant and Balance sort.
+ */
 export function TenantsTable({ onOpen, onEdit, onDelete, ...props }: Props) {
+  const isMobile = useIsMobile();
+  const menu = useMemo(
+    () => (row: TenantRow) => {
+      const items: MenuItem[] = [];
+      if (onEdit) items.push({ label: "Edit", icon: <Pencil strokeWidth={1.5} />, onSelect: () => onEdit(row) });
+      if (onDelete) items.push({ label: "Delete", icon: <Trash2 strokeWidth={1.5} />, destructive: true, onSelect: () => onDelete(row) });
+      return items.length > 0 ? <KebabMenu label={`Actions for ${row.tenant.fullName}`} items={items} /> : undefined;
+    },
+    [onEdit, onDelete],
+  );
+
   const columns = useMemo<Column<TenantRow>[]>(() => {
     const cols: Column<TenantRow>[] = [
       {
@@ -55,16 +70,46 @@ export function TenantsTable({ onOpen, onEdit, onDelete, ...props }: Props) {
         key: "actions",
         header: <span className="sr-only">Actions</span>,
         width: 56,
-        cell: (row) => {
-          const items: MenuItem[] = [];
-          if (onEdit) items.push({ label: "Edit", icon: <Pencil strokeWidth={1.5} />, onSelect: () => onEdit(row) });
-          if (onDelete) items.push({ label: "Delete", icon: <Trash2 strokeWidth={1.5} />, destructive: true, onSelect: () => onDelete(row) });
-          return <KebabMenu label={`Actions for ${row.tenant.fullName}`} items={items} />;
-        },
+        cell: menu,
       });
     }
     return cols;
-  }, [onEdit, onDelete]);
+  }, [onEdit, onDelete, menu]);
+
+  if (isMobile) {
+    return (
+      <CardList
+        rows={props.rows}
+        state={props.state}
+        empty={props.empty}
+        error={props.error}
+        footer={props.footer}
+        rowKey={(r) => r.tenant.id}
+        caption="Tenants"
+        renderCard={(row) => {
+          const { tenant, current } = row;
+          return (
+            <ListCard
+              onOpen={() => onOpen(row)}
+              openLabel={`Open ${tenant.fullName}`}
+              leading={<Avatar name={tenant.fullName} size={32} />}
+              title={tenant.fullName}
+              subtitle={unitLine(current) ?? "No lease"}
+              badge={<TenantLeaseBadge lease={current} />}
+              amount={{ label: "Balance", value: <BalanceValue lease={current} /> }}
+              // The strip means one thing only: behind on rent (the Rent status fact says "Overdue").
+              strip={rentStatus(current) === "overdue"}
+              facts={[
+                { label: "Rent status", value: <RentStatusBadge lease={current} /> },
+                { label: "Phone", value: tenant.phone },
+              ]}
+              actions={menu(row)}
+            />
+          );
+        }}
+      />
+    );
+  }
 
   return <DataTable {...props} columns={columns} rowKey={(r) => r.tenant.id} onRowClick={onOpen} caption="Tenants" />;
 }

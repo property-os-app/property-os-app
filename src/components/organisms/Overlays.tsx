@@ -22,8 +22,11 @@ export interface DrawerProps {
   size?: "default" | "lg" | "xl";
   /** Ask "Discard changes?" before closing when a form is dirty. */
   confirmClose?: () => boolean;
-  /** Edge it slides in from. "left" is the navigation menu: sidebar width (max 85% of the screen), never full screen. */
-  side?: "right" | "left";
+  /**
+   * Edge it slides in from. "left" is the navigation menu: sidebar width (max 85% of the screen), never full screen.
+   * "bottom" is a phone sheet (filters and sort): full width, up to 85% of the screen height, footer above the home bar.
+   */
+  side?: "right" | "left" | "bottom";
   /** No header, padding or footer: `children` fill the panel. The title is still read by screen readers. */
   bare?: boolean;
   children: React.ReactNode;
@@ -46,11 +49,11 @@ export function Drawer({ open, onOpenChange, title, description, status, tabs, f
           // No description: no aria-describedby (silences Radix's missing-description warning).
           {...(!description ? { "aria-describedby": undefined } : {})}
           className={cn(
-            "fixed inset-y-0 z-50 flex flex-col bg-overlay shadow-overlay outline-none",
-            "transition-transform duration-overlay ease-overlay data-[state=open]:translate-x-0",
-            side === "right"
-              ? "right-0 w-full data-[state=closed]:translate-x-full md:rounded-l-overlay md:border-l md:border-border-subtle"
-              : "left-0 w-sidebar max-w-[85vw] border-r border-border-subtle data-[state=closed]:-translate-x-full",
+            "fixed z-50 flex flex-col bg-overlay shadow-overlay outline-none",
+            "transition-transform duration-overlay ease-overlay",
+            side === "right" && "inset-y-0 right-0 w-full data-[state=open]:translate-x-0 data-[state=closed]:translate-x-full md:rounded-l-overlay md:border-l md:border-border-subtle",
+            side === "left" && "inset-y-0 left-0 w-sidebar max-w-[85vw] border-r border-border-subtle data-[state=open]:translate-x-0 data-[state=closed]:-translate-x-full",
+            side === "bottom" && "inset-x-0 bottom-0 max-h-[85dvh] rounded-t-overlay border-t border-border-subtle data-[state=open]:translate-y-0 data-[state=closed]:translate-y-full",
             side === "right" && size === "default" && "md:w-drawer",
             side === "right" && size === "lg" && "md:w-drawer-lg",
             side === "right" && size === "xl" && "md:w-drawer-xl",
@@ -71,12 +74,16 @@ export function Drawer({ open, onOpenChange, title, description, status, tabs, f
                 </div>
                 {status}
                 <Dialog.Close asChild>
-                  <Button variant="ghost" iconOnly aria-label="Close" icon={<X size={20} strokeWidth={1.5} />} />
+                  <Button variant="ghost" iconOnly aria-label="Close" icon={<X size={20} strokeWidth={1.5} />} className={cn(side === "bottom" && "size-11")} />
                 </Dialog.Close>
               </div>
               {tabs && <div className="px-6">{tabs}</div>}
               <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">{children}</div>
-              {footer && <div className="flex justify-end gap-3 border-t border-border-subtle bg-overlay px-6 py-4">{footer}</div>}
+              {footer && (
+                <div className={cn("flex justify-end gap-3 border-t border-border-subtle bg-overlay px-6 py-4", side === "bottom" && "pb-[max(1rem,env(safe-area-inset-bottom))]")}>
+                  {footer}
+                </div>
+              )}
             </>
           )}
         </Dialog.Content>
@@ -93,11 +100,14 @@ export interface ModalProps {
   footer?: React.ReactNode;
   size?: "default" | "lg";
   confirmClose?: () => boolean;
+  /** Under 768px: "fullscreen" (default, forms) or "sheet" (bottom sheet, short confirms). From md up it's always centered. */
+  mobile?: "fullscreen" | "sheet";
   children: React.ReactNode;
 }
 
-/** Centered modal, 480 / 640px; bottom sheet under 768px. Secondary button sits left of the primary in the footer. */
-export function Modal({ open, onOpenChange, title, description, footer, size = "default", confirmClose, children }: ModalProps) {
+/** Centered modal, 480 / 640px; full screen under 768px (or a bottom sheet with `mobile="sheet"`). Secondary button sits left of the primary in the footer. */
+export function Modal({ open, onOpenChange, title, description, footer, size = "default", confirmClose, mobile = "fullscreen", children }: ModalProps) {
+  const full = mobile === "fullscreen";
   const handleChange = (next: boolean) => {
     if (!next && confirmClose && !confirmClose()) return;
     onOpenChange(next);
@@ -110,22 +120,23 @@ export function Modal({ open, onOpenChange, title, description, footer, size = "
           // No description: no aria-describedby (silences Radix's missing-description warning).
           {...(!description ? { "aria-describedby": undefined } : {})}
           className={cn(
-            "fixed z-50 flex max-h-[90vh] flex-col bg-overlay shadow-overlay outline-none",
-            "inset-x-0 bottom-0 rounded-t-overlay md:inset-x-auto md:bottom-auto md:left-1/2 md:top-24 md:-translate-x-1/2 md:rounded-overlay md:border md:border-border-subtle",
+            "fixed z-50 flex flex-col bg-overlay shadow-overlay outline-none",
+            full ? "inset-0 h-dvh md:h-auto md:max-h-[90vh]" : "inset-x-0 bottom-0 max-h-[90vh] rounded-t-overlay",
+            "md:inset-x-auto md:bottom-auto md:left-1/2 md:top-24 md:-translate-x-1/2 md:rounded-overlay md:border md:border-border-subtle",
             size === "default" ? "md:w-modal" : "md:w-modal-lg",
           )}
         >
-          <div className="flex items-center justify-between border-b border-border-subtle px-6 py-5">
-            <div>
+          <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-6 py-5">
+            <div className="min-w-0">
               <Dialog.Title asChild><H2>{title}</H2></Dialog.Title>
               {description && <Dialog.Description className="mt-0.5 text-small text-text-secondary">{description}</Dialog.Description>}
             </div>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" iconOnly aria-label="Close" icon={<X size={16} strokeWidth={1.5} />} />
+              <Button variant="ghost" size="sm" iconOnly aria-label="Close" icon={<X size={16} strokeWidth={1.5} />} className="max-md:size-11 max-md:shrink-0" />
             </Dialog.Close>
           </div>
-          <div className="flex flex-col gap-4 overflow-y-auto p-6">{children}</div>
-          {footer && <div className="flex flex-wrap justify-end gap-3 border-t border-border-subtle px-6 py-4">{footer}</div>}
+          <div className={cn("flex flex-col gap-4 overflow-y-auto p-6", full && "max-md:flex-1")}>{children}</div>
+          {footer && <div className="flex flex-wrap justify-end gap-3 border-t border-border-subtle px-6 py-4 max-md:pb-[max(1rem,env(safe-area-inset-bottom))]">{footer}</div>}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -162,6 +173,7 @@ export function ConfirmDialog({ open, onOpenChange, title, consequence, confirmL
       open={open}
       onOpenChange={(o) => { if (busy) return; setTyped(""); onOpenChange(o); }}
       title={title}
+      mobile="sheet"
       footer={
         <>
           <Button disabled={busy} onClick={() => { setTyped(""); onOpenChange(false); }}>Cancel</Button>
@@ -181,7 +193,7 @@ export function ConfirmDialog({ open, onOpenChange, title, consequence, confirmL
       {typeToConfirm && (
         <label className="flex flex-col gap-1.5 text-small text-text-secondary">
           Type <strong className="text-text-primary">{typeToConfirm}</strong> to confirm
-          <input value={typed} onChange={(e) => setTyped(e.target.value)} className="h-10 rounded-control border border-border-strong bg-surface-2 px-3 text-body text-text-primary outline-none focus:border-success" />
+          <input value={typed} onChange={(e) => setTyped(e.target.value)} className="h-10 rounded-control border border-border-strong bg-surface-2 px-3 text-body-lg text-text-primary outline-none focus:border-success md:text-body" />
         </label>
       )}
     </Modal>

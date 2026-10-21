@@ -57,6 +57,9 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - `plural(count, singular, plural?)`: "1 unit" / "3 units".
 - `unitLayout(unitType, bathrooms)`: "1 bd / 1 ba", "Studio / 1 ba", or "3 bd" when bathrooms is null.
 
+## useIsMobile.ts
+- `useIsMobile()`: true under 768px (Tailwind `md`), read synchronously from `matchMedia` and updated on resize. List components render `CardList` instead of `DataTable` when true, and pages show the Filters sheet instead of the toolbar controls.
+
 ## useStoredView.ts
 - `useStoredView(key, values, fallback)`: a view choice ("cards" / "table") kept in localStorage; falls back to `fallback` when storage is blocked or the saved value is unknown. Used by Properties and Tenants.
 
@@ -67,7 +70,7 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - `applyServerError(setError, error, fieldNames)`: backend messages starting with a field name go under that field; returns the others for an InlineError at the top. Works with string or array messages.
 
 ## useClientTable.ts
-- `useClientTable({ rows, searchText, initialFilters, matchFilters, filterValues, sorts, initialSort, pageSize, inUrl })`: search, filters, sort (text / number / money via `toCents` / "YYYY-MM-DD" date) and 25-row pages on the client. With `inUrl` (list pages) the state lives in the URL query, every change replaces the history entry without a scroll jump, and the search reaches the URL after 300 ms; without it, in memory (a table inside a page). Back to page 1 on search or filter change. `setPage` scrolls the `listId` element's top into view when it is off screen. Returns `pageRows`, `showPagination`, `summary`, `clearFilters`, `isFiltered`, `listId`...
+- `useClientTable({ rows, searchText, initialFilters, matchFilters, filterValues, sorts, initialSort, pageSize, inUrl })`: search, filters, sort (text / number / money via `toCents` / "YYYY-MM-DD" date) and 25-row pages on the client. With `inUrl` (list pages) the state lives in the URL query, every change replaces the history entry without a scroll jump, and the search reaches the URL after 300 ms; without it, in memory (a table inside a page). Back to page 1 on search or filter change. `setPage` scrolls the `listId` element's top into view when it is off screen. Returns `pageRows`, `showPagination`, `summary`, `clearFilters`, `resetFilters` (filters only, keeps the search), `isFiltered`, `activeFilterCount` (filters not at their start value), `listId`...
 
 ## tableParams.ts
 - `readTableParams(params, defaults)`: a table's state from query params (`q`, filter keys, `sort=key-asc|desc`, `page`); missing or invalid values fall back to the defaults.

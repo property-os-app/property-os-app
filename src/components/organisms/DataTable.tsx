@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
+import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Checkbox } from "@/components/atoms/Input";
 import { Skeleton } from "@/components/atoms/Skeleton";
@@ -182,19 +182,30 @@ export interface PaginationProps {
   summary?: string;
 }
 
+/** Page number buttons from md up; under md: Previous, "Page 2 of 5", Next (44px tap targets). */
 export function Pagination({ page, pageCount, onPageChange, summary }: PaginationProps) {
   const pages = Array.from({ length: Math.min(pageCount, 8) }, (_, i) => i + 1);
+  const step = "inline-flex size-11 items-center justify-center rounded-badge text-text-secondary hover:bg-surface-3 focus-visible:focus-ring disabled:opacity-50 md:hidden";
   return (
     <>
       <span>{summary}</span>
-      <nav aria-label="Pagination" className="flex gap-1">
+      <nav aria-label="Pagination" className="flex items-center gap-1">
+        <button type="button" aria-label="Previous page" disabled={page <= 1} onClick={() => onPageChange(page - 1)} className={step}>
+          <ChevronLeft size={16} strokeWidth={1.5} />
+        </button>
+        <span className="px-1 md:hidden">
+          Page {page} of {pageCount}
+        </span>
+        <button type="button" aria-label="Next page" disabled={page >= pageCount} onClick={() => onPageChange(page + 1)} className={step}>
+          <ChevronRight size={16} strokeWidth={1.5} />
+        </button>
         {pages.map((p) => (
           <button
             key={p}
             type="button"
             aria-current={p === page ? "page" : undefined}
             onClick={() => onPageChange(p)}
-            className={cn("size-8 rounded-badge text-small focus-visible:focus-ring", p === page ? "bg-surface-3 text-text-primary" : "text-text-secondary hover:bg-surface-3")}
+            className={cn("size-8 rounded-badge text-small focus-visible:focus-ring max-md:hidden", p === page ? "bg-surface-3 text-text-primary" : "text-text-secondary hover:bg-surface-3")}
           >
             {p}
           </button>

@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Plus, UserX } from "lucide-react";
 import { Button, Caption, Dash, H3, Num, Skeleton } from "@/components/atoms";
-import { Card, EmptyState, InlineError, KeyValueList, Tabs } from "@/components/molecules";
-import { DataTable, Drawer, type Column } from "@/components/organisms";
+import { Card, EmptyState, InlineError, KeyValueList, ListCard, Tabs } from "@/components/molecules";
+import { CardList, DataTable, Drawer, type Column } from "@/components/organisms";
 import { ApiError, errorText } from "@/lib/api";
 import { formatCurrency, formatDate, formatTimestampDate, parseDateOnly } from "@/lib/format";
 import { contactMethodLabels, paymentFrequencyLabels, tenantTypeLabels } from "@/lib/labels";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
 import { can, roleLabel } from "@/features/auth/permissions";
 import { LeaseBadge, StatCard } from "@/features/leases/LeaseParts";
@@ -182,6 +183,8 @@ function Details({ tenant }: { tenant: TenantDetail }) {
 /** Every visible lease that includes the tenant, with their role on it. "Add lease" (primary tenant preset) when allowed. */
 function LeasesTab({ tenantId, leases, onAddLease }: { tenantId: string; leases: Lease[]; onAddLease?: () => void }) {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const role = (l: Lease) => (l.tenants.find((t) => t.id === tenantId)?.isPrimary ? "Primary" : "Co-tenant");
   const columns: Column<Lease>[] = [
     { key: "number", header: "Lease", cell: (l) => <span className="font-semibold">{l.leaseNumber}</span> },
     {
@@ -197,7 +200,7 @@ function LeasesTab({ tenantId, leases, onAddLease }: { tenantId: string; leases:
     { key: "period", header: "Period", cell: (l) => leasePeriod(l) ?? <Dash /> },
     { key: "rent", header: "Rent", align: "right", cell: (l) => <Num>{formatCurrency(l.rent)}</Num> },
     { key: "status", header: "Status", cell: (l) => <LeaseBadge lease={l} /> },
-    { key: "role", header: "Role", cell: (l) => (l.tenants.find((t) => t.id === tenantId)?.isPrimary ? "Primary" : "Co-tenant") },
+    { key: "role", header: "Role", cell: role },
   ];
   return (
     <div className="flex flex-col gap-3">
@@ -206,16 +209,41 @@ function LeasesTab({ tenantId, leases, onAddLease }: { tenantId: string; leases:
           Add lease
         </Button>
       )}
-      <DataTable
-        columns={columns}
-        rows={leases}
-        rowKey={(l) => l.id}
-        onRowClick={(l) => void navigate(leasePath(l))}
-        density="compact"
-        caption="Leases"
-        state={leases.length === 0 ? "empty" : "ideal"}
-        empty={{ title: "No leases", description: "Not on any lease yet." }}
-      />
+      {isMobile ? (
+        <CardList
+          rows={leases}
+          rowKey={(l) => l.id}
+          caption="Leases"
+          state={leases.length === 0 ? "empty" : "ideal"}
+          empty={{ title: "No leases", description: "Not on any lease yet." }}
+          renderCard={(l) => (
+            <ListCard
+              href={leasePath(l)}
+              openLabel={`Open lease ${l.leaseNumber}`}
+              renderLink={(href, p) => <Link to={href} {...p} />}
+              title={l.leaseNumber}
+              subtitle={`Unit ${l.unit.unitNumber} · ${l.unit.property.name}`}
+              badge={<LeaseBadge lease={l} />}
+              amount={{ label: "Rent", value: l.rent === null ? <Dash /> : <Num>{formatCurrency(l.rent)}</Num> }}
+              facts={[
+                { label: "Period", value: leasePeriod(l) ?? <Dash /> },
+                { label: "Role", value: role(l) },
+              ]}
+            />
+          )}
+        />
+      ) : (
+        <DataTable
+          columns={columns}
+          rows={leases}
+          rowKey={(l) => l.id}
+          onRowClick={(l) => void navigate(leasePath(l))}
+          density="compact"
+          caption="Leases"
+          state={leases.length === 0 ? "empty" : "ideal"}
+          empty={{ title: "No leases", description: "Not on any lease yet." }}
+        />
+      )}
     </div>
   );
 }

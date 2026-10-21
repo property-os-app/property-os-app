@@ -16,3 +16,9 @@ Pieces of the detail pages (`/properties/:id`, `/leases/:id`).
 ## linkClass.ts
 - `linkFocus`: rounded keyboard-only focus ring with no offset (`focus-ring-tight`), so it doesn't touch the next word. For inline links and link-style buttons.
 - `textLink`: the green text link ("Back to Leases", "View all") with `linkFocus`.
+
+## MobileFilters.tsx
+Phone (under md) toolbar pieces. Desktop toolbars don't use them.
+- `MobileFilters({ count, resultCount, onClear, children })`: 44px "Filters" button with the active count; opens a bottom sheet (`Drawer side="bottom"`) holding `children`, with "Clear filters" and "Show N results".
+- `SortSelect({ sort, onSortChange, options, id })`: "Sort by" select (phones have no column headers); writes the same `useClientTable` sort. `SortOption`: key, label, kind (labels "A to Z", "low to high", "soonest first").
+- `FilterGroup({ label, children })`: a labelled block in the sheet for a control that isn't one field (status segments, a chip).

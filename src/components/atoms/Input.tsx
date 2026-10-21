@@ -2,8 +2,9 @@ import * as React from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/cn";
 
+// 16px text under md: iPhone Safari zooms into any field under 16px.
 const base =
-  "h-10 w-full rounded-control border border-border-strong bg-surface-2 px-3 text-body text-text-primary placeholder:text-text-muted " +
+  "h-10 w-full rounded-control border border-border-strong bg-surface-2 px-3 text-body-lg md:text-body text-text-primary placeholder:text-text-muted " +
   "outline-none transition-colors duration-fast focus:border-success focus:ring-2 focus:ring-[var(--focus-ring)] disabled:opacity-50";
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
