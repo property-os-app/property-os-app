@@ -241,15 +241,12 @@ function LeasesList() {
         <Toolbar className="flex-nowrap">
           {search}
           <MobileFilters
-            count={table.activeFilterCount + (scope ? 1 : 0)}
+            count={table.activeFilterCount}
             resultCount={ready ? table.total : undefined}
-            onClear={() => {
-              table.resetFilters();
-              setPropertyId(null);
-            }}
+            onClear={table.resetFilters}
           >
             <FilterGroup label="Status">{statusControl}</FilterGroup>
-            <FormField label="Property" htmlFor="leases-property">
+            <FormField label="Property (all pages)" htmlFor="leases-property">
               {propertySelect("leases-property")}
             </FormField>
             <FormField label="E-signature" htmlFor="leases-esign">

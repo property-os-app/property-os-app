@@ -289,7 +289,12 @@ function LeaseDetail({ lease }: { lease: Lease }) {
                 </div>
               </div>
             </div>
-            {actions && <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end">{actions}</div>}
+            {/* Phones: the buttons fill the width, two per row, 44px tall. */}
+            {actions && (
+              <div className="flex flex-wrap items-center gap-2 max-md:[&>*]:h-11 max-md:[&>*]:min-w-[calc(50%-0.25rem)] max-md:[&>*]:flex-1 lg:shrink-0 lg:justify-end">
+                {actions}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

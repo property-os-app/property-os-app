@@ -2,13 +2,14 @@ import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button, Caption, Dash, Select, Skeleton } from "@/components/atoms";
-import { Card, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
+import { Card, FormField, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
 import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { addMonthsYM, currentMonthUTC, formatCompactCurrency, formatPercent, formatMonth } from "@/lib/format";
 import { plural, rentStatusLabels } from "@/lib/labels";
 import { useClientTable, type SortColumn } from "@/lib/useClientTable";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { AddChargeModal } from "@/features/ledger/AddChargeModal";
@@ -38,6 +39,7 @@ import {
 } from "@/features/rent-roll/stats";
 import { useScope } from "@/features/scope/scopeContext";
 import { linkFocus } from "@/features/shared/linkClass";
+import { FilterGroup, MobileFilters, SortSelect, type SortOption } from "@/features/shared/MobileFilters";
 import { NoProperties } from "@/features/shared/NoProperties";
 import type { RentRollRow } from "@/types/rentRoll";
 
@@ -53,6 +55,14 @@ const sorts: Record<string, SortColumn<RentRollRow>> = {
   balance: { kind: "money", value: (r) => r.balance },
 };
 
+const sortOptions: SortOption[] = [
+  { key: "tenant", label: "Tenant", kind: "text" },
+  { key: "unit", label: "Unit", kind: "text" },
+  { key: "opening", label: "Previous balance", kind: "money" },
+  { key: "paid", label: "Paid", kind: "money" },
+  { key: "balance", label: "Balance", kind: "money" },
+];
+
 /** Record Payment: from the header (choose a tenant) or preset to one lease. */
 type PaymentOpen = { leaseId?: string };
 
@@ -66,6 +76,7 @@ export function RentRollPage() {
   const canCharge = can(role, "charge.create");
   const canPay = can(role, "payment.create");
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { propertyId: scope, setPropertyId } = useScope();
 
   const [params, setParams] = useSearchParams();
@@ -149,16 +160,77 @@ export function RentRollPage() {
   const nothingLeft = ready && upcoming !== null && billable === 0;
   const scopeName = scope ? properties.data?.find((p) => p.id === scope)?.name : undefined;
   const nothingLeftNote = scopeName ? `Nothing left to bill for ${scopeName} in ${monthLabel}` : `Nothing left to bill for ${monthLabel}`;
-  const generateButton = canCharge ? (
-    <Button
-      disabled={!generateAllowed || nothingLeft}
-      title={!generateAllowed ? generateLimitNote : nothingLeft ? nothingLeftNote : undefined}
-      onClick={() => setGenerating(true)}
-    >
-      Generate rent
-    </Button>
-  ) : null;
+  const generateButton = (className?: string) =>
+    canCharge ? (
+      <Button
+        className={className}
+        disabled={!generateAllowed || nothingLeft}
+        title={!generateAllowed ? generateLimitNote : nothingLeft ? nothingLeftNote : undefined}
+        onClick={() => setGenerating(true)}
+      >
+        Generate rent
+      </Button>
+    ) : null;
+  const paymentButton = (className?: string) =>
+    canPay ? (
+      <Button variant="primary" className={className} icon={<Plus size={16} strokeWidth={1.5} />} disabled={allRows.length === 0} onClick={() => setPayment({})}>
+        Record Payment
+      </Button>
+    ) : null;
   const isCurrent = month === currentMonthUTC();
+  // Phones: 44px month arrows and a month button that fills the row.
+  const monthSwitcher = (
+    <div className={cn("flex items-center gap-1", isMobile && "w-full")}>
+      <Button
+        variant="ghost"
+        iconOnly
+        className={cn(isMobile && "size-11")}
+        aria-label="Previous month"
+        icon={<ChevronLeft size={16} strokeWidth={1.5} />}
+        onClick={() => setMonth(addMonthsYM(month, -1))}
+      />
+      <Button
+        className={cn(isMobile && "h-11 flex-1")}
+        icon={<Calendar size={16} strokeWidth={1.5} />}
+        title={isCurrent ? undefined : "Back to the current month"}
+        onClick={() => setMonth(currentMonthUTC())}
+      >
+        {monthLabel}
+      </Button>
+      <Button
+        variant="ghost"
+        iconOnly
+        className={cn(isMobile && "size-11")}
+        aria-label="Next month"
+        icon={<ChevronRight size={16} strokeWidth={1.5} />}
+        onClick={() => setMonth(addMonthsYM(month, 1))}
+      />
+    </div>
+  );
+  const statusControl = (
+    <SegmentedControl<StatusFilter>
+      aria-label="Rent status"
+      value={table.filters.status}
+      onChange={(v) => table.setFilter("status", v)}
+      segments={STATUS_FILTERS.filter((s) => s !== "UPCOMING" || counts.UPCOMING > 0 || table.filters.status === "UPCOMING").map((s) => ({
+        value: s,
+        label: s === "all" ? "All" : s === "UPCOMING" ? "Upcoming" : rentStatusLabels[s],
+        count: counts[s],
+      }))}
+      className="max-w-full flex-wrap"
+    />
+  );
+  const search = <SearchInput placeholder="Search tenant, unit or lease number" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />;
+  const propertySelect = (id?: string) => (
+    <Select id={id} aria-label={id ? undefined : "Property"} value={scope ?? "all"} onChange={(e) => setPropertyId(e.target.value === "all" ? null : e.target.value)}>
+      <option value="all">All properties</option>
+      {properties.data?.map((p) => (
+        <option key={p.id} value={p.id}>
+          {p.name}
+        </option>
+      ))}
+    </Select>
+  );
 
   if (properties.data?.length === 0) {
     return (
@@ -180,25 +252,23 @@ export function RentRollPage() {
             : `Unit-by-unit payment ledger for the ${monthLabel} collection period.`
         }
         actions={
-          <>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" iconOnly aria-label="Previous month" icon={<ChevronLeft size={16} strokeWidth={1.5} />} onClick={() => setMonth(addMonthsYM(month, -1))} />
-              <Button
-                icon={<Calendar size={16} strokeWidth={1.5} />}
-                title={isCurrent ? undefined : "Back to the current month"}
-                onClick={() => setMonth(currentMonthUTC())}
-              >
-                {monthLabel}
-              </Button>
-              <Button variant="ghost" iconOnly aria-label="Next month" icon={<ChevronRight size={16} strokeWidth={1.5} />} onClick={() => setMonth(addMonthsYM(month, 1))} />
+          isMobile ? (
+            <div className="flex w-full flex-col gap-3">
+              {monthSwitcher}
+              {(canCharge || canPay) && (
+                <div className="flex gap-3">
+                  {generateButton("h-11 flex-1")}
+                  {paymentButton("h-11 flex-1")}
+                </div>
+              )}
             </div>
-            {generateButton}
-            {canPay && (
-              <Button variant="primary" icon={<Plus size={16} strokeWidth={1.5} />} disabled={allRows.length === 0} onClick={() => setPayment({})}>
-                Record Payment
-              </Button>
-            )}
-          </>
+          ) : (
+            <>
+              {monthSwitcher}
+              {generateButton()}
+              {paymentButton()}
+            </>
+          )
         }
       />
 
@@ -237,30 +307,24 @@ export function RentRollPage() {
         />
       </KpiRow>
 
-      <Toolbar>
-        <SegmentedControl<StatusFilter>
-          aria-label="Rent status"
-          value={table.filters.status}
-          onChange={(v) => table.setFilter("status", v)}
-          segments={STATUS_FILTERS.filter((s) => s !== "UPCOMING" || counts.UPCOMING > 0 || table.filters.status === "UPCOMING").map((s) => ({
-            value: s,
-            label: s === "all" ? "All" : s === "UPCOMING" ? "Upcoming" : rentStatusLabels[s],
-            count: counts[s],
-          }))}
-          className="max-w-full flex-wrap"
-        />
-        <SearchInput placeholder="Search tenant, unit or lease number" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />
-        <div className="w-52">
-          <Select aria-label="Property" value={scope ?? "all"} onChange={(e) => setPropertyId(e.target.value === "all" ? null : e.target.value)}>
-            <option value="all">All properties</option>
-            {properties.data?.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </Select>
-        </div>
-      </Toolbar>
+      {isMobile ? (
+        <Toolbar className="flex-nowrap">
+          {search}
+          <MobileFilters count={table.activeFilterCount} resultCount={ready ? table.total : undefined} onClear={table.resetFilters}>
+            <FilterGroup label="Rent status">{statusControl}</FilterGroup>
+            <FormField label="Property (all pages)" htmlFor="rent-roll-property">
+              {propertySelect("rent-roll-property")}
+            </FormField>
+            <SortSelect id="rent-roll-sort" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />
+          </MobileFilters>
+        </Toolbar>
+      ) : (
+        <Toolbar>
+          {statusControl}
+          {search}
+          <div className="w-52">{propertySelect()}</div>
+        </Toolbar>
+      )}
 
       {showBanner && (
         <Card padding="compact" className="flex flex-wrap items-center justify-between gap-3 border-warning/40 bg-warning-soft">
@@ -283,7 +347,7 @@ export function RentRollPage() {
               </Caption>
             )}
           </div>
-          {generateButton}
+          {generateButton(isMobile ? "h-11 w-full" : undefined)}
         </Card>
       )}
 

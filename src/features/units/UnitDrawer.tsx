@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { FileText, Plus } from "lucide-react";
 import { Avatar, Badge, Button, Caption, Dash, H3, Num, Skeleton } from "@/components/atoms";
-import { Card, EmptyState, InlineError, KeyValueList, StatusBadge, Tabs } from "@/components/molecules";
-import { DataTable, Drawer, type Column } from "@/components/organisms";
+import { Card, EmptyState, InlineError, KeyValueList, ListCard, StatusBadge, Tabs } from "@/components/molecules";
+import { CardList, DataTable, Drawer, type Column } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { unitStatusLabels, unitTypeLabels } from "@/lib/labels";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { useLeases } from "@/features/leases/hooks";
@@ -56,6 +57,11 @@ export function UnitDrawer({ unit, propertyName, onClose }: UnitDrawerProps) {
   const canEdit = can(role, "unit.edit");
   const canDelete = can(role, "unit.delete");
   const canAddLease = can(role, "lease.create");
+
+  const isMobile = useIsMobile();
+  const historyState = leases.isError ? "error" : leases.isPending ? "loading" : leases.data.length === 0 ? "empty" : "ideal";
+  const historyEmpty = { title: "No leases yet", description: "No leases for this unit yet." };
+  const historyError = { title: "Couldn't load leases", description: errorText(leases.error), onRetry: () => void leases.refetch() };
 
   return (
     <>
@@ -136,6 +142,28 @@ export function UnitDrawer({ unit, propertyName, onClose }: UnitDrawerProps) {
               />
             </div>
           </>
+        ) : isMobile ? (
+          <CardList
+            rows={leases.data ?? []}
+            rowKey={(l) => l.id}
+            caption="Lease history"
+            skeletons={2}
+            state={historyState}
+            empty={historyEmpty}
+            error={historyError}
+            renderCard={(l) => (
+              <ListCard
+                href={leasePath(l)}
+                openLabel={`Open lease ${l.leaseNumber}`}
+                renderLink={(href, p) => <Link to={href} {...p} />}
+                title={primaryTenantName(l) ?? <span className="text-text-muted">No tenant</span>}
+                subtitle={l.leaseNumber}
+                badge={<LeaseBadge lease={l} />}
+                amount={{ label: "Rent", value: <Num>{formatCurrency(l.rent)}</Num> }}
+                facts={[{ label: "Period", value: leasePeriod(l) ?? <Dash /> }]}
+              />
+            )}
+          />
         ) : (
           <DataTable
             columns={historyColumns}
@@ -144,9 +172,9 @@ export function UnitDrawer({ unit, propertyName, onClose }: UnitDrawerProps) {
             onRowClick={(l) => void navigate(leasePath(l))}
             density="compact"
             caption="Lease history"
-            state={leases.isError ? "error" : leases.isPending ? "loading" : leases.data.length === 0 ? "empty" : "ideal"}
-            empty={{ title: "No leases yet", description: "No leases for this unit yet." }}
-            error={{ title: "Couldn't load leases", description: errorText(leases.error), onRetry: () => void leases.refetch() }}
+            state={historyState}
+            empty={historyEmpty}
+            error={historyError}
           />
         )}
       </Drawer>

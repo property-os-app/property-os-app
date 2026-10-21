@@ -1,12 +1,13 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 import { Button, Dash, Select, Skeleton } from "@/components/atoms";
-import { KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
+import { FormField, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
 import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { centsToAmount, formatCompactCurrency, formatPercent } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import { useClientTable, type SortColumn } from "@/lib/useClientTable";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { useLeases } from "@/features/leases/hooks";
@@ -14,6 +15,7 @@ import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
 import { useProperties } from "@/features/properties/hooks";
 import { countUnits, occupancy, sumCents } from "@/features/properties/stats";
 import { useScope } from "@/features/scope/scopeContext";
+import { FilterGroup, MobileFilters, SortSelect, type SortOption } from "@/features/shared/MobileFilters";
 import { NoProperties } from "@/features/shared/NoProperties";
 import { UnitDeleteDialog } from "@/features/units/UnitDeleteDialog";
 import { UnitDrawer } from "@/features/units/UnitDrawer";
@@ -37,12 +39,19 @@ const sorts: Record<string, SortColumn<UnitListRow>> = {
   current: { kind: "money", value: (r) => r.active?.rent },
 };
 
+const sortOptions: SortOption[] = [
+  { key: "unit", label: "Unit", kind: "text" },
+  { key: "listed", label: "Listed rent", kind: "money" },
+  { key: "current", label: "Current rent", kind: "money" },
+];
+
 /** /units: KPIs, toolbar (the Property select is the sidebar scope) and the units table. Row click opens the unit drawer. */
 export function UnitsPage() {
   const { me } = useAuth();
   const role = me!.role;
   const canCreate = can(role, "unit.create");
   const { propertyId: scope, setPropertyId } = useScope();
+  const isMobile = useIsMobile();
 
   const properties = useProperties();
   const units = useUnits({ propertyId: scope ?? undefined });
@@ -106,6 +115,33 @@ export function UnitsPage() {
 
   const openRow = rows?.find((r) => r.unit.id === openId);
 
+  const search = <SearchInput placeholder="Search unit, property or tenant" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />;
+  const propertySelect = (id?: string) => (
+    <Select id={id} aria-label={id ? undefined : "Property"} value={scope ?? "all"} onChange={(e) => setPropertyId(e.target.value === "all" ? null : e.target.value)}>
+      <option value="all">All properties</option>
+      {properties.data?.map((p) => (
+        <option key={p.id} value={p.id}>
+          {p.name}
+        </option>
+      ))}
+    </Select>
+  );
+  const statusControl = (
+    <SegmentedControl<StatusFilter>
+      aria-label="Status"
+      value={table.filters.status}
+      onChange={(v) => table.setFilter("status", v)}
+      className={isMobile ? "flex-wrap" : undefined}
+      segments={[
+        { value: "all", label: "All", count: counts.total },
+        { value: "OCCUPIED", label: "Occupied", count: counts.OCCUPIED },
+        { value: "VACANT", label: "Vacant", count: counts.VACANT },
+        { value: "RESERVED", label: "Reserved", count: counts.RESERVED },
+        { value: "UNDER_MAINTENANCE", label: "Maintenance", count: counts.UNDER_MAINTENANCE },
+      ]}
+    />
+  );
+
   if (properties.data?.length === 0) {
     return (
       <>
@@ -149,31 +185,24 @@ export function UnitsPage() {
         />
       </KpiRow>
 
-      <Toolbar>
-        <SearchInput placeholder="Search unit, property or tenant" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />
-        <div className="w-52">
-          <Select aria-label="Property" value={scope ?? "all"} onChange={(e) => setPropertyId(e.target.value === "all" ? null : e.target.value)}>
-            <option value="all">All properties</option>
-            {properties.data?.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <SegmentedControl<StatusFilter>
-          aria-label="Status"
-          value={table.filters.status}
-          onChange={(v) => table.setFilter("status", v)}
-          segments={[
-            { value: "all", label: "All", count: counts.total },
-            { value: "OCCUPIED", label: "Occupied", count: counts.OCCUPIED },
-            { value: "VACANT", label: "Vacant", count: counts.VACANT },
-            { value: "RESERVED", label: "Reserved", count: counts.RESERVED },
-            { value: "UNDER_MAINTENANCE", label: "Maintenance", count: counts.UNDER_MAINTENANCE },
-          ]}
-        />
-      </Toolbar>
+      {isMobile ? (
+        <Toolbar className="flex-nowrap">
+          {search}
+          <MobileFilters count={table.activeFilterCount} resultCount={ready ? table.total : undefined} onClear={table.resetFilters}>
+            <FormField label="Property (all pages)" htmlFor="units-property">
+              {propertySelect("units-property")}
+            </FormField>
+            <FilterGroup label="Status">{statusControl}</FilterGroup>
+            <SortSelect id="units-sort" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />
+          </MobileFilters>
+        </Toolbar>
+      ) : (
+        <Toolbar>
+          {search}
+          <div className="w-52">{propertySelect()}</div>
+          {statusControl}
+        </Toolbar>
+      )}
 
       <div id={table.listId} className="scroll-mt-24">
         <UnitsTable

@@ -32,11 +32,11 @@ export function NeedsAttention({ attention, onGenerate }: { attention: Section<A
                 <Small className="block">{item.text}</Small>
               </div>
               {"generate" in item.action ? (
-                <Button size="sm" className="shrink-0" onClick={onGenerate}>
+                <Button size="sm" className="shrink-0 max-md:h-11" onClick={onGenerate}>
                   {item.action.label}
                 </Button>
               ) : (
-                <Link to={item.action.to} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "shrink-0 no-underline")}>
+                <Link to={item.action.to} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "shrink-0 no-underline max-md:h-11")}>
                   {item.action.label}
                 </Link>
               )}

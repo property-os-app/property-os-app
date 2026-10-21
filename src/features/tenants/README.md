@@ -29,7 +29,7 @@ Tenants: one directory page (/tenants) with Cards / Table views, the tenant draw
 - `BalanceValue`: owed in danger, "$0.00" in success, "Credit $X" when negative, Dash without a lease.
 
 ## TenantsPage.tsx
-- `TenantsPage`: /tenants. PageHeader with "Add Tenant", 4 KPIs, toolbar (search, Property = scope, Lease status, "Has balance" chip, Cards / Table saved with `useStoredView`), all states, drawer, modals and delete dialog. Search, filters, sort and page live in the URL (`useClientTable` `inUrl`): `?q=&lease=&balance=&sort=&page=`. Phones (under md): always the list cards (the Cards / Table toggle is hidden, the saved choice is kept), search plus a "Filters" sheet with Property, Lease status, Has balance and Sort by. Tenants aren't tied to properties, so the page shows even with no properties. KPIs show a Dash when loading failed.
+- `TenantsPage`: /tenants. PageHeader with "Add Tenant", 4 KPIs, toolbar (search, Property = scope, Lease status, "Has balance" chip, Cards / Table saved with `useStoredView`), all states, drawer, modals and delete dialog. Search, filters, sort and page live in the URL (`useClientTable` `inUrl`): `?q=&lease=&balance=&sort=&page=`. Phones (under md): always the list cards (the Cards / Table toggle is hidden, the saved choice is kept), search plus a "Filters" sheet with Property (all pages), Lease status, Has balance and Sort by; the count and "Clear filters" leave the app-wide property alone. Tenants aren't tied to properties, so the page shows even with no properties. KPIs show a Dash when loading failed.
 
 ## TenantCard.tsx
 - `TenantCard`: compact clickable card (avatar, name, unit line, kebab; email, phone; Lease / Rent status / Balance). `TenantCardSkeleton`: its loading shape.

@@ -224,14 +224,11 @@ export function TenantsPage() {
         <Toolbar className="flex-nowrap">
           {search}
           <MobileFilters
-            count={table.activeFilterCount + (scope ? 1 : 0)}
+            count={table.activeFilterCount}
             resultCount={ready ? table.total : undefined}
-            onClear={() => {
-              table.resetFilters();
-              setPropertyId(null);
-            }}
+            onClear={table.resetFilters}
           >
-            <FormField label="Property" htmlFor="tenants-property">
+            <FormField label="Property (all pages)" htmlFor="tenants-property">
               {propertySelect("tenants-property")}
             </FormField>
             <FormField label="Lease status" htmlFor="tenants-lease">

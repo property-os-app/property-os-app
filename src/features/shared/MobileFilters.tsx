@@ -6,11 +6,11 @@ import { Drawer, type SortState } from "@/components/organisms";
 import type { SortKind } from "@/lib/useClientTable";
 
 export interface MobileFiltersProps {
-  /** Active filters (property scope included by the caller); shown on the button when above 0. */
+  /** Active filters of this page; shown on the button when above 0. The app-wide property is never counted. */
   count: number;
   /** Rows matching the current search and filters, for "Show N results". undefined while loading. */
   resultCount: number | undefined;
-  /** Resets the filters (the search too, like the empty state's Clear filters). */
+  /** Resets this page's filters only: keeps the search and the app-wide property. */
   onClear: () => void;
   /** The filter and sort controls, stacked. */
   children: ReactNode;

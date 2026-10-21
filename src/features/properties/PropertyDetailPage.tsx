@@ -137,7 +137,8 @@ function PropertyDetail({ property }: { property: Property }) {
         <div className="flex flex-col gap-6 p-6 md:flex-row">
           <PropertyImage type={property.propertyType} className="h-[180px] w-full shrink-0 rounded-control md:w-[280px]" />
           <div className="flex min-w-0 flex-1 flex-col gap-5">
-            <div className="flex items-start justify-between gap-4">
+            {/* Phones: the actions go under the name and fill the width (44px). */}
+            <div className="flex items-start justify-between gap-4 max-md:flex-col">
               <div className="min-w-0">
                 <H1>{property.name}</H1>
                 <Small className="mt-1 block">
@@ -145,14 +146,14 @@ function PropertyDetail({ property }: { property: Property }) {
                 </Small>
               </div>
               {(can(role, "property.edit") || canAddUnit) && (
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2 max-md:w-full">
                   {can(role, "property.edit") && (
-                    <Button icon={<Pencil size={16} strokeWidth={1.5} />} onClick={() => setEditing(true)}>
+                    <Button className="max-md:h-11 max-md:flex-1" icon={<Pencil size={16} strokeWidth={1.5} />} onClick={() => setEditing(true)}>
                       Edit
                     </Button>
                   )}
                   {canAddUnit && (
-                    <Button variant="primary" icon={<Plus size={16} strokeWidth={1.5} />} onClick={() => setAddingUnit(true)}>
+                    <Button variant="primary" className="max-md:h-11 max-md:flex-1" icon={<Plus size={16} strokeWidth={1.5} />} onClick={() => setAddingUnit(true)}>
                       Add unit
                     </Button>
                   )}

@@ -24,7 +24,7 @@ Numbers the frontend computes (money in integer cents). The API gives only `unit
 - `buildUnitRows`, `UnitRow`, `needsAttention`, `primaryTenantName`: units of one property with their active / draft lease (sorted with `compareNatural`).
 
 ## PropertiesPage.tsx
-- `PropertiesPage`: /properties. Unit totals and managers from each property; GET /units only for counts by status, GET /leases (ACTIVE) for rent. PageHeader, 4 KPIs, toolbar (Cards/Table saved with `useStoredView`, search, Type, Manager for OWNER), loading / empty / error / no-results states, client paging. Search, filters, sort and page live in the URL (`useClientTable` `inUrl`): `?q=&type=&manager=&sort=&page=`; a manager id is kept while the managers load and dropped only if it isn't in the loaded list. Add Property uses `useAddPropertyFlow`. With no properties: only the header and `NoProperties` (no KPIs, toolbar or header button). KPIs show a Dash when loading failed.
+- `PropertiesPage`: /properties. Unit totals and managers from each property; GET /units only for counts by status, GET /leases (ACTIVE) for rent. PageHeader, 4 KPIs, toolbar (Cards/Table saved with `useStoredView`, search, Type, Manager for OWNER), loading / empty / error / no-results states, client paging. Search, filters, sort and page live in the URL (`useClientTable` `inUrl`): `?q=&type=&manager=&sort=&page=`; a manager id is kept while the managers load and dropped only if it isn't in the loaded list. Add Property uses `useAddPropertyFlow`. With no properties: only the header and `NoProperties` (no KPIs, toolbar or header button). KPIs show a Dash when loading failed. Phones (under md): always the list cards (the Cards / Table toggle is hidden, the saved choice is kept; the big `PropertyCard` is desktop only), search plus a "Filters" sheet with Type, Manager (OWNER) and Sort by.
 
 ## AddPropertyFlow.tsx
 - `useAddPropertyFlow()`: `{ open, modals }`. `open()` shows PropertyFormModal; after a create with a "Number of units" it runs the "Add unit 1 of N" chain (`UnitFormModal`, a new key per step). The page renders `modals` once, so the chain survives the page leaving its no-properties state. Used by Dashboard, Properties, Units, Leases and Rent Roll.
@@ -35,13 +35,13 @@ Numbers the frontend computes (money in integer cents). The API gives only `unit
 - `PropertyRow`: one property plus its counts by status, occupancy and rent (units total and managers are read from the property).
 
 ## PropertiesTable.tsx
-- `PropertiesTable`: the Table view (DataTable; Name, Units, Occupancy, Value sortable; row opens the detail).
+- `PropertiesTable`: the Table view (DataTable; Name, Units, Occupancy, Value sortable; row opens the detail). On phones a `CardList`: name, address, property status badge, Units / Occupancy / Type, Monthly rent; the card links to the detail page.
 
 ## PropertyDetailPage.tsx
-- `PropertyDetailPage`: /properties/:id. Breadcrumb and tiles from `features/shared/DetailParts`, header card (KPI tiles, `unitCount`, embedded managers, tabs), Overview (units needing attention, Details, Managers) and Units tabs, Edit / Delete for OWNER, "Add unit" (primary, `unit.create`), unit rows open the `UnitDrawer`, "Property not found" on 404. Sets the page title to the property name.
+- `PropertyDetailPage`: /properties/:id. Breadcrumb and tiles from `features/shared/DetailParts`, header card (KPI tiles, `unitCount`, embedded managers, tabs), Overview (units needing attention, Details, Managers) and Units tabs, Edit / Delete for OWNER, "Add unit" (primary, `unit.create`), unit rows open the `UnitDrawer`, "Property not found" on 404. Sets the page title to the property name. On phones the header buttons go under the name and fill the width (44px).
 
 ## PropertyUnitsTable.tsx
-- `PropertyUnitsTable`: units with tenant, rent, lease and status (expiring leases show "Expiring"); 25 per page; optional `onRowClick`.
+- `PropertyUnitsTable`: units with tenant, rent, lease and status (expiring leases show "Expiring"); 25 per page; optional `onRowClick`. On phones flat cards inside the parent card (unit, type · sq ft, status, Tenant / Lease, Rent); the card is a button that opens the unit drawer.
 
 ## PropertyManagersCard.tsx
 - `PropertyManagersCard`: assigned managers with emails (GET /properties/:id/managers); OWNER can Remove (ConfirmDialog) and Assign from GET /managers. Shows backend 400 / 409 messages.

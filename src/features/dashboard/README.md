@@ -26,11 +26,11 @@ Pure functions; only `hooks.ts` calls them.
 - `RentCollectionCard`: Total due, Collected, Outstanding (HeroStatCard), the collection bar; nothing billed: empty bar, "Rent for {Month} hasn't been generated yet." and Generate rent when allowed. "Open Rent Roll" is a router link. Collected shows `collectedNote` under "{n} paid in full".
 
 ## DashboardTables.tsx
-- `AtRiskLeasesTable`: tenant, unit, Expires badge; row opens the lease page ("← Dashboard").
-- `OverdueRentTable`: tenant, unit, balance + days overdue; row opens the lease page, Ledger tab.
+- `AtRiskLeasesTable`: tenant, unit, Expires badge; row opens the lease page ("← Dashboard"). On phones flat cards in the same card, same link and state.
+- `OverdueRentTable`: tenant, unit, balance + days overdue; row opens the lease page, Ledger tab. On phones flat cards (Overdue badge, red strip, Balance + days overdue), same link and state.
 
 ## NeedsAttention.tsx
-- `NeedsAttention`: the rules that apply, each with a title, one line and a small button (Generate rent or a router link), or "All clear".
+- `NeedsAttention`: the rules that apply, each with a title, one line and a small button (Generate rent or a router link; 44px on phones), or "All clear".
 
 ## DashboardCharts.tsx
 - `BilledCollectedChart`: last 6 months, Billed (grey) vs Collected (green), tooltips from the summary strings, table values from cents.

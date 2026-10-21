@@ -19,7 +19,7 @@ The lease ledger (lease page, Ledger tab): charges, payments, voids and re-entri
 - `BalanceText`: a balance number, danger and bold when owed, success "Credit {amount}" when negative.
 
 ## LedgerView.tsx
-- `LedgerView({ lease, canVoid, canCharge, canPay })`: compact full-width table newest first (date, description + number, method, charge, payment, running balance). The balance cards are tiles on the lease page now. Voided rows are muted with a strikethrough, a "Voided" badge and the reason. Kebab: "Void charge / payment" on live rows (`canVoid`), "Re-enter charge / payment" on voided rows (`canCharge` / `canPay`), which opens Add charge / Record Payment prefilled. Loading, error and empty states.
+- `LedgerView({ lease, canVoid, canCharge, canPay })`: compact full-width table newest first (date, description + number, method, charge, payment, running balance). The balance cards are tiles on the lease page now. Voided rows are muted with a strikethrough, a "Voided" badge and the reason. Kebab: "Void charge / payment" on live rows (`canVoid`), "Re-enter charge / payment" on voided rows (`canCharge` / `canPay`), which opens Add charge / Record Payment prefilled. Loading, error and empty states. On phones a `CardList` of the same entries (not tappable): description or "Payment received", number · date · method, Charge / Payment badge (+ Voided), amount (payments green, voided struck through), Balance after, "Reason: …", same kebab.
 
 ## VoidEntryModal.tsx
 - `VoidEntryModal`: Modal with the required Reason (trimmed, max 300) and a danger "Void charge" / "Void payment" button. Errors (409 already voided) stay inside. Toast "Charge INV-... voided" with Undo for 10 seconds: re-creates the entry ("Re-entered as INV-..."), errors in a toast.

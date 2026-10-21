@@ -19,6 +19,6 @@ Pieces of the detail pages (`/properties/:id`, `/leases/:id`).
 
 ## MobileFilters.tsx
 Phone (under md) toolbar pieces. Desktop toolbars don't use them.
-- `MobileFilters({ count, resultCount, onClear, children })`: 44px "Filters" button with the active count; opens a bottom sheet (`Drawer side="bottom"`) holding `children`, with "Clear filters" and "Show N results".
+- `MobileFilters({ count, resultCount, onClear, children })`: 44px "Filters" button with the active count; opens a bottom sheet (`Drawer side="bottom"`) holding `children`, with "Clear filters" and "Show N results". The count and "Clear filters" cover this page's filters only: the property (the sidebar's, app-wide) is labelled "Property (all pages)" in the sheet and is never counted or cleared.
 - `SortSelect({ sort, onSortChange, options, id })`: "Sort by" select (phones have no column headers); writes the same `useClientTable` sort. `SortOption`: key, label, kind (labels "A to Z", "low to high", "soonest first").
 - `FilterGroup({ label, children })`: a labelled block in the sheet for a control that isn't one field (status segments, a chip).
