@@ -11,6 +11,7 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { useLeases } from "@/features/leases/hooks";
+import type { LeasePageState } from "@/features/leases/LeasePage";
 import { LeaseBadge, StatCard } from "@/features/leases/LeaseParts";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
 import { dueNote, dueState, leaseEndsNote, leasePeriod } from "@/features/leases/stats";
@@ -35,6 +36,8 @@ const historyColumns: Column<Lease>[] = [
 export interface UnitDrawerProps {
   unit: Unit;
   propertyName: string;
+  /** Router state for the lease links: where the lease page goes back to (Units, or the property page). */
+  leaseFrom: LeasePageState;
   onClose: () => void;
 }
 
@@ -43,7 +46,7 @@ export interface UnitDrawerProps {
  * "Open lease" and a history row click go to /leases/:id.
  * Footer: Delete (OWNER) and Edit unit. Mount it only while open; it closes itself after a delete.
  */
-export function UnitDrawer({ unit, propertyName, onClose }: UnitDrawerProps) {
+export function UnitDrawer({ unit, propertyName, leaseFrom, onClose }: UnitDrawerProps) {
   const navigate = useNavigate();
   const { me } = useAuth();
   const role = me!.role;
@@ -109,7 +112,7 @@ export function UnitDrawer({ unit, propertyName, onClose }: UnitDrawerProps) {
             ) : leases.isError ? (
               <InlineError title="Couldn't load the lease" description={errorText(leases.error)} onRetry={() => void leases.refetch()} />
             ) : active ? (
-              <ActiveLease lease={active} unit={unit} />
+              <ActiveLease lease={active} unit={unit} leaseFrom={leaseFrom} />
             ) : (
               <Card padding="none">
                 <EmptyState
@@ -155,7 +158,7 @@ export function UnitDrawer({ unit, propertyName, onClose }: UnitDrawerProps) {
               <ListCard
                 href={leasePath(l)}
                 openLabel={`Open lease ${l.leaseNumber}`}
-                renderLink={(href, p) => <Link to={href} {...p} />}
+                renderLink={(href, p) => <Link to={href} state={leaseFrom} {...p} />}
                 title={primaryTenantName(l) ?? <span className="text-text-muted">No tenant</span>}
                 subtitle={l.leaseNumber}
                 badge={<LeaseBadge lease={l} />}
@@ -169,7 +172,7 @@ export function UnitDrawer({ unit, propertyName, onClose }: UnitDrawerProps) {
             columns={historyColumns}
             rows={leases.data ?? []}
             rowKey={(l) => l.id}
-            onRowClick={(l) => void navigate(leasePath(l))}
+            onRowClick={(l) => void navigate(leasePath(l), { state: leaseFrom })}
             density="compact"
             caption="Lease history"
             state={historyState}
@@ -187,7 +190,7 @@ export function UnitDrawer({ unit, propertyName, onClose }: UnitDrawerProps) {
 }
 
 /** Tenant tab with an ACTIVE lease: tenant card with the payment badge, then rent / balance / lease end cards. */
-function ActiveLease({ lease, unit }: { lease: Lease; unit: Unit }) {
+function ActiveLease({ lease, unit, leaseFrom }: { lease: Lease; unit: Unit; leaseFrom: LeasePageState }) {
   const navigate = useNavigate();
   const tenant = lease.tenants.find((t) => t.isPrimary) ?? lease.tenants[0];
   const due = dueState(lease);
@@ -210,7 +213,7 @@ function ActiveLease({ lease, unit }: { lease: Lease; unit: Unit }) {
         ) : (
           <LeaseBadge lease={lease} />
         )}
-        <Button size="sm" variant="ghost" onClick={() => void navigate(leasePath(lease))}>
+        <Button size="sm" variant="ghost" onClick={() => void navigate(leasePath(lease), { state: leaseFrom })}>
           Open lease
         </Button>
       </Card>

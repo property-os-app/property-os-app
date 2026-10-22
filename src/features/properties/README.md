@@ -30,15 +30,15 @@ Numbers the frontend computes (money in integer cents). The API gives only `unit
 - `useAddPropertyFlow()`: `{ open, modals }`. `open()` shows PropertyFormModal; after a create with a "Number of units" it runs the "Add unit 1 of N" chain (`UnitFormModal`, a new key per step). The page renders `modals` once, so the chain survives the page leaving its no-properties state. Used by Dashboard, Properties, Units, Leases and Rent Roll.
 
 ## PropertyCard.tsx
-- `PropertyCard`: the clickable card of the Cards view. `PropertyCardSkeleton`: its loading shape.
+- `PropertyCard`: the clickable card of the Cards view (passes `from: "properties"`). `PropertyCardSkeleton`: its loading shape.
 - `PropertyImage`: neutral block with the type badge (no photos yet). `ManagerLine`: "Name, Property Manager" / "Name +2" / "No manager assigned".
 - `PropertyRow`: one property plus its counts by status, occupancy and rent (units total and managers are read from the property).
 
 ## PropertiesTable.tsx
-- `PropertiesTable`: the Table view (DataTable; Name, Units, Occupancy, Value sortable; row opens the detail). On phones a `CardList`: name, address, property status badge, Units / Occupancy / Type, Monthly rent; the card links to the detail page.
+- `PropertiesTable`: the Table view (rows and cards pass `from: "properties"`; DataTable; Name, Units, Occupancy, Value sortable; row opens the detail). On phones a `CardList`: name, address, property status badge, Units / Occupancy / Type, Monthly rent; the card links to the detail page.
 
 ## PropertyDetailPage.tsx
-- `PropertyDetailPage`: /properties/:id. Breadcrumb and tiles from `features/shared/DetailParts`, header card (KPI tiles, `unitCount`, embedded managers, tabs), Overview (units needing attention, Details, Managers) and Units tabs, Edit / Delete for OWNER, "Add unit" (primary, `unit.create`), unit rows open the `UnitDrawer`, "Property not found" on 404. Sets the page title to the property name. On phones the header buttons go under the name and fill the width (44px).
+- `PropertyDetailPage`: /properties/:id. One line on top, "[←] Properties › {name}" (`BackBreadcrumb`): with `PropertyPageState` `from: "properties"` (list cards and rows) back goes back in history and keeps the list's filters and search, else it opens /properties. Unit drawer lease links pass `from: "property"` with the property, so the lease page goes back here. Tiles from `features/shared/DetailParts`, header card (KPI tiles, `unitCount`, embedded managers, tabs), Overview (units needing attention, Details, Managers) and Units tabs, Edit / Delete for OWNER, "Add unit" (primary, `unit.create`), unit rows open the `UnitDrawer`, "Property not found" on 404. Sets the page title to the property name. On phones the header buttons go under the name and fill the width (44px).
 
 ## PropertyUnitsTable.tsx
 - `PropertyUnitsTable`: units with tenant, rent, lease and status (expiring leases show "Expiring"); 25 per page; optional `onRowClick`. On phones flat cards inside the parent card (unit, type · sq ft, status, Tenant / Lease, Rent); the card is a button that opens the unit drawer.

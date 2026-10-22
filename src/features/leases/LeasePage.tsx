@@ -1,8 +1,9 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
-import { ArrowLeft, FileX, Pencil, Plus, Wallet } from "lucide-react";
+import { FileX, Pencil, Plus, Wallet } from "lucide-react";
 import { Avatar, Button, Dash, H1, Skeleton, Small } from "@/components/atoms";
 import { Card, EmptyState, InlineError, StatusBadge, Tabs } from "@/components/molecules";
+import type { ModuleKey } from "@/components/organisms";
 import { usePageNav, usePageTitle } from "@/app/pageTitle";
 import { ApiError, errorText } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -24,62 +25,55 @@ import { useLedger } from "@/features/ledger/hooks";
 import { LedgerView } from "@/features/ledger/LedgerView";
 import { RecordPaymentModal } from "@/features/ledger/RecordPaymentModal";
 import { leasePaymentTarget } from "@/features/ledger/targets";
-import { Breadcrumb, Tile, type Crumb } from "@/features/shared/DetailParts";
+import { BackBreadcrumb, Tile, type Crumb } from "@/features/shared/DetailParts";
 import { linkFocus, textLink } from "@/features/shared/linkClass";
 import type { Lease } from "@/types/lease";
 
 type Tab = "ledger" | "details" | "tenants";
 const TABS: Tab[] = ["ledger", "details", "tenants"];
 
-/** Where an in-app click came from (shows the back arrow and picks the Sidebar item). */
-export type LeaseOrigin = "leases" | "rent-roll" | "dashboard";
+/** Where an in-app click came from: names the first crumb (the place the back arrow goes) and picks the Sidebar item. */
+export type LeaseOrigin = "leases" | "rent-roll" | "dashboard" | "tenants" | "units" | "property";
 
-/** Router state from the lists and the Dashboard. Without `from` (pasted link, new tab) there is no back arrow. */
+/** Router state from every link into the lease page. Without `from` (pasted link, new tab) the parent is Leases (or the Rent Roll month from the URL). */
 export interface LeasePageState {
   from?: LeaseOrigin;
+  /** With from "property" (the Unit drawer on a property page): the crumb names it and links to it. */
+  property?: { id: string; name: string };
   /** A failed kebab Activate on the Leases list, shown under the header. */
   activateError?: ActivateError;
 }
 
-/** Where the page was opened from: the Rent Roll (?from=rent-roll&month=YYYY-MM) or the Leases list. */
+/** Opened from the Rent Roll (?from=rent-roll&month=YYYY-MM): the Ledger tab is the default. */
 function useOrigin() {
   const [params] = useSearchParams();
   const month = params.get("month");
   const fromRentRoll = params.get("from") === "rent-roll" && isMonth(month);
-  const links: Crumb[] = fromRentRoll ? [{ label: `Rent Roll · ${formatMonth(month)}`, to: `/rent-roll?month=${month}` }] : [{ label: "Leases", to: "/leases" }];
-  return { fromRentRoll, month: fromRentRoll ? month : null, links };
+  return { fromRentRoll, month: fromRentRoll ? month : null };
 }
 
-/** React Router keeps the history index in history.state; above 0 means there is an in-app page to go back to. */
-const hasAppHistory = () => ((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0;
-
-/**
- * Back arrow (only when opened from a list or the Dashboard in this tab) above the breadcrumb. Back goes back in history;
- * without an in-app entry it opens the origin URL. Also picks the Sidebar item (Dashboard, Rent Roll or Leases).
- */
-function PageTop({ current }: { current: ReactNode }) {
-  const navigate = useNavigate();
+/** The first crumb and the Sidebar item for where the page was opened from; the URL's Rent Roll month survives a pasted link. */
+function useParent(): { parent: Crumb; nav: ModuleKey; backInHistory: boolean } {
   const location = useLocation();
-  const { fromRentRoll, links } = useOrigin();
-  const from = (location.state as LeasePageState | null)?.from;
-  usePageNav(from === "dashboard" ? "dashboard" : fromRentRoll ? "rentroll" : "leases");
-  const list: Crumb = from === "dashboard" ? { label: "Dashboard", to: "/" } : links[0];
+  const { fromRentRoll, month } = useOrigin();
+  const state = location.state as LeasePageState | null;
+  const from = state?.from;
+  const backInHistory = Boolean(from);
+  if (from === "dashboard") return { parent: { label: "Dashboard", to: "/" }, nav: "dashboard", backInHistory };
+  if (from === "tenants") return { parent: { label: "Tenants", to: "/tenants" }, nav: "tenants", backInHistory };
+  if (from === "units") return { parent: { label: "Units", to: "/units" }, nav: "units", backInHistory };
+  if (from === "property" && state?.property) {
+    return { parent: { label: state.property.name, to: `/properties/${encodeURIComponent(state.property.id)}` }, nav: "properties", backInHistory };
+  }
+  if (fromRentRoll) return { parent: { label: `Rent Roll · ${formatMonth(month!)}`, to: `/rent-roll?month=${month}` }, nav: "rentroll", backInHistory };
+  return { parent: { label: "Leases", to: "/leases" }, nav: "leases", backInHistory };
+}
 
-  return (
-    <div className="flex flex-col items-start gap-2">
-      {from && (
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={<ArrowLeft size={16} strokeWidth={1.5} />}
-          onClick={() => void (hasAppHistory() ? navigate(-1) : navigate(list.to))}
-        >
-          {list.label}
-        </Button>
-      )}
-      <Breadcrumb links={links} current={current} />
-    </div>
-  );
+/** [←] Parent › Current: the arrow and the crumb go back to where the page was opened from (see `useParent`). */
+function PageTop({ current }: { current: ReactNode }) {
+  const { parent, nav, backInHistory } = useParent();
+  usePageNav(nav);
+  return <BackBreadcrumb parent={parent} current={current} backInHistory={backInHistory} />;
 }
 
 /**

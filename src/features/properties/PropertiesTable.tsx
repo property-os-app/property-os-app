@@ -6,6 +6,7 @@ import { centsToAmount, formatCompactCurrency, formatCurrency, formatPercent } f
 import { propertyTypeLabels } from "@/lib/labels";
 import { useIsMobile } from "@/lib/useIsMobile";
 import type { PropertyRow } from "@/features/properties/PropertyCard";
+import type { PropertyPageState } from "@/features/properties/PropertyDetailPage";
 import { formatAddress, propertyStatus } from "@/features/properties/stats";
 
 const columns: Column<PropertyRow>[] = [
@@ -39,6 +40,8 @@ const columns: Column<PropertyRow>[] = [
 
 type Props = Pick<DataTableProps<PropertyRow>, "rows" | "state" | "sort" | "onSortChange" | "empty" | "error" | "footer">;
 
+const fromProperties: PropertyPageState = { from: "properties" };
+
 /** Table view of the Properties list (cards on phones). Row / card opens the detail page. */
 export function PropertiesTable(props: Props) {
   const navigate = useNavigate();
@@ -59,7 +62,7 @@ export function PropertiesTable(props: Props) {
             <ListCard
               href={`/properties/${r.property.id}`}
               openLabel={`Open property ${r.property.name}`}
-              renderLink={(href, p) => <Link to={href} {...p} />}
+              renderLink={(href, p) => <Link to={href} state={fromProperties} {...p} />}
               title={r.property.name}
               subtitle={formatAddress(r.property)}
               badge={<Badge tone={status.tone}>{status.label}</Badge>}
@@ -80,7 +83,7 @@ export function PropertiesTable(props: Props) {
       {...props}
       columns={columns}
       rowKey={(r) => r.property.id}
-      onRowClick={(r) => navigate(`/properties/${r.property.id}`)}
+      onRowClick={(r) => navigate(`/properties/${r.property.id}`, { state: fromProperties })}
       caption="Properties"
     />
   );

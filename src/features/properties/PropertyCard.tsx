@@ -5,6 +5,7 @@ import { Card } from "@/components/molecules";
 import { cn } from "@/lib/cn";
 import { centsToAmount, formatCompactCurrency, formatPercent } from "@/lib/format";
 import { propertyTypeLabels } from "@/lib/labels";
+import type { PropertyPageState } from "@/features/properties/PropertyDetailPage";
 import { formatAddress, propertyStatus, type UnitCounts } from "@/features/properties/stats";
 import type { Property, PropertyManagerRef } from "@/types/property";
 
@@ -58,7 +59,11 @@ export function PropertyCard({ row }: { row: PropertyRow }) {
   const { property, counts, occupancy, rentCents } = row;
   const status = propertyStatus(counts);
   return (
-    <Link to={`/properties/${property.id}`} className="group block rounded-card text-text-primary no-underline focus-visible:focus-ring">
+    <Link
+      to={`/properties/${property.id}`}
+      state={{ from: "properties" } satisfies PropertyPageState}
+      className="group block rounded-card text-text-primary no-underline focus-visible:focus-ring"
+    >
       <Card padding="none" className="h-full transition-colors duration-fast group-hover:border-border-strong">
         <PropertyImage type={property.propertyType} className="h-40" />
         <div className="flex flex-col gap-3.5 p-5">

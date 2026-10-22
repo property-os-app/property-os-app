@@ -223,7 +223,7 @@ export function UnitsPage() {
         />
       </div>
 
-      {openRow && <UnitDrawer unit={openRow.unit} propertyName={openRow.propertyName} onClose={() => setOpenId(null)} />}
+      {openRow && <UnitDrawer unit={openRow.unit} propertyName={openRow.propertyName} leaseFrom={{ from: "units" }} onClose={() => setOpenId(null)} />}
       {formOpen && <UnitFormModal defaultPropertyId={scope} onClose={() => setFormOpen(false)} />}
       {editUnit && <UnitFormModal unit={editUnit} onClose={() => setEditUnit(null)} />}
       <UnitDeleteDialog unit={deleteRow?.unit ?? null} propertyName={deleteRow?.propertyName} onClose={() => setDeleteRow(null)} />

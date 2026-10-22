@@ -10,6 +10,7 @@ import { contactMethodLabels, paymentFrequencyLabels, tenantTypeLabels } from "@
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
 import { can, roleLabel } from "@/features/auth/permissions";
+import type { LeasePageState } from "@/features/leases/LeasePage";
 import { LeaseBadge, StatCard } from "@/features/leases/LeaseParts";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
 import { dueNote, dueState, leaseEndsNote, leasePeriod } from "@/features/leases/stats";
@@ -24,6 +25,8 @@ import type { TenantDetail } from "@/types/tenant";
 type Tab = "overview" | "leases";
 
 const leasePath = (l: Lease) => `/leases/${encodeURIComponent(l.id)}`;
+/** The drawer lives on the Tenants page: the lease page goes back there. */
+const fromTenants: LeasePageState = { from: "tenants" };
 
 const orDash = (value: string | null | undefined) => (value ? value : <Dash />);
 
@@ -139,7 +142,7 @@ function ActiveLease({ lease }: { lease: Lease }) {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <LeaseBadge lease={lease} />
-          <Button size="sm" variant="ghost" onClick={() => void navigate(leasePath(lease))}>
+          <Button size="sm" variant="ghost" onClick={() => void navigate(leasePath(lease), { state: fromTenants })}>
             Open lease
           </Button>
         </div>
@@ -220,7 +223,7 @@ function LeasesTab({ tenantId, leases, onAddLease }: { tenantId: string; leases:
             <ListCard
               href={leasePath(l)}
               openLabel={`Open lease ${l.leaseNumber}`}
-              renderLink={(href, p) => <Link to={href} {...p} />}
+              renderLink={(href, p) => <Link to={href} state={fromTenants} {...p} />}
               title={l.leaseNumber}
               subtitle={`Unit ${l.unit.unitNumber} · ${l.unit.property.name}`}
               badge={<LeaseBadge lease={l} />}
@@ -237,7 +240,7 @@ function LeasesTab({ tenantId, leases, onAddLease }: { tenantId: string; leases:
           columns={columns}
           rows={leases}
           rowKey={(l) => l.id}
-          onRowClick={(l) => void navigate(leasePath(l))}
+          onRowClick={(l) => void navigate(leasePath(l), { state: fromTenants })}
           density="compact"
           caption="Leases"
           state={leases.length === 0 ? "empty" : "ideal"}

@@ -6,7 +6,7 @@ Small page pieces used by more than one feature area (built only from design sys
 
 Pieces of the detail pages (`/properties/:id`, `/leases/:id`).
 
-- `Breadcrumb({ links, current })`: "Parent / … / Current" with router links (`linkFocus` ring); the last part is plain text.
+- `BackBreadcrumb({ parent, current, backInHistory })`: one line on top of a detail page, "[←] Parent › Current". The arrow (aria-label "Back to {Parent}", 44px on phones) and the Parent crumb go to the same place: back in history when `backInHistory` and there is an in-app entry (keeps the list's month, filters and search), else `parent.to`. The crumb is a real link (ctrl / middle click opens a new tab). Never wraps: Parent shortens with an ellipsis, Current stays whole (`aria-current="page"`). `Crumb`: `{ label, to }`.
 - `Crumb`: one breadcrumb link (`label`, `to`).
 - `Tile({ label, value, note, loading, className })`: KPI tile inside the header card; skeleton while `loading`.
 
