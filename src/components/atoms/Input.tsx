@@ -71,10 +71,10 @@ export function CurrencyInput({ value, onChange, symbol = "$", invalid, classNam
   }, [value, editing]);
   return (
     <div className={cn(base, "flex items-center gap-2 px-3", invalid && "border-danger", className)}>
-      <span className="text-text-secondary">{symbol}</span>
+      <span className="shrink-0 text-text-secondary">{symbol}</span>
       <input
         inputMode="decimal"
-        className="w-full bg-transparent text-right tabular outline-none"
+        className="min-w-0 flex-1 bg-transparent text-right tabular outline-none"
         value={text}
         onFocus={(e) => { setEditing(true); setText(value === "" ? "" : String(value)); onFocus?.(e); }}
         onChange={(e) => {

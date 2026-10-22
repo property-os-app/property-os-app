@@ -24,12 +24,13 @@ export function FormField({ label, htmlFor, required, help, error, className, ch
     : children;
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <label htmlFor={htmlFor} className="text-small text-text-secondary">
           {label}
           {required && <span className="text-danger"> *</span>}
         </label>
-        {action}
+        {/* Negative margin: a small button here (32px) must not make the row taller than a plain label, so the control lines up with its neighbours. */}
+        {action && <div className="-my-2 flex shrink-0">{action}</div>}
       </div>
       {child}
       {error ? (
