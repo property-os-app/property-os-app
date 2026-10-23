@@ -11,6 +11,8 @@ import type { UnitListRow } from "@/features/units/stats";
 
 type Props = Pick<DataTableProps<UnitListRow>, "rows" | "state" | "sort" | "onSortChange" | "empty" | "error" | "footer"> & {
   onOpen: (row: UnitListRow) => void;
+  /** Desktop Cards view: the phone cards in a grid. Phones always get cards. */
+  cards?: boolean;
   /** Omit to hide the Edit item (role can't edit). */
   onEdit?: (row: UnitListRow) => void;
   /** Omit to hide the Delete item (role can't delete). */
@@ -22,8 +24,8 @@ function EndsText({ active }: { active: UnitListRow["active"] }) {
   return active?.endDate ? <span className={active.endingSoon ? "font-semibold text-warning" : undefined}>{formatDate(active.endDate)}</span> : <Dash />;
 }
 
-/** The Units list: a table from md up, cards on phones. Row / card opens the unit drawer; the kebab has Edit and Delete when allowed. */
-export function UnitsTable({ onOpen, onEdit, onDelete, ...props }: Props) {
+/** The Units list: a table from md up (or cards in a grid with `cards`), cards on phones. Row / card opens the unit drawer; the kebab has Edit and Delete when allowed. */
+export function UnitsTable({ cards, onOpen, onEdit, onDelete, ...props }: Props) {
   const isMobile = useIsMobile();
   const menu = useMemo(
     () =>
@@ -58,9 +60,10 @@ export function UnitsTable({ onOpen, onEdit, onDelete, ...props }: Props) {
     return cols;
   }, [menu]);
 
-  if (isMobile) {
+  if (isMobile || cards) {
     return (
       <CardList
+        grid={!isMobile}
         rows={props.rows}
         state={props.state}
         empty={props.empty}

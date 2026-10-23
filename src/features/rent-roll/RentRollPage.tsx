@@ -40,6 +40,8 @@ import {
 import { useScope } from "@/features/scope/scopeContext";
 import { linkFocus } from "@/features/shared/linkClass";
 import { FilterGroup, MobileFilters, SortSelect, type SortOption } from "@/features/shared/MobileFilters";
+import { useListView } from "@/features/shared/listView";
+import { ViewToggle } from "@/features/shared/ViewToggle";
 import { NoProperties } from "@/features/shared/NoProperties";
 import type { RentRollRow } from "@/types/rentRoll";
 
@@ -77,6 +79,9 @@ export function RentRollPage() {
   const canPay = can(role, "payment.create");
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  // Phones always get cards; the saved choice is for wider screens.
+  const [view, setView] = useListView("rent-roll", "table");
+  const cards = view === "cards" && !isMobile;
   const { propertyId: scope, setPropertyId } = useScope();
 
   const [params, setParams] = useSearchParams();
@@ -323,6 +328,9 @@ export function RentRollPage() {
           {statusControl}
           {search}
           <div className="w-52">{propertySelect()}</div>
+          <div className="flex-1" />
+          {cards && <SortSelect compact id="rent-roll-sort-desktop" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />}
+          <ViewToggle value={view} onChange={setView} />
         </Toolbar>
       )}
 
@@ -353,6 +361,7 @@ export function RentRollPage() {
 
       <div id={table.listId} className="scroll-mt-24">
         <RentRollTable
+          cards={cards}
           showProperty={!scope}
           pastMonth={pastMonth}
           upcoming={upcoming}

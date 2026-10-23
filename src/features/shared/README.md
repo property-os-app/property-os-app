@@ -18,7 +18,14 @@ Pieces of the detail pages (`/properties/:id`, `/leases/:id`).
 - `textLink`: the green text link ("Back to Leases", "View all") with `linkFocus`.
 
 ## MobileFilters.tsx
-Phone (under md) toolbar pieces. Desktop toolbars don't use them.
+Phone (under md) toolbar pieces; desktop toolbars use only the compact `SortSelect`.
 - `MobileFilters({ count, resultCount, onClear, children })`: 44px "Filters" button with the active count; opens a bottom sheet (`Drawer side="bottom"`) holding `children`, with "Clear filters" and "Show N results". The count and "Clear filters" cover this page's filters only: the property (the sidebar's, app-wide) is labelled "Property (all pages)" in the sheet and is never counted or cleared.
-- `SortSelect({ sort, onSortChange, options, id })`: "Sort by" select (phones have no column headers); writes the same `useClientTable` sort. `SortOption`: key, label, kind (labels "A to Z", "low to high", "soonest first").
+- `SortSelect({ sort, onSortChange, options, id, compact })`: "Sort by" select for views without column headers (phones, desktop Cards view); writes the same `useClientTable` sort. `compact`: no visible label (aria-label "Sort by"), 224px wide, options read "Sort: Tenant, A to Z", for a desktop toolbar. `SortOption`: key, label, kind (labels "A to Z", "low to high", "soonest first").
 - `FilterGroup({ label, children })`: a labelled block in the sheet for a control that isn't one field (status segments, a chip).
+
+## listView.ts
+- `ListView`: "cards" | "table", a main list's desktop view.
+- `useListView(page, fallback)`: the saved choice (`useStoredView`, key `propertyos.{page}.view`). Used by Properties and Tenants (default Cards) and Leases, Units, Rent Roll (default Table). Phones ignore it (always cards).
+
+## ViewToggle.tsx
+- `ViewToggle({ value, onChange })`: the Cards / Table `SegmentedControl` (grid and list icons), placed at the right end of the desktop toolbar on the 5 main lists. Hidden on phones.

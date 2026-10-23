@@ -23,6 +23,8 @@ import { useProperties } from "@/features/properties/hooks";
 import { sumCents } from "@/features/properties/stats";
 import { useScope } from "@/features/scope/scopeContext";
 import { FilterGroup, MobileFilters, SortSelect, type SortOption } from "@/features/shared/MobileFilters";
+import { useListView } from "@/features/shared/listView";
+import { ViewToggle } from "@/features/shared/ViewToggle";
 import { NoProperties } from "@/features/shared/NoProperties";
 import type { Lease, SignatureStatus } from "@/types/lease";
 
@@ -78,6 +80,9 @@ export function LeasesPage() {
 function LeasesList() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  // Phones always get cards; the saved choice is for wider screens.
+  const [view, setView] = useListView("leases", "table");
+  const cards = view === "cards" && !isMobile;
   const { me } = useAuth();
   const role = me!.role;
   const canCreate = can(role, "lease.create");
@@ -261,11 +266,15 @@ function LeasesList() {
           {search}
           <div className="w-52">{propertySelect()}</div>
           <div className="w-44">{esignSelect()}</div>
+          <div className="flex-1" />
+          {cards && <SortSelect compact id="leases-sort-desktop" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />}
+          <ViewToggle value={view} onChange={setView} />
         </Toolbar>
       )}
 
       <div id={table.listId} className="scroll-mt-24">
         <LeasesTable
+          cards={cards}
           rows={table.pageRows}
           state={state}
           sort={table.sort}

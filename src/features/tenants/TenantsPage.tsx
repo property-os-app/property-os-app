@@ -1,20 +1,21 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { LayoutGrid, List, Plus, SearchX, Users } from "lucide-react";
+import { Plus, SearchX, Users } from "lucide-react";
 import { Button, Dash, Select, Skeleton } from "@/components/atoms";
-import { Card, EmptyState, FilterChip, FormField, InlineError, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
+import { Card, EmptyState, FilterChip, FormField, InlineError, KpiCard, SearchInput } from "@/components/molecules";
 import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { centsToAmount, formatCompactCurrency, formatPercent } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import { useClientTable, type SortColumn } from "@/lib/useClientTable";
 import { useIsMobile } from "@/lib/useIsMobile";
-import { useStoredView } from "@/lib/useStoredView";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { useLeases } from "@/features/leases/hooks";
 import { useProperties } from "@/features/properties/hooks";
 import { useScope } from "@/features/scope/scopeContext";
 import { FilterGroup, MobileFilters, SortSelect, type SortOption } from "@/features/shared/MobileFilters";
+import { useListView } from "@/features/shared/listView";
+import { ViewToggle } from "@/features/shared/ViewToggle";
 import { useTenants } from "@/features/tenants/hooks";
 import { TenantCard, TenantCardSkeleton } from "@/features/tenants/TenantCard";
 import { TenantDeleteDialog } from "@/features/tenants/TenantDeleteDialog";
@@ -34,11 +35,8 @@ import {
   type TenantRow,
 } from "@/features/tenants/stats";
 
-type View = "cards" | "table";
 type Filters = { lease: LeaseFilter; balance: "any" | "owed" };
 
-const VIEW_KEY = "propertyos.tenants.view";
-const VIEWS = ["cards", "table"] as const;
 const initialFilters: Filters = { lease: "all", balance: "any" };
 
 const leaseFilterOptions: { value: LeaseFilter; label: string }[] = [
@@ -76,7 +74,7 @@ export function TenantsPage() {
   const leases = useLeases();
   const properties = useProperties();
 
-  const [view, setView] = useStoredView<View>(VIEW_KEY, VIEWS, "cards");
+  const [view, setView] = useListView("tenants", "cards");
   // Phones always get the list cards; the saved Cards / Table choice is kept for wider screens.
   const isMobile = useIsMobile();
   const [openId, setOpenId] = useState<string | null>(null);
@@ -247,15 +245,8 @@ export function TenantsPage() {
           <div className="w-44">{leaseSelect()}</div>
           {balanceChip}
           <div className="flex-1" />
-          <SegmentedControl<View>
-            aria-label="View"
-            value={view}
-            onChange={setView}
-            segments={[
-              { value: "cards", label: "Cards", icon: <LayoutGrid size={16} strokeWidth={1.5} /> },
-              { value: "table", label: "Table", icon: <List size={16} strokeWidth={1.5} /> },
-            ]}
-          />
+          {view === "cards" && <SortSelect compact id="tenants-sort-desktop" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />}
+          <ViewToggle value={view} onChange={setView} />
         </Toolbar>
       )}
 

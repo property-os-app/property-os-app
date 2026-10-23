@@ -1,14 +1,13 @@
 import { useMemo, type ReactNode } from "react";
-import { LayoutGrid, List, Plus, SearchX } from "lucide-react";
+import { Plus, SearchX } from "lucide-react";
 import { Button, Dash, Select, Skeleton } from "@/components/atoms";
-import { Card, EmptyState, FormField, InlineError, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
+import { Card, EmptyState, FormField, InlineError, KpiCard, SearchInput } from "@/components/molecules";
 import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { centsToAmount, formatCompactCurrency, formatPercent } from "@/lib/format";
 import { labelOptions, plural, propertyTypeLabels } from "@/lib/labels";
 import { useClientTable, type SortColumn } from "@/lib/useClientTable";
 import { useIsMobile } from "@/lib/useIsMobile";
-import { useStoredView } from "@/lib/useStoredView";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { useLeases } from "@/features/leases/hooks";
@@ -27,14 +26,13 @@ import {
   unitStatusNote,
 } from "@/features/properties/stats";
 import { MobileFilters, SortSelect, type SortOption } from "@/features/shared/MobileFilters";
+import { useListView } from "@/features/shared/listView";
+import { ViewToggle } from "@/features/shared/ViewToggle";
 import { NoProperties } from "@/features/shared/NoProperties";
 import { useUnits } from "@/features/units/hooks";
 
-type View = "cards" | "table";
 type Filters = { type: string; manager: string };
 
-const VIEW_KEY = "propertyos.properties.view";
-const VIEWS = ["cards", "table"] as const;
 const initialFilters: Filters = { type: "all", manager: "all" };
 const propertyTypes = Object.keys(propertyTypeLabels);
 
@@ -74,7 +72,7 @@ export function PropertiesPage() {
   const managers = useManagers();
   const isMobile = useIsMobile();
 
-  const [view, setView] = useStoredView<View>(VIEW_KEY, VIEWS, "cards");
+  const [view, setView] = useListView("properties", "cards");
   const addProperty = useAddPropertyFlow();
 
   const countsByProperty = useMemo(() => unitCountsByProperty(units.data ?? []), [units.data]);
@@ -215,18 +213,12 @@ export function PropertiesPage() {
         </Toolbar>
       ) : (
         <Toolbar>
-          <SegmentedControl<View>
-            aria-label="View"
-            value={view}
-            onChange={setView}
-            segments={[
-              { value: "cards", label: "Cards", icon: <LayoutGrid size={16} strokeWidth={1.5} /> },
-              { value: "table", label: "Table", icon: <List size={16} strokeWidth={1.5} /> },
-            ]}
-          />
           {search}
           <div className="w-44">{typeSelect()}</div>
           {isOwner && <div className="w-52">{managerSelect()}</div>}
+          <div className="flex-1" />
+          {view === "cards" && <SortSelect compact id="properties-sort-desktop" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />}
+          <ViewToggle value={view} onChange={setView} />
         </Toolbar>
       )}
 

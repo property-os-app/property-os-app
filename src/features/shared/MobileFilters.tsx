@@ -66,28 +66,40 @@ const directionLabels: Record<SortKind, [string, string]> = {
   date: ["soonest first", "latest first"],
 };
 
-/** "Sort by" select for phones (no column headers there); writes the same sort as the table headers. */
-export function SortSelect({ sort, onSortChange, options, id }: { sort: SortState; onSortChange: (sort: SortState) => void; options: SortOption[]; id: string }) {
+/**
+ * "Sort by" select for views without column headers (phones, desktop Cards view); writes the same sort as the table headers.
+ * `compact`: no visible label, for a desktop toolbar; every option starts with "Sort:" instead.
+ */
+export function SortSelect({
+  sort, onSortChange, options, id, compact,
+}: { sort: SortState; onSortChange: (sort: SortState) => void; options: SortOption[]; id: string; compact?: boolean }) {
   const value = sort ? `${sort.key}:${sort.direction}` : "";
+  // Phones: "Tenant: A to Z". Toolbar: "Sort: Tenant, A to Z" (no label above it).
+  const optionLabel = (label: string, dir: string) => (compact ? `Sort: ${label}, ${dir}` : `${label}: ${dir}`);
+  const select = (
+    <Select
+      id={id}
+      aria-label={compact ? "Sort by" : undefined}
+      value={value}
+      onChange={(e) => {
+        const [key, direction] = e.target.value.split(":");
+        onSortChange(key ? { key, direction: direction === "desc" ? "desc" : "asc" } : null);
+      }}
+    >
+      <option value="">{compact ? "Sort: default order" : "Default order"}</option>
+      {options.flatMap((o) => {
+        const [asc, desc] = directionLabels[o.kind];
+        return [
+          <option key={`${o.key}:asc`} value={`${o.key}:asc`}>{optionLabel(o.label, asc)}</option>,
+          <option key={`${o.key}:desc`} value={`${o.key}:desc`}>{optionLabel(o.label, desc)}</option>,
+        ];
+      })}
+    </Select>
+  );
+  if (compact) return <div className="w-56">{select}</div>;
   return (
     <FormField label="Sort by" htmlFor={id}>
-      <Select
-        id={id}
-        value={value}
-        onChange={(e) => {
-          const [key, direction] = e.target.value.split(":");
-          onSortChange(key ? { key, direction: direction === "desc" ? "desc" : "asc" } : null);
-        }}
-      >
-        <option value="">Default order</option>
-        {options.flatMap((o) => {
-          const [asc, desc] = directionLabels[o.kind];
-          return [
-            <option key={`${o.key}:asc`} value={`${o.key}:asc`}>{`${o.label}: ${asc}`}</option>,
-            <option key={`${o.key}:desc`} value={`${o.key}:desc`}>{`${o.label}: ${desc}`}</option>,
-          ];
-        })}
-      </Select>
+      {select}
     </FormField>
   );
 }

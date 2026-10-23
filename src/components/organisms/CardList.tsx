@@ -21,14 +21,18 @@ export interface CardListProps<Row> {
   caption: string;
   /** Divided rows without their own borders, inside a card or drawer. */
   flat?: boolean;
+  /** Cards in a grid (1 column, 2 from md, 3 from xl) instead of one column: the desktop Cards view. Ignored with `flat`. */
+  grid?: boolean;
   skeletons?: number;
   className?: string;
 }
 
 /** The phone version of a DataTable: the same rows as cards, with loading skeletons, empty, error and the pagination footer. */
 export function CardList<Row>({
-  rows, rowKey, renderCard, state = "ideal", empty, error, summary, footer, caption, flat, skeletons = 4, className,
+  rows, rowKey, renderCard, state = "ideal", empty, error, summary, footer, caption, flat, grid, skeletons, className,
 }: CardListProps<Row>) {
+  const asGrid = grid && !flat;
+  const layout = flat ? "flex flex-col divide-y divide-border-subtle" : asGrid ? "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" : "flex flex-col gap-3";
   let body: React.ReactNode;
   if (state === "error") {
     body = error ? <InlineError {...error} className={cn(flat && "m-4")} /> : null;
@@ -36,8 +40,8 @@ export function CardList<Row>({
     body = empty ? (flat ? <EmptyState {...empty} /> : <Card padding="none"><EmptyState {...empty} /></Card>) : null;
   } else if (state === "loading") {
     body = (
-      <div aria-busy="true" aria-label={caption} className={cn("flex flex-col", flat ? "divide-y divide-border-subtle" : "gap-3")}>
-        {Array.from({ length: skeletons }).map((_, i) => (
+      <div aria-busy="true" aria-label={caption} className={layout}>
+        {Array.from({ length: skeletons ?? (asGrid ? 6 : 4) }).map((_, i) => (
           <ListCardSkeleton key={i} flat={flat} />
         ))}
       </div>
@@ -46,16 +50,17 @@ export function CardList<Row>({
     body = (
       <>
         {summary}
-        <ul aria-label={caption} className={cn("m-0 flex list-none flex-col p-0", flat ? "divide-y divide-border-subtle" : "gap-3")}>
+        <ul aria-label={caption} className={cn("m-0 list-none p-0", layout)}>
           {rows.map((row) => (
-            <li key={rowKey(row)}>{renderCard(row)}</li>
+            // In the grid the card fills its cell, so cards in a row are the same height.
+            <li key={rowKey(row)} className={asGrid ? "grid" : undefined}>{renderCard(row)}</li>
           ))}
         </ul>
       </>
     );
   }
   return (
-    <div className={cn("flex min-w-0 flex-col gap-3", className)}>
+    <div className={cn("flex min-w-0 flex-col", asGrid ? "gap-4" : "gap-3", className)}>
       {body}
       {state === "ideal" && footer && (
         <div className={cn("flex flex-wrap items-center justify-between gap-2 text-small text-text-secondary", flat && "border-t border-border-subtle px-4 py-2")}>{footer}</div>

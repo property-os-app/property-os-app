@@ -22,6 +22,8 @@ type Props = Pick<DataTableProps<RentRollRow>, "rows" | "state" | "sort" | "onSo
   /** NOT_BILLED rows Generate rent skips, by leaseId: "Upcoming" badge and caption. null while the leases load. */
   upcoming: Map<string, UpcomingRow> | null;
   onOpen: (row: RentRollRow) => void;
+  /** Desktop Cards view: the phone cards in a grid. Phones always get cards. */
+  cards?: boolean;
   /** Omit to hide the item (role can't do it). */
   onRecordPayment?: (row: RentRollRow) => void;
   onAddCharge?: (row: RentRollRow) => void;
@@ -56,9 +58,9 @@ function WithCaption({ children, caption }: { children: ReactNode; caption: stri
 
 /**
  * The Rent Roll table: tenant, unit (property name under it), previous balance, rent due, paid, balance,
- * status (status date under it), kebab, and the totals row over all filtered rows.
+ * status (status date under it), kebab, and the totals row over all filtered rows. Cards (phones, or `cards`): the Totals card on top.
  */
-export function RentRollTable({ totalRows, showProperty, pastMonth, upcoming, onOpen, onRecordPayment, onAddCharge, ...props }: Props) {
+export function RentRollTable({ cards, totalRows, showProperty, pastMonth, upcoming, onOpen, onRecordPayment, onAddCharge, ...props }: Props) {
   const isMobile = useIsMobile();
   const menu = useMemo(
     () => (r: RentRollRow) => {
@@ -154,10 +156,11 @@ export function RentRollTable({ totalRows, showProperty, pastMonth, upcoming, on
 
   const t = rowTotals(totalRows);
 
-  if (isMobile) {
+  if (isMobile || cards) {
     const credits = t.creditCents > 0 ? `Credits ${formatCurrency(centsToAmount(t.creditCents))}` : undefined;
     return (
       <CardList
+        grid={!isMobile}
         rows={props.rows}
         state={props.state}
         empty={props.empty}

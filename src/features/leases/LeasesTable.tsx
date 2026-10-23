@@ -15,6 +15,8 @@ import type { Lease } from "@/types/lease";
 
 type Props = Pick<DataTableProps<Lease>, "rows" | "state" | "sort" | "onSortChange" | "empty" | "error" | "footer"> & {
   onOpen: (lease: Lease) => void;
+  /** Desktop Cards view: the phone cards in a grid. Phones always get cards. */
+  cards?: boolean;
   /** Omit the next four to hide those items (role can't edit leases). */
   onEdit?: (lease: Lease) => void;
   onActivate?: (lease: Lease) => void;
@@ -39,10 +41,10 @@ function tenantTitle(l: Lease): string | null {
 const fromLeases: LeasePageState = { from: "leases" };
 
 /**
- * The Leases list: a table from md up, cards on phones (same rows, states and pagination).
+ * The Leases list: a table from md up (or cards in a grid with `cards`), cards on phones (same rows, states and pagination).
  * Row / card opens the lease page; the kebab has Open, Edit, Activate, End lease, Delete draft.
  */
-export function LeasesTable({ onOpen, onEdit, onActivate, onEnd, onDelete, ...props }: Props) {
+export function LeasesTable({ cards, onOpen, onEdit, onActivate, onEnd, onDelete, ...props }: Props) {
   const isMobile = useIsMobile();
   const menu = useMemo(
     () => (l: Lease) => {
@@ -121,9 +123,10 @@ export function LeasesTable({ onOpen, onEdit, onActivate, onEnd, onDelete, ...pr
     [menu],
   );
 
-  if (isMobile) {
+  if (isMobile || cards) {
     return (
       <CardList
+        grid={!isMobile}
         rows={props.rows}
         state={props.state}
         empty={props.empty}

@@ -16,6 +16,8 @@ import { useProperties } from "@/features/properties/hooks";
 import { countUnits, occupancy, sumCents } from "@/features/properties/stats";
 import { useScope } from "@/features/scope/scopeContext";
 import { FilterGroup, MobileFilters, SortSelect, type SortOption } from "@/features/shared/MobileFilters";
+import { useListView } from "@/features/shared/listView";
+import { ViewToggle } from "@/features/shared/ViewToggle";
 import { NoProperties } from "@/features/shared/NoProperties";
 import { UnitDeleteDialog } from "@/features/units/UnitDeleteDialog";
 import { UnitDrawer } from "@/features/units/UnitDrawer";
@@ -52,6 +54,9 @@ export function UnitsPage() {
   const canCreate = can(role, "unit.create");
   const { propertyId: scope, setPropertyId } = useScope();
   const isMobile = useIsMobile();
+  // Phones always get cards; the saved choice is for wider screens.
+  const [view, setView] = useListView("units", "table");
+  const cards = view === "cards" && !isMobile;
 
   const properties = useProperties();
   const units = useUnits({ propertyId: scope ?? undefined });
@@ -201,11 +206,15 @@ export function UnitsPage() {
           {search}
           <div className="w-52">{propertySelect()}</div>
           {statusControl}
+          <div className="flex-1" />
+          {cards && <SortSelect compact id="units-sort-desktop" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />}
+          <ViewToggle value={view} onChange={setView} />
         </Toolbar>
       )}
 
       <div id={table.listId} className="scroll-mt-24">
         <UnitsTable
+          cards={cards}
           rows={table.pageRows}
           state={state}
           sort={table.sort}
