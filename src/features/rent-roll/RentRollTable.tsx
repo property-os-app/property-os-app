@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from "react";
-import { CalendarRange, Eye, Plus, Wallet } from "lucide-react";
+import { CalendarRange, Eye, Mail, Phone, Plus, Wallet } from "lucide-react";
 import { Avatar, Badge, Caption, Dash, Num } from "@/components/atoms";
 import { KebabMenu, ListCard, StatusBadge, type MenuItem } from "@/components/molecules";
 import { CardList, DataTable, type Column, type DataTableProps } from "@/components/organisms";
@@ -10,6 +10,7 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { BalanceText } from "@/features/ledger/LedgerParts";
 import { balanceText } from "@/features/ledger/balance";
 import { paidCaption, rowTotals, statusDate, type UpcomingRow } from "@/features/rent-roll/stats";
+import type { RentReminderLinks } from "@/features/shared/rentReminder";
 import type { RentRollRow } from "@/types/rentRoll";
 
 type Props = Pick<DataTableProps<RentRollRow>, "rows" | "state" | "sort" | "onSortChange" | "empty" | "error" | "footer" | "caption"> & {
@@ -27,6 +28,13 @@ type Props = Pick<DataTableProps<RentRollRow>, "rows" | "state" | "sort" | "onSo
   /** Omit to hide the item (role can't do it). */
   onRecordPayment?: (row: RentRollRow) => void;
   onAddCharge?: (row: RentRollRow) => void;
+  /** Call / Email reminder links for a row (null: none). Omit to hide both items (not the current month, tenants not loaded). */
+  reminderFor?: (row: RentRollRow) => RentReminderLinks | null;
+};
+
+/** tel: and mailto: leave the app, so a plain navigation is enough. */
+const openLink = (href: string) => {
+  window.location.href = href;
 };
 
 /** Previous balance: Dash at 0, plain when owed, "Credit $X" in success color when negative. */
@@ -60,7 +68,7 @@ function WithCaption({ children, caption }: { children: ReactNode; caption: stri
  * The Rent Roll table: tenant, unit (property name under it), previous balance, rent due, paid, balance,
  * status (status date under it), kebab, and the totals row over all filtered rows. Cards (phones, or `cards`): the Totals card on top.
  */
-export function RentRollTable({ cards, totalRows, showProperty, pastMonth, upcoming, onOpen, onRecordPayment, onAddCharge, ...props }: Props) {
+export function RentRollTable({ cards, totalRows, showProperty, pastMonth, upcoming, onOpen, onRecordPayment, onAddCharge, reminderFor, ...props }: Props) {
   const isMobile = useIsMobile();
   const menu = useMemo(
     () => (r: RentRollRow) => {
@@ -73,9 +81,12 @@ export function RentRollTable({ cards, totalRows, showProperty, pastMonth, upcom
       } else if (onAddCharge) {
         items.push({ label: "Add charge", icon: <Plus strokeWidth={1.5} />, onSelect: () => onAddCharge(r) });
       }
+      const reminder = reminderFor?.(r);
+      if (reminder?.tel) items.push({ label: "Call tenant", icon: <Phone strokeWidth={1.5} />, onSelect: () => openLink(reminder.tel!) });
+      if (reminder?.mailto) items.push({ label: "Email reminder", icon: <Mail strokeWidth={1.5} />, onSelect: () => openLink(reminder.mailto!) });
       return <KebabMenu label={`Actions for lease ${r.leaseNumber}`} items={items} />;
     },
-    [upcoming, onOpen, onRecordPayment, onAddCharge],
+    [upcoming, onOpen, onRecordPayment, onAddCharge, reminderFor],
   );
 
   const columns = useMemo<Column<RentRollRow>[]>(
@@ -242,5 +253,6 @@ export function RentRollTable({ cards, totalRows, showProperty, pastMonth, upcom
   };
   const totals = columns.map((c) => totalCells[c.key] ?? "");
 
-  return <DataTable {...props} columns={columns} rowKey={(r) => r.leaseId} onRowClick={onOpen} totals={totals} />;
+  // Same strip as the cards: behind on rent only (the Status column says "Overdue").
+  return <DataTable {...props} columns={columns} rowKey={(r) => r.leaseId} onRowClick={onOpen} rowStrip={(r) => r.status === "OVERDUE"} totals={totals} />;
 }

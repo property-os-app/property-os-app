@@ -26,6 +26,8 @@ export interface DataTableProps<Row> {
   rowKey: (row: Row) => string;
   /** Row click opens the detail drawer. */
   onRowClick?: (row: Row) => void;
+  /** Red 4px bar on the left edge of the row's first cell (like ListCard's `strip`). Pair it with a visible label, never color alone. */
+  rowStrip?: (row: Row) => boolean;
   /** Bulk selection. */
   selected?: Set<string>;
   onSelectedChange?: (selected: Set<string>) => void;
@@ -50,7 +52,7 @@ export interface DataTableProps<Row> {
  * Default sort should be by urgency (overdue first, soonest expiry first, emergency first), decided by the caller.
  */
 export function DataTable<Row>({
-  columns, rows, rowKey, onRowClick, selected, onSelectedChange, bulkActions, sort, onSortChange, density = "default",
+  columns, rows, rowKey, onRowClick, rowStrip, selected, onSelectedChange, bulkActions, sort, onSortChange, density = "default",
   totals, state = "ideal", empty, error, footer, className, caption,
 }: DataTableProps<Row>) {
   const selectable = Boolean(selected && onSelectedChange);
@@ -130,6 +132,7 @@ export function DataTable<Row>({
               rows.map((row) => {
                 const id = rowKey(row);
                 const isSel = selectable && selected!.has(id);
+                const strip = rowStrip?.(row) ? <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-danger" /> : null;
                 return (
                   <tr
                     key={id}
@@ -137,20 +140,23 @@ export function DataTable<Row>({
                     className={cn("group", rowH, onRowClick && "cursor-pointer", isSel ? "bg-surface-3" : "hover:bg-surface-3")}
                   >
                     {selectable && (
-                      <td className="border-b border-border-subtle px-4" onClick={(e) => e.stopPropagation()}>
+                      <td className={cn("border-b border-border-subtle px-4", strip && "relative")} onClick={(e) => e.stopPropagation()}>
+                        {strip}
                         <Checkbox aria-label={`Select row ${id}`} checked={isSel} onChange={() => toggleOne(id)} />
                       </td>
                     )}
-                    {columns.map((c) => (
+                    {columns.map((c, i) => (
                       <td
                         key={c.key}
                         className={cn(
                           "whitespace-nowrap border-b border-border-subtle px-4 text-text-primary group-last:border-b-0",
+                          strip && i === 0 && !selectable && "relative",
                           c.align === "right" && "text-right tabular",
                           c.sticky && "sticky left-0 z-[1] bg-surface-1 group-hover:bg-surface-3",
                           c.className,
                         )}
                       >
+                        {i === 0 && !selectable && strip}
                         {c.cell(row)}
                       </td>
                     ))}

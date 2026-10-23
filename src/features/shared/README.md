@@ -13,6 +13,10 @@ Pieces of the detail pages (`/properties/:id`, `/leases/:id`).
 ## NoProperties.tsx
 - `NoProperties({ onAdd })`: the page body when the user has no properties. Manager: "No properties assigned to you yet" / "Ask the owner to assign you a property." Owner: "Add your first property" with an Add property button (`property.create`) that calls `onAdd`. Used by Dashboard, Properties, Units, Leases and Rent Roll.
 
+## rentReminder.ts
+- `rentReminderLinks(input)`: Call (tel:) and Email reminder (mailto:) links for an overdue lease: To the primary tenant, CC co-tenants, subject "Rent reminder – {property} {unit}", the reminder body (balance and due date via `format.ts`, days via `daysSince`, signed with the user's name). `tel` / `mailto` are null without a phone / email. Used by the lease page and the Rent Roll menu.
+- `RentReminderInput`, `RentReminderLinks`: its types.
+
 ## linkClass.ts
 - `linkFocus`: rounded keyboard-only focus ring with no offset (`focus-ring-tight`), so it doesn't touch the next word. For inline links and link-style buttons.
 - `textLink`: the green text link ("Back to Leases", "View all") with `linkFocus`.

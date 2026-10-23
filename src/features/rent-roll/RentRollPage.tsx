@@ -19,6 +19,9 @@ import { useProperties } from "@/features/properties/hooks";
 import { GenerateRentModal } from "@/features/rent-roll/GenerateRentModal";
 import { useRentRoll } from "@/features/rent-roll/hooks";
 import { useLeases } from "@/features/leases/hooks";
+import { coTenants } from "@/features/leases/stats";
+import { rentReminderLinks, type RentReminderLinks } from "@/features/shared/rentReminder";
+import { useTenants } from "@/features/tenants/hooks";
 import { RentRollTable } from "@/features/rent-roll/RentRollTable";
 import type { LeasePageState } from "@/features/leases/LeasePage";
 import {
@@ -110,6 +113,31 @@ export function RentRollPage() {
     () => (leases.isSuccess ? upcomingRows(allRows, leases.data, month) : leases.isError ? new Map() : null),
     [leases.isSuccess, leases.isError, leases.data, allRows, month],
   );
+  // Call / Email reminder on OVERDUE rows, current month only (a past month's balance may be paid by now).
+  // Phone and email come from the cached tenants list; the items hide while it loads or fails. CC: co-tenants, once the leases load.
+  const tenants = useTenants();
+  const senderName = me?.name ?? "";
+  const reminderFor = useMemo(() => {
+    if (month !== currentMonthUTC() || !tenants.isSuccess) return undefined;
+    const byId = new Map(tenants.data.map((t) => [t.id, t]));
+    const leaseById = new Map((leases.data ?? []).map((l) => [l.id, l]));
+    return (r: RentRollRow): RentReminderLinks | null => {
+      const tenant = r.primaryTenant ? byId.get(r.primaryTenant.id) : undefined;
+      if (r.status !== "OVERDUE" || !tenant || !r.oldestUnpaidDueDate) return null;
+      const lease = leaseById.get(r.leaseId);
+      return rentReminderLinks({
+        tenantName: tenant.fullName,
+        email: tenant.email,
+        cc: lease ? coTenants(lease).map((t) => t.email).filter(Boolean) : [],
+        phone: tenant.phone,
+        propertyName: r.unit.property.name,
+        unitNumber: r.unit.unitNumber,
+        balance: r.balance,
+        dueDate: r.oldestUnpaidDueDate,
+        senderName,
+      });
+    };
+  }, [month, tenants.isSuccess, tenants.data, leases.data, senderName]);
   const matchFilters = useCallback((r: RentRollRow, f: Filters) => f.status === "all" || rowFilterStatus(r, upcoming) === f.status, [upcoming]);
   // API order (property, unit, lease number) is the default; status and search are filtered here.
   const table = useClientTable<RentRollRow, Filters>({
@@ -381,6 +409,7 @@ export function RentRollPage() {
           onOpen={openLedger}
           onRecordPayment={canPay ? (r) => setPayment({ leaseId: r.leaseId }) : undefined}
           onAddCharge={canCharge ? (r) => setChargeFor(r.leaseId) : undefined}
+          reminderFor={reminderFor}
         />
       </div>
 

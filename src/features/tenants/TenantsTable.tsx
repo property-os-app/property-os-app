@@ -111,5 +111,8 @@ export function TenantsTable({ onOpen, onEdit, onDelete, ...props }: Props) {
     );
   }
 
-  return <DataTable {...props} columns={columns} rowKey={(r) => r.tenant.id} onRowClick={onOpen} caption="Tenants" />;
+  // Same strip as the phone cards: behind on rent only (the Rent status column says "Overdue").
+  return (
+    <DataTable {...props} columns={columns} rowKey={(r) => r.tenant.id} onRowClick={onOpen} rowStrip={({ current }) => rentStatus(current) === "overdue"} caption="Tenants" />
+  );
 }

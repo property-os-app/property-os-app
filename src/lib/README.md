@@ -36,6 +36,7 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - `todayISO()` / `currentMonth()`: local "YYYY-MM-DD" / "YYYY-MM" (not UTC).
 - `todayUTC()`: UTC "YYYY-MM-DD" from the UTC parts, the backend's "today" (overdue, endingSoon).
 - `daysUntil(date)`: calendar days from local today to a "YYYY-MM-DD" date (negative in the past, null if invalid).
+- `daysSince(date)`: local calendar days since a past date, at least 1. The one count for "{n} days overdue" (Rent Roll, Dashboard, reminder email) and "Ended n days ago".
 - `addMonthsISO(date, n)`: "YYYY-MM-DD" + n months on year/month/day numbers; the day is clamped to the month's last day.
 - `addDaysISO(date, n)`: "YYYY-MM-DD" + n days (no time zone math).
 - `formatShortDate(date)`: "Oct 14" (no year) for captions.
@@ -47,6 +48,12 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - `dayInMonth(month, day)`: day of a "YYYY-MM" month, clamped to its last day ("2026-02", 31 -> "2026-02-28").
 - `initials(name)`: "Jordan Blake" -> "JB".
 - `EMPTY`: "-". `MoneyInput`: money input type.
+
+## contact.ts
+Links that open the user's own phone and email apps (no backend).
+- `firstName(fullName)`: "Grace Carter" -> "Grace".
+- `telHref(phone)`: tel: link with digits only; 10 digits get +1, 11 starting with 1 get +, a leading + is kept. null without digits.
+- `mailtoHref({ to, cc, subject, body })`: encoded mailto: link with CC, subject and body. null without a To address.
 
 ## cn.ts (design system file)
 - `cn(...classes)`: merges Tailwind class lists (clsx + tailwind-merge).

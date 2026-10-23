@@ -174,6 +174,14 @@ export function daysUntil(date: string | null | undefined, now = new Date()): nu
   return target && today ? dayNumber(target) - dayNumber(today) : null;
 }
 
+/**
+ * Local calendar days since a past "YYYY-MM-DD" date, at least 1 ("44 days overdue", "ended 3 days ago").
+ * Callers decide past or not themselves (overdue uses UTC today), so a date that is today locally still counts as 1.
+ */
+export function daysSince(date: string | null | undefined, now = new Date()): number {
+  return Math.max(1, -(daysUntil(date, now) ?? 1));
+}
+
 /** Days in a month (m is 1-12). Date.UTC is used only as a calendar, no time zone is involved. */
 function daysInMonth(y: number, m: number): number {
   return new Date(Date.UTC(y, m, 0)).getUTCDate();

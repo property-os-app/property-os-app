@@ -3,7 +3,7 @@ import {
   centsToAmount,
   currentMonthUTC,
   dayInMonth,
-  daysUntil,
+  daysSince,
   formatCurrency,
   formatDate,
   formatMonth,
@@ -188,9 +188,8 @@ export function statusDate(r: RentRollRow, pastMonth = false): { text: string | 
     case "OVERDUE": {
       // A past month is a snapshot of its last day, so counting days to today would grow forever.
       if (pastMonth) return { text: "Unpaid at month end", tone: "danger" };
-      // Overdue is decided on UTC today; the count uses local calendar days, so it is at least 1.
-      const days = Math.max(1, -(daysUntil(r.oldestUnpaidDueDate) ?? 1));
-      return { text: `${plural(days, "day")} overdue`, tone: "danger" };
+      // Overdue is decided on UTC today; the count uses local calendar days (daysSince, at least 1).
+      return { text: `${plural(daysSince(r.oldestUnpaidDueDate), "day")} overdue`, tone: "danger" };
     }
     case "UNPAID":
       return { text: r.dueDate ? `Due ${formatDate(r.dueDate)}` : null, tone: "default" };

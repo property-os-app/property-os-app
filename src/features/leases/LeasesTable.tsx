@@ -91,7 +91,17 @@ export function LeasesTable({ cards, onOpen, onEdit, onActivate, onEnd, onDelete
       },
       { key: "rent", header: "Rent", align: "right", sortable: true, cell: (l) => (l.rent === null ? <Dash /> : <Num>{formatCurrency(l.rent)}</Num>) },
       { key: "term", header: "Term", cell: (l) => (l.termMonths === null ? <Dash /> : `${l.termMonths} months`) },
-      { key: "status", header: "Status", cell: (l) => <LeaseBadge lease={l} /> },
+      {
+        key: "status",
+        header: "Status",
+        // "Overdue" next to the lease status, as on the phone cards: the label that goes with the red strip.
+        cell: (l) => (
+          <span className="flex items-center gap-1.5">
+            <LeaseBadge lease={l} />
+            {dueState(l).kind === "overdue" && <StatusBadge domain="rent" status="OVERDUE" />}
+          </span>
+        ),
+      },
       {
         key: "tags",
         header: "Tags",
@@ -167,5 +177,6 @@ export function LeasesTable({ cards, onOpen, onEdit, onActivate, onEnd, onDelete
     );
   }
 
-  return <DataTable {...props} columns={columns} rowKey={(l) => l.id} onRowClick={onOpen} caption="Leases" />;
+  // Same strip as the cards: behind on rent only.
+  return <DataTable {...props} columns={columns} rowKey={(l) => l.id} onRowClick={onOpen} rowStrip={(l) => dueState(l).kind === "overdue"} caption="Leases" />;
 }
