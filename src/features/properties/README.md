@@ -4,7 +4,7 @@ Properties: the list page (Cards / Table), the detail page, the add / edit modal
 
 ## keys.ts
 - `propertyKeys`: `all`, `list`, `detail(id)`, `managers(id)` (managers sit under the detail key).
-- `managerKeys`: `all` (GET /managers).
+- `managerKeys`: `all` (GET /managers, and the prefix of every manager query), `access(userId)` (GET /managers/:userId/access, used by Settings).
 
 ## hooks.ts
 - `useProperties()`: GET /properties (OWNER all, manager assigned); each property has `unitCount` and `managers` ({ id, name }). Also used by the scope picker.
@@ -38,7 +38,7 @@ Numbers the frontend computes (money in integer cents). The API gives only `unit
 - `PropertiesTable`: the Table view (rows and cards pass `from: "properties"`; DataTable; Name, Units, Occupancy, Value sortable; row opens the detail). On phones a `CardList`: name, address, property status badge, Units / Occupancy / Type, Monthly rent; the card links to the detail page.
 
 ## PropertyDetailPage.tsx
-- `PropertyDetailPage`: /properties/:id. One line on top, "[←] Properties › {name}" (`BackBreadcrumb`): with `PropertyPageState` `from: "properties"` (list cards and rows) back goes back in history and keeps the list's filters and search, else it opens /properties. Unit drawer lease links pass `from: "property"` with the property, so the lease page goes back here. Tiles from `features/shared/DetailParts`, header card (KPI tiles, `unitCount`, embedded managers, tabs), Overview (units needing attention, Details, Managers) and Units tabs, Edit / Delete for OWNER, "Add unit" (primary, `unit.create`), unit rows open the `UnitDrawer`, "Property not found" on 404. Sets the page title to the property name. On phones the header buttons go under the name and fill the width (44px).
+- `PropertyDetailPage`: /properties/:id. One line on top, "[←] Properties › {name}" (`BackBreadcrumb`): with `PropertyPageState` `from: "properties"` (list cards and rows) back goes back in history and keeps the list's filters and search, else it opens /properties. Unit drawer lease links pass `from: "property"` with the property, so the lease page goes back here. Tiles from `features/shared/DetailParts`, header card (KPI tiles, `unitCount`, embedded managers, tabs), Overview (units needing attention, Details, Managers) and Units tabs, Edit (`property.edit`: owner, or a manager with `properties.edit`) / Delete (owner only), "Add unit" (primary, `unit.create`), unit rows open the `UnitDrawer`, "Property not found" on 404. Sets the page title to the property name. On phones the header buttons go under the name and fill the width (44px).
 
 ## PropertyUnitsTable.tsx
 - `PropertyUnitsTable`: units with tenant, rent, lease and status (expiring leases show "Expiring"); 25 per page; optional `onRowClick`. On phones flat cards inside the parent card (unit, type · sq ft, status, Tenant / Lease, Rent); the card is a button that opens the unit drawer.
@@ -47,4 +47,4 @@ Numbers the frontend computes (money in integer cents). The API gives only `unit
 - `PropertyManagersCard`: assigned managers with emails (GET /properties/:id/managers); OWNER can Remove (ConfirmDialog) and Assign from GET /managers. Shows backend 400 / 409 messages.
 
 ## PropertyFormModal.tsx
-- `PropertyFormModal`: add / edit modal (react-hook-form + zod). Acquisition date is "YYYY-MM-DD" in and out (kept as it is). Trims text, US state / ZIP format (on edit only when changed), PATCH sends only changed fields (`description: null` when cleared), property value more than $0 and at most $9,999,999,999.99, managers and "Number of units" (0–200, not sent) on create only, `onCreated(property, unitCount)`, server errors under fields or at the top, "Discard changes?" on close. Mount it only while open.
+- `PropertyFormModal`: add / edit modal (react-hook-form + zod). Acquisition date is "YYYY-MM-DD" in and out (kept as it is). Trims text, US state / ZIP format (on edit only when changed), PATCH sends only changed fields (`description: null` when cleared), property value more than $0 and at most $9,999,999,999.99, "Assign managers" on create only with `manager.assign` (owner; a manager sending `managerIds` gets 403, and is assigned to the new property automatically), "Number of units" (0–200, not sent) on create only with `unit.create`, `onCreated(property, unitCount)`, server errors under fields or at the top, "Discard changes?" on close. Mount it only while open.

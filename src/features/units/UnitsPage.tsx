@@ -50,8 +50,8 @@ const sortOptions: SortOption[] = [
 /** /units: KPIs, toolbar (the Property select is the sidebar scope) and the units table. Row click opens the unit drawer. */
 export function UnitsPage() {
   const { me } = useAuth();
-  const role = me!.role;
-  const canCreate = can(role, "unit.create");
+  const user = me!;
+  const canCreate = can(user, "unit.create");
   const { propertyId: scope, setPropertyId } = useScope();
   const isMobile = useIsMobile();
   // Phones always get cards; the saved choice is for wider screens.
@@ -227,8 +227,8 @@ export function UnitsPage() {
             ) : undefined
           }
           onOpen={(r) => setOpenId(r.unit.id)}
-          onEdit={can(role, "unit.edit") ? (r) => setEditUnit(r.unit) : undefined}
-          onDelete={can(role, "unit.delete") ? (r) => setDeleteRow(r) : undefined}
+          onEdit={can(user, "unit.edit") ? (r) => setEditUnit(r.unit) : undefined}
+          onDelete={can(user, "unit.delete") ? (r) => setDeleteRow(r) : undefined}
         />
       </div>
 

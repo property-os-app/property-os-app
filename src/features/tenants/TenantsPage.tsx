@@ -66,8 +66,8 @@ const sortOptions: SortOption[] = [
  */
 export function TenantsPage() {
   const { me } = useAuth();
-  const role = me!.role;
-  const canCreate = can(role, "tenant.create");
+  const user = me!;
+  const canCreate = can(user, "tenant.create");
   const { propertyId: scope, setPropertyId } = useScope();
 
   const tenants = useTenants();
@@ -148,8 +148,8 @@ export function TenantsPage() {
   ) : undefined;
 
   const onOpen = (r: TenantRow) => setOpenId(r.tenant.id);
-  const onEdit = can(role, "tenant.edit") ? (r: TenantRow) => setEditId(r.tenant.id) : undefined;
-  const onDelete = can(role, "tenant.delete") ? (r: TenantRow) => setDeleteRow(r) : undefined;
+  const onEdit = can(user, "tenant.edit") ? (r: TenantRow) => setEditId(r.tenant.id) : undefined;
+  const onDelete = can(user, "tenant.delete") ? (r: TenantRow) => setDeleteRow(r) : undefined;
   const openRow = allRows?.find((r) => r.tenant.id === openId);
   const balanceOn = table.filters.balance === "owed";
 

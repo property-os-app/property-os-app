@@ -31,14 +31,14 @@ const renderLink: KpiCardProps["renderLink"] = (href, props) => <Link to={href} 
  */
 export function DashboardPage() {
   const { me } = useAuth();
-  const role = me!.role;
+  const user = me!;
   const { propertyId: scope } = useScope();
   const stats = useDashboardStats(scope);
   const { month, header, rent, kpis } = stats;
 
   const [generating, setGenerating] = useState(false);
   const addProperty = useAddPropertyFlow();
-  const canGenerate = can(role, "charge.create") && canGenerateRent(month);
+  const canGenerate = can(user, "rent.generate") && canGenerateRent(month);
 
   const title = greeting(me!.name);
 

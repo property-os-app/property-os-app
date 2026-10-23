@@ -20,7 +20,7 @@ export class ApiError extends Error {
   readonly messages: string[];
   /** Backend "error" field, e.g. "Bad Request". */
   readonly error?: string;
-  /** Backend "code" field. Only the 5 auth errors have one (see AuthErrorCode in types/auth.ts). */
+  /** Backend "code" field. Only the auth errors have one, FORBIDDEN_PERMISSION included (see AuthErrorCode in types/auth.ts). */
   readonly code?: string;
 
   constructor(status: number, messages: string[], error?: string, code?: string) {
@@ -75,7 +75,7 @@ async function getToken(user: User): Promise<string> {
   }
 }
 
-/** Friendly texts for 5xx and FORBIDDEN_ROLE; other errors keep the backend message. */
+/** Friendly texts for 5xx and FORBIDDEN_ROLE; other errors keep the backend message (FORBIDDEN_PERMISSION says which switch to ask for). */
 function friendlyMessages(status: number, code: string | undefined, messages: string[]): string[] {
   if (status >= 500) return [SERVER_ERROR_MESSAGE];
   if (code === "FORBIDDEN_ROLE") return [FORBIDDEN_MESSAGE];

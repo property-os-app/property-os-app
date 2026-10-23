@@ -11,7 +11,7 @@ Pieces of the detail pages (`/properties/:id`, `/leases/:id`).
 - `Tile({ label, value, note, loading, className })`: KPI tile inside the header card; skeleton while `loading`.
 
 ## NoProperties.tsx
-- `NoProperties({ onAdd })`: the page body when the user has no properties. Manager: "No properties assigned to you yet" / "Ask the owner to assign you a property." Owner: "Add your first property" with an Add property button (`property.create`) that calls `onAdd`. Used by Dashboard, Properties, Units, Leases and Rent Roll.
+- `NoProperties({ onAdd })`: the page body when the user has no properties. With `property.create`: owner "Add your first property", manager "No properties assigned to you yet" / "Add a property (you'll manage it), or ask the owner to assign you one.", both with an Add property button that calls `onAdd`. Without it: "Ask the owner to assign you a property." Used by Dashboard, Properties, Units, Leases and Rent Roll.
 
 ## rentReminder.ts
 - `rentReminderLinks(input)`: Call (tel:) and Email reminder (mailto:) links for an overdue lease: To the primary tenant, CC co-tenants, subject "Rent reminder – {property} {unit}", the reminder body (balance and due date via `format.ts`, days via `daysSince`, signed with the user's name). `tel` / `mailto` are null without a phone / email. Used by the lease page and the Rent Roll menu.

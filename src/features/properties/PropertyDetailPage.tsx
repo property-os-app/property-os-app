@@ -97,7 +97,7 @@ export function PropertyDetailPage() {
 function PropertyDetail({ property }: { property: Property }) {
   const navigate = useNavigate();
   const { me } = useAuth();
-  const role = me!.role;
+  const user = me!;
   const units = useUnits({ propertyId: property.id });
   const leases = useLeases({ propertyId: property.id });
   const del = useDeleteProperty();
@@ -108,7 +108,7 @@ function PropertyDetail({ property }: { property: Property }) {
   const [addingUnit, setAddingUnit] = useState(false);
   const [openUnitId, setOpenUnitId] = useState<string | null>(null);
   const openUnit = units.data?.find((u) => u.id === openUnitId);
-  const canAddUnit = can(role, "unit.create");
+  const canAddUnit = can(user, "unit.create");
 
   const rows = useMemo(() => buildUnitRows(units.data ?? [], leases.data ?? []), [units.data, leases.data]);
   const attention = useMemo(() => rows.filter(needsAttention), [rows]);
@@ -157,9 +157,9 @@ function PropertyDetail({ property }: { property: Property }) {
                   {formatAddress(property)} · Acquired {acquired} · {plural(property.unitCount, "unit")}
                 </Small>
               </div>
-              {(can(role, "property.edit") || canAddUnit) && (
+              {(can(user, "property.edit") || canAddUnit) && (
                 <div className="flex shrink-0 items-center gap-2 max-md:w-full">
-                  {can(role, "property.edit") && (
+                  {can(user, "property.edit") && (
                     <Button className="max-md:h-11 max-md:flex-1" icon={<Pencil size={16} strokeWidth={1.5} />} onClick={() => setEditing(true)}>
                       Edit
                     </Button>
@@ -169,7 +169,7 @@ function PropertyDetail({ property }: { property: Property }) {
                       Add unit
                     </Button>
                   )}
-                  {can(role, "property.delete") && (
+                  {can(user, "property.delete") && (
                     <KebabMenu
                       label="Property actions"
                       items={[
@@ -271,7 +271,7 @@ function PropertyDetail({ property }: { property: Property }) {
                 ]}
               />
             </Card>
-            <PropertyManagersCard property={property} canAssign={can(role, "manager.assign")} />
+            <PropertyManagersCard property={property} canAssign={can(user, "manager.assign")} />
           </div>
         </div>
       ) : (

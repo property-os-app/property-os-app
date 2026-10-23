@@ -4,8 +4,9 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 
 ## auth.ts
 - `UserRole`: `OWNER | PROPERTY_MANAGER | TENANT`.
-- `Me`: the AuthUser returned by GET /auth/me (`phone` can be null; `firebaseUid` is never returned).
-- `AuthErrorCode`: the 5 values of `ApiError.code`. Only auth errors have a code.
+- `Me`: the AuthUser returned by GET /auth/me (`phone` can be null; `firebaseUid` is never returned; `permissions`: every key for OWNER, the granted keys for a manager, `[]` for TENANT).
+- `PermissionCatalogItem`: one GET /settings/permissions item (`key`, `label`, `group`, `default`).
+- `AuthErrorCode`: the 6 values of `ApiError.code`, `FORBIDDEN_PERMISSION` included. Only auth errors have a code.
 
 ## property.ts
 - `PropertyType`: `RESIDENTIAL | COMMERCIAL | MIXED_USE`.
@@ -16,6 +17,7 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 ## manager.ts
 - `ManagerSummary`: `{ id, email, name }` (property managers list, assign / unassign answers).
 - `ManagerListItem`: `ManagerSummary` + `assignedPropertyCount` (GET /managers).
+- `ManagerAccess`: GET / PUT /managers/:userId/access (`userId`, `permissions`, `propertyIds`). `ManagerAccessBody`: the PUT body (both full lists).
 
 ## unit.ts
 - `UnitType`, `UnitStatus`: unit enums.

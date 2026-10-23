@@ -39,7 +39,7 @@ export function useManagers() {
   });
 }
 
-/** POST /properties (OWNER). Refreshes the property list and the managers' property counts. */
+/** POST /properties (OWNER, or a manager with properties.create, who is assigned to it). Refreshes the property list and the managers' property counts. */
 export function useCreateProperty() {
   const qc = useQueryClient();
   return useMutation({
@@ -51,7 +51,7 @@ export function useCreateProperty() {
   });
 }
 
-/** PATCH /properties/:id (OWNER). Puts the answer in the detail cache and refreshes the list. */
+/** PATCH /properties/:id (OWNER, or a manager with properties.edit). Puts the answer in the detail cache and refreshes the list. */
 export function useUpdateProperty() {
   const qc = useQueryClient();
   return useMutation({

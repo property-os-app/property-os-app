@@ -9,6 +9,7 @@ import { applyServerError } from "@/lib/forms";
 import { centsToAmount, toCents } from "@/lib/format";
 import { labelOptions, plural, propertyTypeLabels } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
+import { can } from "@/features/auth/permissions";
 import { useCreateProperty, useManagers, useUpdateProperty } from "@/features/properties/hooks";
 import type { Property, PropertyCreateBody, PropertyType, PropertyUpdateBody } from "@/types/property";
 
@@ -100,11 +101,14 @@ export interface PropertyFormModalProps {
   onCreated?: (property: Property, unitCount: number) => void;
 }
 
-/** Add / edit property modal (OWNER). Mount it only while open, so each opening starts with a fresh form. */
+/** Add / edit property modal (OWNER, or a manager with properties.create / properties.edit). Mount it only while open, so each opening starts with a fresh form. */
 export function PropertyFormModal({ property, onClose, onCreated }: PropertyFormModalProps) {
   const isEdit = Boolean(property);
   const { me } = useAuth();
-  const showManagers = !isEdit && me?.role === "OWNER";
+  // Only the owner may send managerIds (a manager gets 403); a manager is assigned to the new property automatically.
+  const showManagers = !isEdit && me !== null && can(me, "manager.assign");
+  // "Number of units" opens Add unit afterwards: only for users who may create units.
+  const showUnitCount = !isEdit && me !== null && can(me, "unit.create");
   const managers = useManagers();
   const create = useCreateProperty();
   const update = useUpdateProperty();
@@ -218,7 +222,7 @@ export function PropertyFormModal({ property, onClose, onCreated }: PropertyForm
         <FormField label="Acquisition date" htmlFor="pf-date" required error={errors.acquisitionDate?.message}>
           <Input id="pf-date" type="date" {...register("acquisitionDate")} />
         </FormField>
-        {!isEdit && (
+        {showUnitCount && (
           <FormField
             label="Number of units"
             htmlFor="pf-units"

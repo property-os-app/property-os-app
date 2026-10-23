@@ -17,7 +17,7 @@ Pure functions; only `hooks.ts` calls them.
 - `expirationsByMonth(leases, months)`: ACTIVE leases per end month.
 - `overdueRows(rows)`: OVERDUE rows, oldest unpaid first, with "{n} days overdue".
 - `BilledPoint`, `billedPoint(month, roll)`: cents for the chart and the tooltip text ("Not billed" when nothing is billed).
-- `AttentionItem`, `AttentionAction`, `attentionItems(...)`: not billed (only leases Generate rent would bill, via `upcomingRows`), overdue, past end, ending within 30 days, drafts (in that order).
+- `AttentionItem`, `AttentionAction`, `attentionItems(...)`: not billed (only with `canGenerate` = `rent.generate`, and only leases Generate rent would bill, via `upcomingRows`), overdue, past end, ending within 30 days, drafts (in that order).
 
 ## DashboardPage.tsx
 - `DashboardPage`: header with the greeting and the description only (no actions), rent collection card, 4 KPI cards (router links), the 8/4 grid, the Generate rent modal. With no properties: only the header and `NoProperties` (owner: Add property via `useAddPropertyFlow`). When the header (properties, units) fails, or every section fails (backend down), one page-level InlineError with a Retry for all failed sections instead of one per section.

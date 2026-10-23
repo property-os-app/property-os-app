@@ -16,6 +16,7 @@ const tenantsHandle: RouteHandle = { title: "Tenants", nav: "tenants" };
 const leasesHandle: RouteHandle = { title: "Leases", nav: "leases" };
 const rentRollHandle: RouteHandle = { title: "Rent Roll", nav: "rentroll" };
 const settingsHandle: RouteHandle = { title: "Settings", nav: "settings" };
+const usersHandle: RouteHandle = { title: "Users and Permissions", nav: "settings" };
 const propertiesHandle: RouteHandle = { title: "Properties", nav: "properties" };
 // The detail page replaces this title with the property name (usePageTitle).
 const propertyHandle: RouteHandle = { title: "Property", nav: "properties" };
@@ -73,6 +74,7 @@ export const router = createBrowserRouter([
                   { path: "leases/:id", handle: leaseHandle, ...lazyPage(() => import("@/features/leases/LeasePage").then((m) => m.LeasePage)) },
                   { path: "rent-roll", handle: rentRollHandle, ...lazyPage(() => import("@/features/rent-roll/RentRollPage").then((m) => m.RentRollPage)) },
                   { path: "settings", handle: settingsHandle, ...lazyPage(() => import("@/features/settings/SettingsPage").then((m) => m.SettingsPage)) },
+                  { path: "settings/users", handle: usersHandle, ...lazyPage(() => import("@/features/settings/UsersPage").then((m) => m.UsersPage)) },
                   { path: "*", handle: notFoundHandle, element: <NotFoundPage /> },
                 ],
               },

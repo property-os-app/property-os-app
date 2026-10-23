@@ -48,7 +48,8 @@ const EXPIRY_MONTHS = 12;
  */
 export function useDashboardStats(scope: string | null) {
   const { me } = useAuth();
-  const role = me!.role;
+  const user = me!;
+  const role = user.role;
   const month = currentMonthUTC();
   const properties = useProperties();
   const units = useUnits({ propertyId: scope ?? undefined });
@@ -91,7 +92,7 @@ export function useDashboardStats(scope: string | null) {
   const expirations = section([leases], () => expirationsByMonth(leases.data!, expiryMonths));
   const unitStatus = section([units], () => unitCounts(units.data!));
 
-  const attention = section([rentRoll, leases], () => attentionItems({ month, roll: rentRoll.data!, leases: leases.data!, canCharge: can(role, "charge.create") }));
+  const attention = section([rentRoll, leases], () => attentionItems({ month, roll: rentRoll.data!, leases: leases.data!, canGenerate: can(user, "rent.generate") }));
 
   return { month, header, rent, kpis, atRisk, overdue, billed, expirations, unitStatus, attention };
 }

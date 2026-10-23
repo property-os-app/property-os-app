@@ -62,9 +62,10 @@ const sortOptions: SortOption[] = [
  */
 export function PropertiesPage() {
   const { me } = useAuth();
-  const role = me!.role;
+  const user = me!;
+  const role = user.role;
   const isOwner = role === "OWNER";
-  const canCreate = can(role, "property.create");
+  const canCreate = can(user, "property.create");
 
   const properties = useProperties();
   const units = useUnits();

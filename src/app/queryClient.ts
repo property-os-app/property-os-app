@@ -6,9 +6,16 @@ import { beginSessionEnd, requestSignOut, SESSION_ENDED_MESSAGE } from "@/featur
 /** Status codes that will not change on a retry (validation, auth, role, not found, conflict). */
 const NO_RETRY = [400, 401, 403, 404, 409];
 
-/** Missing or invalid token: toast once (even when many requests fail together), then sign out. Never for USER_NOT_REGISTERED. */
+/**
+ * Missing or invalid token: toast once (even when many requests fail together), then sign out. Never for USER_NOT_REGISTERED.
+ * FORBIDDEN_PERMISSION: the Owner may have just turned a permission off, so reload GET /auth/me and the buttons hide.
+ */
 function onApiError(error: unknown) {
   if (!(error instanceof ApiError)) return;
+  if (error.code === "FORBIDDEN_PERMISSION") {
+    void queryClient.invalidateQueries({ queryKey: ["me"] });
+    return;
+  }
   if (error.code !== "MISSING_TOKEN" && error.code !== "INVALID_TOKEN") return;
   if (!beginSessionEnd()) return;
   toast.error(SESSION_ENDED_MESSAGE);

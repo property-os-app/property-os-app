@@ -84,9 +84,9 @@ function LeasesList() {
   const [view, setView] = useListView("leases", "table");
   const cards = view === "cards" && !isMobile;
   const { me } = useAuth();
-  const role = me!.role;
-  const canCreate = can(role, "lease.create");
-  const canEdit = can(role, "lease.edit");
+  const user = me!;
+  const canCreate = can(user, "lease.create");
+  const canEdit = can(user, "lease.edit");
   const { propertyId: scope, setPropertyId } = useScope();
 
   const properties = useProperties();

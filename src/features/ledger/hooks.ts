@@ -44,7 +44,7 @@ export function useRecordPayment() {
   });
 }
 
-/** POST /leases/:id/charges/:chargeId/void (OWNER). 409 "Charge {number} is already voided". */
+/** POST /leases/:id/charges/:chargeId/void (OWNER, or a manager with money.void). 409 "Charge {number} is already voided". */
 export function useVoidCharge() {
   const qc = useQueryClient();
   return useMutation({
@@ -54,7 +54,7 @@ export function useVoidCharge() {
   });
 }
 
-/** POST /leases/:id/payments/:paymentId/void (OWNER). 409 "Payment {number} is already voided". */
+/** POST /leases/:id/payments/:paymentId/void (OWNER, or a manager with money.void). 409 "Payment {number} is already voided". */
 export function useVoidPayment() {
   const qc = useQueryClient();
   return useMutation({

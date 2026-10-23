@@ -8,7 +8,7 @@ App wiring: providers, router, query cache, the signed-in layout and app-level p
 ## router.tsx
 - `router`: all routes, made with `createBrowserRouter` (React Router library / data mode). Every page (and the login pages) is a lazy route: its code downloads the first time it opens. First app load shows `PageSkeleton` (login pages: `FullPageLoading`) while it downloads; a failed download shows `RouteErrorPage`.
   - Public (inside `PublicOnly`): `/login`, `/forgot-password`.
-  - Signed in (inside `RequireAuth` + `AppLayout`): `/` (`DashboardPage`, title "Dashboard"); `/properties` (`PropertiesPage`), `/properties/:id` (`PropertyDetailPage`); `/units` (`UnitsPage`); `/tenants` (`TenantsPage`); `/leases` (`LeasesPage`), `/leases/:id` (`LeasePage`, title "Lease {number}", sidebar Leases, or Rent Roll when opened from it); `/rent-roll` (`RentRollPage`); `/settings` (`SettingsPage`); `*` shows `NotFoundPage`.
+  - Signed in (inside `RequireAuth` + `AppLayout`): `/` (`DashboardPage`, title "Dashboard"); `/properties` (`PropertiesPage`), `/properties/:id` (`PropertyDetailPage`); `/units` (`UnitsPage`); `/tenants` (`TenantsPage`); `/leases` (`LeasesPage`), `/leases/:id` (`LeasePage`, title "Lease {number}", sidebar Leases, or Rent Roll when opened from it); `/rent-roll` (`RentRollPage`); `/settings` (`SettingsPage`, General), `/settings/users` (`UsersPage`, title "Users and Permissions", owner only); `*` shows `NotFoundPage`.
   - `errorElement`: `RouteErrorPage` inside the shell for page errors, full page for anything above it.
   - Each page route has a `handle` (`RouteHandle`) with its title and Sidebar item.
 
@@ -17,7 +17,7 @@ App wiring: providers, router, query cache, the signed-in layout and app-level p
 - `RouteHandle`: `{ title, nav? }`, put on a route as `handle`.
 
 ## queryClient.ts
-- `queryClient`: the shared TanStack Query cache. Queries don't retry on ApiError 400/401/403/404/409 and retry once otherwise; mutations never retry. On `MISSING_TOKEN` / `INVALID_TOKEN` (any query or mutation) it shows "Your session ended..." once and signs out. Never for `USER_NOT_REGISTERED`.
+- `queryClient`: the shared TanStack Query cache. Queries don't retry on ApiError 400/401/403/404/409 and retry once otherwise; mutations never retry. On `MISSING_TOKEN` / `INVALID_TOKEN` (any query or mutation) it shows "Your session ended..." once and signs out. Never for `USER_NOT_REGISTERED`. On 403 `FORBIDDEN_PERMISSION` it reloads GET /auth/me (`["me"]`), so buttons the user lost hide right away; the form still shows the backend message.
 
 ## NotFoundPage.tsx
 - `NotFoundPage`: "Page not found" empty state with a button back to `/`. Renders inside the app layout.

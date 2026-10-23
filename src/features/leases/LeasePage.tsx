@@ -160,11 +160,11 @@ function LeaseDetail({ lease }: { lease: Lease }) {
   const [params, setParams] = useSearchParams();
   const { fromRentRoll, month } = useOrigin();
   const { me } = useAuth();
-  const role = me!.role;
-  const canEdit = can(role, "lease.edit");
-  const canCharge = can(role, "charge.create");
-  const canPay = can(role, "payment.create");
-  const canVoid = can(role, "entry.void");
+  const user = me!;
+  const canEdit = can(user, "lease.edit");
+  const canCharge = can(user, "charge.create");
+  const canPay = can(user, "payment.create");
+  const canVoid = can(user, "entry.void");
 
   const ledger = useLedger(lease.id);
   const activate = useActivateAction();

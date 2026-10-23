@@ -157,14 +157,14 @@ export interface AttentionItem {
 }
 
 /** One item per rule that applies, in a fixed order: not billed, overdue, past end, expiring within 30 days, drafts. */
-export function attentionItems(p: { month: string; roll: RentRollResponse; leases: Lease[]; canCharge: boolean }): AttentionItem[] {
+export function attentionItems(p: { month: string; roll: RentRollResponse; leases: Lease[]; canGenerate: boolean }): AttentionItem[] {
   const items: AttentionItem[] = [];
   const month = formatMonth(p.month);
   const rows = p.roll.rows;
   // Only rows Generate rent would bill (not the ones it skips: outside the term, not monthly), like the Rent Roll banner.
   const notBilledRows = rows.filter((r) => r.status === "NOT_BILLED");
   const notBilled = notBilledRows.length - upcomingRows(rows, p.leases, p.month).size;
-  if (p.canCharge && canGenerateRent(p.month) && notBilled > 0) {
+  if (p.canGenerate && canGenerateRent(p.month) && notBilled > 0) {
     items.push({
       key: "not-billed",
       title: notBilledRows.length === rows.length ? `Rent for ${month} isn't billed yet` : `${plural(notBilled, "lease")} can be billed for ${month}`,

@@ -49,7 +49,7 @@ export interface UnitDrawerProps {
 export function UnitDrawer({ unit, propertyName, leaseFrom, onClose }: UnitDrawerProps) {
   const navigate = useNavigate();
   const { me } = useAuth();
-  const role = me!.role;
+  const user = me!;
   const leases = useLeases({ unitId: unit.id });
   const [tab, setTab] = useState<Tab>("tenant");
   const [editing, setEditing] = useState(false);
@@ -57,9 +57,9 @@ export function UnitDrawer({ unit, propertyName, leaseFrom, onClose }: UnitDrawe
   const [addingLease, setAddingLease] = useState(false);
 
   const active = leases.data?.find((l) => l.status === "ACTIVE");
-  const canEdit = can(role, "unit.edit");
-  const canDelete = can(role, "unit.delete");
-  const canAddLease = can(role, "lease.create");
+  const canEdit = can(user, "unit.edit");
+  const canDelete = can(user, "unit.delete");
+  const canAddLease = can(user, "lease.create");
 
   const isMobile = useIsMobile();
   const historyState = leases.isError ? "error" : leases.isPending ? "loading" : leases.data.length === 0 ? "empty" : "ideal";

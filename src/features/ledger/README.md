@@ -6,7 +6,7 @@ The lease ledger (lease page, Ledger tab): charges, payments, voids and re-entri
 - `refreshAfterMoneyChange(qc)`: invalidates `["rent-roll"]`, `["leases"]` and `["tenants"]`. Also used by Generate rent.
 - `useLedger(leaseId)`: GET /leases/:id/ledger (key `leaseKeys.ledger(id)`).
 - `useAddCharge()`: POST /leases/:id/charges. `useRecordPayment()`: POST /leases/:id/payments.
-- `useVoidCharge()`, `useVoidPayment()`: POST .../void with `{ reason }` (OWNER only).
+- `useVoidCharge()`, `useVoidPayment()`: POST .../void with `{ reason }` (owner, or a manager with `money.void`).
 
 ## proration.ts
 - `RentProration`, `rentProration(lease, month)`: covered dates, days, days in month, full and prorated cents (rent x days / days in month, nearest cent, integer math), and whether the month's due date is outside the term. null when the lease covers the whole month.

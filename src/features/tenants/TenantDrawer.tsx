@@ -43,7 +43,7 @@ export interface TenantDrawerProps {
  */
 export function TenantDrawer({ row, onClose }: TenantDrawerProps) {
   const { me } = useAuth();
-  const role = me!.role;
+  const user = me!;
   const detail = useTenant(row.tenant.id);
   const [tab, setTab] = useState<Tab>("overview");
   const [editing, setEditing] = useState(false);
@@ -53,8 +53,8 @@ export function TenantDrawer({ row, onClose }: TenantDrawerProps) {
   const notFound = detail.error instanceof ApiError && detail.error.status === 404;
   const tenant = detail.data ?? row.tenant;
   const { current, leases } = row;
-  const canEdit = can(role, "tenant.edit") && !notFound;
-  const canDelete = can(role, "tenant.delete") && !notFound;
+  const canEdit = can(user, "tenant.edit") && !notFound;
+  const canDelete = can(user, "tenant.delete") && !notFound;
 
   return (
     <>
@@ -118,7 +118,7 @@ export function TenantDrawer({ row, onClose }: TenantDrawerProps) {
             </div>
           </>
         ) : (
-          <LeasesTab tenantId={row.tenant.id} leases={leases} onAddLease={can(role, "lease.create") ? () => setAddingLease(true) : undefined} />
+          <LeasesTab tenantId={row.tenant.id} leases={leases} onAddLease={can(user, "lease.create") ? () => setAddingLease(true) : undefined} />
         )}
       </Drawer>
 

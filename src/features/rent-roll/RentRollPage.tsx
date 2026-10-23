@@ -77,9 +77,10 @@ type PaymentOpen = { leaseId?: string };
  */
 export function RentRollPage() {
   const { me } = useAuth();
-  const role = me!.role;
-  const canCharge = can(role, "charge.create");
-  const canPay = can(role, "payment.create");
+  const user = me!;
+  const canCharge = can(user, "charge.create");
+  const canPay = can(user, "payment.create");
+  const canGenerate = can(user, "rent.generate");
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   // Phones always get cards; the saved choice is for wider screens.
@@ -194,7 +195,7 @@ export function RentRollPage() {
   const scopeName = scope ? properties.data?.find((p) => p.id === scope)?.name : undefined;
   const nothingLeftNote = scopeName ? `Nothing left to bill for ${scopeName} in ${monthLabel}` : `Nothing left to bill for ${monthLabel}`;
   const generateButton = (className?: string) =>
-    canCharge ? (
+    canGenerate ? (
       <Button
         className={className}
         disabled={!generateAllowed || nothingLeft}
@@ -280,7 +281,7 @@ export function RentRollPage() {
       <PageHeader
         title="Rent Roll"
         description={
-          canCharge && !generateAllowed
+          canGenerate && !generateAllowed
             ? `Unit-by-unit payment ledger for the ${monthLabel} collection period. ${generateLimitNote}`
             : `Unit-by-unit payment ledger for the ${monthLabel} collection period.`
         }
@@ -288,7 +289,7 @@ export function RentRollPage() {
           isMobile ? (
             <div className="flex w-full flex-col gap-3">
               {monthSwitcher}
-              {(canCharge || canPay) && (
+              {(canGenerate || canPay) && (
                 <div className="flex gap-3">
                   {generateButton("h-11 flex-1")}
                   {paymentButton("h-11 flex-1")}
@@ -377,7 +378,7 @@ export function RentRollPage() {
                 </>
               )}
             </span>
-            {canCharge && (
+            {canGenerate && (
               <Caption className="text-text-primary">
                 {generateAllowed ? "Generating bills every property you can see, not only the one selected." : generateLimitNote}
               </Caption>

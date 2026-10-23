@@ -10,7 +10,7 @@ Tenants: one directory page (/tenants) with Cards / Table views, the tenant draw
 - `useTenant(id)`: GET /tenants/:id (with `idNumber` and `createdBy`; 404 = not found).
 - `useCreateTenant()`: POST /tenants; refetches the tenants (the answer has no `createdBy`).
 - `useUpdateTenant()`: PATCH /tenants/:id; refetches tenants (list and detail) and leases (they embed name and email).
-- `useDeleteTenant()`: DELETE /tenants/:id (OWNER); 409 while the tenant is on any lease.
+- `useDeleteTenant()`: DELETE /tenants/:id (owner, or a manager with `tenants.delete`); 409 while the tenant is on any lease.
 
 ## stats.ts
 - `TenantRow`: a tenant, the visible leases they are on and their `current` lease.
@@ -38,7 +38,7 @@ Tenants: one directory page (/tenants) with Cards / Table views, the tenant draw
 - `TenantsTable`: the Table view (Tenant and Balance sortable; kebab with Edit / Delete when allowed). Row click calls `onOpen`. On phones a `CardList` of the same rows: avatar, name, unit line, lease badge, Rent status / Phone, Balance, same kebab; the card is a button that opens the drawer. Red strip (cards and table rows, `DataTable rowStrip`) when the current lease is overdue (`rentStatus`).
 
 ## TenantDrawer.tsx
-- `TenantDrawer`: lg drawer. Overview (current ACTIVE lease card + Rent / Balance / Lease ends cards; Details with the ID number) and Leases tab (lease, unit, period, rent, status, Primary / Co-tenant; cards on phones; "Add lease" opens the lease wizard with this tenant as primary, with `lease.create`). "Open lease" on the active lease card and a Leases row click go to /leases/:id with `from: "tenants"` (the lease page goes back to Tenants). Move-in date via `formatDate` (Dash when missing or invalid); "Added on" is the local day of `createdAt` (`formatTimestampDate`). Footer: Delete (OWNER) and Edit tenant. "Tenant not found" on 404. Closes itself after a delete.
+- `TenantDrawer`: lg drawer. Overview (current ACTIVE lease card + Rent / Balance / Lease ends cards; Details with the ID number) and Leases tab (lease, unit, period, rent, status, Primary / Co-tenant; cards on phones; "Add lease" opens the lease wizard with this tenant as primary, with `lease.create`). "Open lease" on the active lease card and a Leases row click go to /leases/:id with `from: "tenants"` (the lease page goes back to Tenants). Move-in date via `formatDate` (Dash when missing or invalid); "Added on" is the local day of `createdAt` (`formatTimestampDate`). Footer: Delete (`tenant.delete`) and Edit tenant (`tenant.edit`). "Tenant not found" on 404. Closes itself after a delete.
 
 ## TenantFormModal.tsx
 - `TenantFormModal`: add / edit modal (react-hook-form + zod, ../property-os-api/docs/frontend-handoff/rules.md Tenants). Trims text, keeps the move-in date as "YYYY-MM-DD", PATCH sends only changed fields (null when ID number, address, move-in date or notes are cleared), 409 duplicate email under Email, "Discard changes?" on close. Edit mode loads GET /tenants/:id first. Optional `onSaved(tenant)` runs after a save (the lease wizard selects the new tenant). Mount it only while open.
