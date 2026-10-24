@@ -10,7 +10,7 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 
 ## property.ts
 - `PropertyType`: `RESIDENTIAL | COMMERCIAL | MIXED_USE`.
-- `Property`: every Property endpoint (`propertyValue` is a money string like "250000.00", `acquisitionDate` a full timestamp, `unitCount`, `managers`).
+- `Property`: every Property endpoint (`propertyValue` is a money string like "250000.00", `acquisitionDate` a "YYYY-MM-DD" date, `unitCount`, `managers`).
 - `PropertyManagerRef`: `{ id, name }`, one embedded manager (no email).
 - `PropertyCreateBody`: POST /properties body. `PropertyUpdateBody`: PATCH body (any subset, `description` may be null).
 
@@ -26,7 +26,7 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 
 ## tenant.ts
 - `TenantType`, `ContactMethod`: tenant enums.
-- `Tenant`: POST / PATCH answer (no `createdBy`; `moveInDate` is a full timestamp).
+- `Tenant`: POST / PATCH answer (no `createdBy`; `moveInDate` is a "YYYY-MM-DD" date or null).
 - `TenantCreatedBy`, `TenantDetail`: GET /tenants/:id (with `idNumber` and `createdBy`).
 - `TenantListItem`: one row of GET /tenants (no `idNumber`).
 - `TenantCreateBody`: POST body. `TenantUpdateBody`: PATCH body (`idNumber`, `address`, `moveInDate`, `notes` may be null).

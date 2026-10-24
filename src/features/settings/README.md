@@ -32,7 +32,7 @@ Settings: the General tab (theme, saved on this device, no API) and, for the own
 
 ## MembersTable.tsx
 - `MemberRow`: one row (id, name, email, role, scope text, `manager` on manager rows).
-- `MembersTable`: DataTable from md up (Member, Role, Scope, kebab "Edit access" on manager rows; a manager row click opens it too), a `CardList` of `ListCard`s on phones (a manager card tap opens it).
+- `MembersTable`: DataTable from md up (Member, Role, Scope, kebab "Edit access" on manager rows; a manager row click opens it too; the owner row is a plain row: no pointer, no click), a `CardList` of `ListCard`s on phones (a manager card tap opens it).
 
 ## EditAccessDrawer.tsx
 - `EditAccessDrawer({ manager, onClose })`: loads GET /managers/:id/access, GET /settings/permissions and GET /properties. Properties checklist with "Select all" and a "{name} won't see any property." warning when none is picked; switches grouped by catalog `group` (catalog order) with "On by default"; "Reset to defaults" sets only the switches. Save sends one PUT with both full lists (permissions in catalog order), toasts and closes; backend errors (400) show at the top. Closing with unsaved changes opens a "Discard changes?" ConfirmDialog. Full screen on phones (Drawer). Mount only while open.

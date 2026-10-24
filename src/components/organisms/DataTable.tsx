@@ -26,6 +26,8 @@ export interface DataTableProps<Row> {
   rowKey: (row: Row) => string;
   /** Row click opens the detail drawer. */
   onRowClick?: (row: Row) => void;
+  /** With onRowClick: rows where this is false get no pointer and no click. Default: every row is clickable. */
+  rowClickable?: (row: Row) => boolean;
   /** Red 4px bar on the left edge of the row's first cell (like ListCard's `strip`). Pair it with a visible label, never color alone. */
   rowStrip?: (row: Row) => boolean;
   /** Bulk selection. */
@@ -52,7 +54,7 @@ export interface DataTableProps<Row> {
  * Default sort should be by urgency (overdue first, soonest expiry first, emergency first), decided by the caller.
  */
 export function DataTable<Row>({
-  columns, rows, rowKey, onRowClick, rowStrip, selected, onSelectedChange, bulkActions, sort, onSortChange, density = "default",
+  columns, rows, rowKey, onRowClick, rowClickable, rowStrip, selected, onSelectedChange, bulkActions, sort, onSortChange, density = "default",
   totals, state = "ideal", empty, error, footer, className, caption,
 }: DataTableProps<Row>) {
   const selectable = Boolean(selected && onSelectedChange);
@@ -133,11 +135,12 @@ export function DataTable<Row>({
                 const id = rowKey(row);
                 const isSel = selectable && selected!.has(id);
                 const strip = rowStrip?.(row) ? <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-danger" /> : null;
+                const clickable = Boolean(onRowClick) && (rowClickable?.(row) ?? true);
                 return (
                   <tr
                     key={id}
-                    onClick={onRowClick ? () => onRowClick(row) : undefined}
-                    className={cn("group", rowH, onRowClick && "cursor-pointer", isSel ? "bg-surface-3" : "hover:bg-surface-3")}
+                    onClick={clickable ? () => onRowClick!(row) : undefined}
+                    className={cn("group", rowH, clickable && "cursor-pointer", isSel ? "bg-surface-3" : "hover:bg-surface-3")}
                   >
                     {selectable && (
                       <td className={cn("border-b border-border-subtle px-4", strip && "relative")} onClick={(e) => e.stopPropagation()}>

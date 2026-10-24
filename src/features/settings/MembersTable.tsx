@@ -102,6 +102,7 @@ export function MembersTable({ onEditAccess, ...props }: Props) {
       columns={columns}
       rowKey={(r) => r.id}
       onRowClick={(row) => row.manager && onEditAccess(row.manager)}
+      rowClickable={(row) => Boolean(row.manager)}
       caption="Members"
     />
   );

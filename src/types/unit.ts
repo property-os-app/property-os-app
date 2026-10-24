@@ -8,7 +8,7 @@ export type UnitStatus = "VACANT" | "OCCUPIED" | "RESERVED" | "UNDER_MAINTENANCE
 export interface Unit {
   id: string;
   propertyId: string;
-  /** Not unique, sorted as text by the API. */
+  /** Not unique, sorted numeric-aware by the API ("2" before "10"). */
   unitNumber: string;
   unitType: UnitType;
   /** Square feet (float). */

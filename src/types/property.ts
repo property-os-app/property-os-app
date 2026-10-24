@@ -19,7 +19,7 @@ export interface Property {
   propertyType: PropertyType;
   /** Money string with 2 decimals, e.g. "250000.00". */
   propertyValue: string;
-  /** ISO timestamp (not "YYYY-MM-DD"). */
+  /** "YYYY-MM-DD" (date only). */
   acquisitionDate: string;
   description: string | null;
   /** ISO timestamp. */
