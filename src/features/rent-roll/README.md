@@ -35,3 +35,6 @@ The /rent-roll page: the month's rows per lease, KPIs from the summary, Generate
 
 ## GenerateRentModal.tsx
 - `GenerateRentModal`: "Generate rent for {Month}" confirm, with a warning for past months and next month; result toast: "{n} rent charges created" or "Nothing new to bill for {Month}", "{n} already billed", and the leases skipped as outside the term or not monthly by name (max 3, then "+{n} more"; names come from all visible ACTIVE leases, counts when they aren't loaded).
+
+## Tests (`npm test`)
+- `stats.test.ts`: billing kinds, Upcoming vs NOT_BILLED, segment counts, skipped leases, status dates (fake "now", also New York), paid caption, totals (collected = Σ paid, due = Σ charged, opening + charged − paid = balance), collection breakdown, and the UTC month helpers.

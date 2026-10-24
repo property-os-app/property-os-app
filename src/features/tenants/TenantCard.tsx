@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { Avatar, Divider, Overline, Skeleton, Small } from "@/components/atoms";
 import { Card, KebabMenu, type MenuItem } from "@/components/molecules";
+import { ContactLink } from "@/features/shared/ContactLink";
 import { BalanceValue, RentStatusBadge, TenantLeaseBadge } from "@/features/tenants/TenantParts";
 import { rentStatus, unitLine, type TenantRow } from "@/features/tenants/stats";
 
@@ -24,7 +25,8 @@ export interface TenantCardProps {
 }
 
 /**
- * Compact clickable card for the Cards view; opens the tenant drawer. The kebab stops the click from opening it.
+ * Compact clickable card for the Cards view; opens the tenant drawer. The kebab and the email / phone links and copy
+ * buttons (ContactLink) stop the click from opening it.
  * Red left strip: behind on rent only (the Rent status badge says "Overdue").
  */
 export function TenantCard({ row, onOpen, onEdit, onDelete }: TenantCardProps) {
@@ -59,10 +61,12 @@ export function TenantCard({ row, onOpen, onEdit, onDelete }: TenantCardProps) {
       </div>
 
       <div className="flex min-w-0 flex-col gap-0.5">
-        <Small className="block truncate" title={tenant.email}>
-          {tenant.email}
+        <Small className="block truncate">
+          <ContactLink kind="email" value={tenant.email} />
         </Small>
-        <Small className="block truncate">{tenant.phone}</Small>
+        <Small className="block truncate">
+          <ContactLink kind="phone" value={tenant.phone} />
+        </Small>
       </div>
 
       <Divider />

@@ -24,7 +24,7 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 
 ## format.ts (design system file, adapted to our API)
 - `formatCurrency(value)`: "1200.00" -> "$1,200.00", "-150.00" -> "-$150.00"; empty -> "-". Numbers still work.
-- `formatCompactCurrency(value)`: "$128.4K" / "$24.6M" for KPIs.
+- `formatCompactCurrency(value)`: "$128.4K" / "$24.6M" for KPIs; rounds in cents before picking the unit ($999.50 -> "$1.0K"); no minus on a value that rounds to $0.
 - `formatPercent(value, digits)`: "94.2%", accepts strings.
 - `toCents(value)`: money string -> integer cents with no float math. Do all sums and comparisons in cents.
 - `centsToAmount(cents)`: cents -> number with max 2 decimals, for sending to the API.
@@ -53,7 +53,10 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 Links that open the user's own phone and email apps (no backend).
 - `firstName(fullName)`: "Grace Carter" -> "Grace".
 - `telHref(phone)`: tel: link with digits only; 10 digits get +1, 11 starting with 1 get +, a leading + is kept. null without digits.
-- `mailtoHref({ to, cc, subject, body })`: encoded mailto: link with CC, subject and body. null without a To address.
+- `mailtoHref({ to, cc, subject, body })`: encoded mailto: link; CC, subject and body are optional and left out when empty (plain "mailto:a%40b.com"). null without a To address.
+
+## clipboard.ts
+- `copyText(text, anchor?)`: copies text and resolves true / false, never throws. Uses the Clipboard API on https and localhost; on plain http (phone over Wi-Fi) falls back to a hidden textarea + `execCommand("copy")`, placed inside the open dialog of `anchor` (Radix focus trap) and focus restored after.
 
 ## cn.ts (design system file)
 - `cn(...classes)`: merges Tailwind class lists (clsx + tailwind-merge).
@@ -85,3 +88,9 @@ Links that open the user's own phone and email apps (no backend).
 - `FilterValues`: allowed values per filter, a list or a check returning true / false / undefined (undefined = data still loading, keep the value).
 - `SEARCH_KEY`, `SORT_KEY`, `PAGE_KEY`, `TableParams`, `TableDefaults`.
 - `SortKind`, `SortColumn`: sort column types.
+
+## Tests (`npm test`)
+- `format.test.ts`: money (`toCents`, `centsToAmount`, `formatCurrency`, `formatCompactCurrency`, `formatPercent`) and dates (`parseDateOnly`, `formatDate`, `formatTimestampDate`, today / UTC today, `daysUntil`, `daysSince`, month helpers), in UTC and America/New_York with a fake "now".
+- `contact.test.ts`: `telHref`, `mailtoHref` (encoding, optional parts), `firstName`.
+- `clipboard.test.ts`: `copyText` on the Clipboard API path and that it never throws.
+- `tableParams.test.ts`: reading and writing list state in the URL, fallbacks and round trip.

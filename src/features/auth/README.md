@@ -59,3 +59,6 @@ Sign-in and who is signed in: the auth state, the route guards, the auth screens
 - `can(me, action)`: OWNER can do everything. PROPERTY_MANAGER only when the action's backend key (`ACTION_KEYS`, e.g. `unit.delete` → `units.delete`; `charge.create`, `payment.create`, `rent.generate` → `money.record`) is in `me.permissions` from GET /auth/me. `property.delete`, `manager.assign` and `access.manage` are owner only. TENANT: nothing. Hide what's not allowed (never disable).
 - `toSidebarRole(role)`: OWNER → "admin", PROPERTY_MANAGER → "manager".
 - `roleLabel(role)`: "Owner", "Property Manager" (from `lib/labels.ts`).
+
+## Tests (`npm test`)
+- `permissions.test.ts`: `can()` for OWNER, TENANT and managers with and without keys (OWNER-only actions stay off), `toSidebarRole`, `roleLabel`.

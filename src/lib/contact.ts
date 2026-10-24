@@ -19,13 +19,17 @@ export function telHref(phone: string | null | undefined): string | null {
   return `tel:${digits}`;
 }
 
-/** mailto: link with CC, subject and body, each encoded (spaces as %20, line breaks as %0D%0A). null without a To address. */
-export function mailtoHref({ to, cc = [], subject, body }: { to: string | null | undefined; cc?: string[]; subject: string; body: string }): string | null {
+/**
+ * mailto: link with optional CC, subject and body, each encoded (spaces as %20, line breaks as %0D%0A); empty ones are
+ * left out, so a plain link is just "mailto:name%40example.com". null without a To address.
+ */
+export function mailtoHref({ to, cc = [], subject = "", body = "" }: { to: string | null | undefined; cc?: string[]; subject?: string; body?: string }): string | null {
   if (!to?.trim()) return null;
   const params = [
     cc.length > 0 ? `cc=${cc.map(encodeURIComponent).join(",")}` : null,
-    `subject=${encodeURIComponent(subject)}`,
-    `body=${encodeURIComponent(body.replace(/\r?\n/g, "\r\n"))}`,
+    subject ? `subject=${encodeURIComponent(subject)}` : null,
+    body ? `body=${encodeURIComponent(body.replace(/\r?\n/g, "\r\n"))}` : null,
   ].filter(Boolean);
-  return `mailto:${encodeURIComponent(to.trim())}?${params.join("&")}`;
+  const address = `mailto:${encodeURIComponent(to.trim())}`;
+  return params.length > 0 ? `${address}?${params.join("&")}` : address;
 }

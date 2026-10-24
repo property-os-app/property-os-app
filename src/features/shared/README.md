@@ -17,6 +17,9 @@ Pieces of the detail pages (`/properties/:id`, `/leases/:id`).
 - `rentReminderLinks(input)`: Call (tel:) and Email reminder (mailto:) links for an overdue lease: To the primary tenant, CC co-tenants, subject "Rent reminder – {property} {unit}", the reminder body (balance and due date via `format.ts`, days via `daysSince`, signed with the user's name). `tel` / `mailto` are null without a phone / email. Used by the lease page and the Rent Roll menu.
 - `RentReminderInput`, `RentReminderLinks`: its types.
 
+## ContactLink.tsx
+- `ContactLink({ kind, value, wrap })`: a tenant's phone (`tel:` via `telHref`) or email (`mailto:` via `mailtoHref`) as a link to the user's own phone / email app, plus a 28px copy button (44px tap area) that shows "Phone number copied" / "Email copied" (`copyText`, works on plain http too; "Couldn't copy" info toast if both ways fail). Clicks and keys stop there, so it never opens the card or table row it sits in; `pointer-events-auto` makes it tappable inside a `ListCard`. Truncates with a tooltip, or wraps with `wrap`. Dash when empty. Used by the Tenants table, cards and drawer, the lease Tenants tab and the unit drawer.
+
 ## linkClass.ts
 - `linkFocus`: rounded keyboard-only focus ring with no offset (`focus-ring-tight`), so it doesn't touch the next word. For inline links and link-style buttons.
 - `textLink`: the green text link ("Back to Leases", "View all") with `linkFocus`.

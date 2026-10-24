@@ -48,16 +48,23 @@ export function formatCurrency(value: MoneyInput): string {
   return cents < 0 ? `-${text}` : text;
 }
 
-/** $128.4K / $24.6M in KPI cards and charts (display only). Empty or invalid -> "-". */
+/**
+ * $128.4K / $24.6M in KPI cards and charts (display only). Empty or invalid -> "-".
+ * Rounds half up in integer cents first, then picks the unit, so $999.50 is "$1.0K" and $999,950 is "$1.0M" (not "$1000").
+ */
 export function formatCompactCurrency(value: MoneyInput): string {
   if (isEmpty(value)) return EMPTY;
   const cents = toCents(value);
   if (Number.isNaN(cents)) return EMPTY;
-  const abs = Math.abs(centsToAmount(cents));
+  const abs = Math.abs(cents);
   const sign = cents < 0 ? "-" : "";
-  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1)}K`;
-  return `${sign}$${abs.toFixed(0)}`;
+  const tenths = (n: number) => `${Math.floor(n / 10)}.${n % 10}`;
+  const tenthsOfK = Math.round(abs / 10_000); // $0.1K = 10,000 cents
+  if (tenthsOfK >= 10_000) return `${sign}$${tenths(Math.round(abs / 10_000_000))}M`;
+  const dollars = Math.round(abs / 100);
+  if (dollars >= 1_000) return `${sign}$${tenths(tenthsOfK)}K`;
+  // No minus on a value that rounds to $0 ("-0.40" -> "$0", not "-$0").
+  return dollars === 0 ? "$0" : `${sign}$${dollars}`;
 }
 
 /** 94.2% with one decimal in KPIs; pass digits=0 for badges. Accepts "94.2" too. Empty or invalid -> "-". */

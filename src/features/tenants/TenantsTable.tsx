@@ -4,6 +4,7 @@ import { Avatar, Caption, Dash, Small } from "@/components/atoms";
 import { KebabMenu, ListCard, type MenuItem } from "@/components/molecules";
 import { CardList, DataTable, type Column, type DataTableProps } from "@/components/organisms";
 import { useIsMobile } from "@/lib/useIsMobile";
+import { ContactLink } from "@/features/shared/ContactLink";
 import { BalanceValue, RentStatusBadge, TenantLeaseBadge } from "@/features/tenants/TenantParts";
 import { rentStatus, unitLine, type TenantRow } from "@/features/tenants/stats";
 
@@ -42,12 +43,19 @@ export function TenantsTable({ onOpen, onEdit, onDelete, ...props }: Props) {
             <Avatar name={tenant.fullName} size={24} />
             <div className="min-w-0">
               <div className="truncate font-semibold">{tenant.fullName}</div>
-              <Caption className="block max-w-64 truncate">{tenant.email}</Caption>
+              <Caption className="block max-w-64 truncate">
+                <ContactLink kind="email" value={tenant.email} />
+              </Caption>
             </div>
           </div>
         ),
       },
-      { key: "phone", header: "Phone", cell: ({ tenant }) => <Small>{tenant.phone}</Small> },
+      { key: "phone", header: "Phone", cell: ({ tenant }) => (
+          <Small>
+            <ContactLink kind="phone" value={tenant.phone} />
+          </Small>
+        ),
+      },
       {
         key: "unit",
         header: "Unit",
@@ -101,8 +109,10 @@ export function TenantsTable({ onOpen, onEdit, onDelete, ...props }: Props) {
               strip={rentStatus(current) === "overdue"}
               facts={[
                 { label: "Rent status", value: <RentStatusBadge lease={current} /> },
-                { label: "Phone", value: tenant.phone },
+                { label: "Phone", value: <ContactLink kind="phone" value={tenant.phone} /> },
               ]}
+              // Email on its own line: a third of the card would cut most addresses off.
+              note={<ContactLink kind="email" value={tenant.email} />}
               actions={menu(row)}
             />
           );

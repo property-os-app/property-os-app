@@ -9,7 +9,7 @@
 - Colors: only use the design system theme classes (for example bg-bg, bg-surface-1, text-text-primary, text-text-secondary, border-border-subtle, text-success, bg-warning-soft). Never hard-coded colors (bg-white, text-gray-500, #hex), so the dark theme (class 'dark' on <html>) keeps working.
 - Money from the API is a string: format with lib/format.ts, never float math. Dates are "YYYY-MM-DD": never new Date("YYYY-MM-DD").
 - Every list handles loading, empty and error states. Every form shows backend errors (message can be a string or an array).
-- After each step: run npm run build and npm run lint, fix errors, list changed files, give a short browser test checklist, then stop.
+- After each step: run npm run build, npm run lint and npm test, fix errors, list changed files, give a short browser test checklist, then stop.
 - Commands for the user: Windows PowerShell, shortest form, one short line under each command saying what it does.
 - At the end of each step, suggest one commit message like: feat(area): short summary. Never commit.
 - The API docs are the source of truth and live only in ../property-os-api/docs/frontend-handoff/ (API.md, rules.md, api-samples/). Read them there. Never copy them into this repo or write a local summary of them. If they can't be read, stop and tell the user to run /add-dir ../property-os-api/docs/frontend-handoff. Read only: never create, edit or delete anything in that folder. The backend owns it.

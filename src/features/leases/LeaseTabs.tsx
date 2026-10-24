@@ -8,6 +8,8 @@ import { labelOptions, paymentFrequencyLabels, signatureStatusLabels } from "@/l
 import { leaseErrorText, useUpdateLease } from "@/features/leases/hooks";
 import { coTenants, dueNote, dueState, isClosed, primaryTenant } from "@/features/leases/stats";
 import { TagEditor } from "@/features/leases/TagEditor";
+import { ContactLink } from "@/features/shared/ContactLink";
+import { useTenants } from "@/features/tenants/hooks";
 import type { Lease, SignatureStatus } from "@/types/lease";
 
 /** Tabs of the lease page (moved from the old lease drawer): Details and Tenants. The Ledger tab is LedgerView. */
@@ -158,7 +160,13 @@ function TagsSection({ lease, canEdit }: { lease: Lease; canEdit: boolean }) {
   );
 }
 
+/**
+ * Tenants tab: one row per tenant with email and phone (ContactLink: tap to email / call, copy). The lease has no phones,
+ * so they come from the cached GET /tenants list and show once it loads (hidden while loading or on error).
+ */
 export function TenantsTab({ lease }: { lease: Lease }) {
+  const tenants = useTenants();
+  const phoneOf = (id: string) => tenants.data?.find((t) => t.id === id)?.phone;
   if (lease.tenants.length === 0) {
     return (
       <Card padding="none">
@@ -174,7 +182,14 @@ export function TenantsTab({ lease }: { lease: Lease }) {
             <Avatar name={t.fullName} size={32} />
             <div className="min-w-0 flex-1">
               <div className="truncate font-semibold text-text-primary">{t.fullName}</div>
-              <Caption className="block truncate">{t.email}</Caption>
+              <Caption className="block truncate">
+                <ContactLink kind="email" value={t.email} />
+              </Caption>
+              {phoneOf(t.id) && (
+                <Caption className="block truncate">
+                  <ContactLink kind="phone" value={phoneOf(t.id)} />
+                </Caption>
+              )}
             </div>
             <Caption>{t.isPrimary ? "Primary" : "Co-tenant"}</Caption>
           </li>

@@ -15,6 +15,7 @@ import type { LeasePageState } from "@/features/leases/LeasePage";
 import { LeaseBadge, StatCard } from "@/features/leases/LeaseParts";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
 import { dueNote, dueState, leaseEndsNote, leasePeriod } from "@/features/leases/stats";
+import { ContactLink } from "@/features/shared/ContactLink";
 import { primaryTenantName } from "@/features/properties/stats";
 import { UnitDeleteDialog } from "@/features/units/UnitDeleteDialog";
 import { UnitFormModal } from "@/features/units/UnitFormModal";
@@ -203,7 +204,13 @@ function ActiveLease({ lease, unit, leaseFrom }: { lease: Lease; unit: Unit; lea
         <div className="min-w-0 flex-1">
           <div className="truncate font-semibold text-text-primary">{tenant?.fullName ?? "No primary tenant"}</div>
           <Caption className="block truncate">
-            {[`Lease ${lease.leaseNumber}`, period, tenant?.email].filter(Boolean).join(" · ")}
+            {[`Lease ${lease.leaseNumber}`, period].filter(Boolean).join(" · ")}
+            {tenant?.email && (
+              <>
+                {" · "}
+                <ContactLink kind="email" value={tenant.email} />
+              </>
+            )}
           </Caption>
         </div>
         {due.kind === "overdue" ? (

@@ -55,7 +55,7 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 
 ## LeaseTabs.tsx
 - `DetailsTab`: key values (tenant, co-tenants, term, rent, deposit, frequency, auto-renew, late fee, number, balance, notes) in a card; E-signature (badge + Select, PATCH `signatureStatus`) and Tags (`TagEditor`, PATCH `tags`) cards. Save errors use `leaseErrorText`.
-- `TenantsTab`: the lease's tenants (avatar, name, email, Primary / Co-tenant), or "No tenants yet".
+- `TenantsTab`: the lease's tenants (avatar, name, email, phone, Primary / Co-tenant), or "No tenants yet". Email and phone are `ContactLink`s; phones come from the cached GET /tenants list (the lease has none) and are hidden while it loads or fails.
 
 ## LeaseWizard.tsx
 - `LeaseWizard`: the Add / Edit Lease modal (Stepper, Back / Cancel / Save as draft / Continue or Create & activate / Save changes). Opens TenantFormModal over itself for "Add new tenant". Keeps the "due day set by hand" flag (on in edit mode unless the saved due day is empty).

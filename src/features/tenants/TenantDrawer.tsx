@@ -14,6 +14,7 @@ import type { LeasePageState } from "@/features/leases/LeasePage";
 import { LeaseBadge, StatCard } from "@/features/leases/LeaseParts";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
 import { dueNote, dueState, leaseEndsNote, leasePeriod } from "@/features/leases/stats";
+import { ContactLink } from "@/features/shared/ContactLink";
 import { useTenant } from "@/features/tenants/hooks";
 import { TenantDeleteDialog } from "@/features/tenants/TenantDeleteDialog";
 import { TenantFormModal } from "@/features/tenants/TenantFormModal";
@@ -168,8 +169,8 @@ function Details({ tenant }: { tenant: TenantDetail }) {
       labelWidth={160}
       items={[
         { label: "Full name", value: tenant.fullName },
-        { label: "Email", value: <span className="break-all">{tenant.email}</span> },
-        { label: "Phone", value: tenant.phone },
+        { label: "Email", value: <ContactLink kind="email" value={tenant.email} wrap /> },
+        { label: "Phone", value: <ContactLink kind="phone" value={tenant.phone} /> },
         { label: "ID / passport number", value: orDash(tenant.idNumber) },
         { label: "Address", value: orDash(tenant.address) },
         { label: "Tenant type", value: tenantTypeLabels[tenant.tenantType] },

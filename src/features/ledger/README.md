@@ -40,3 +40,7 @@ Voids stay permanent; a re-entry is a new entry with a new number. Plain functio
 
 ## targets.ts
 - `leasePaymentTarget(lease, balance)`: the one Record Payment target on the lease page.
+
+## Tests (`npm test`)
+- `proration.test.ts`: `rentProration` (start / end / both inside the month, leap February, half-cent rounding, due date in or outside the term, null cases) and `rentDescription`.
+- `balance.test.ts`: `balanceText` (owed, zero, credit).

@@ -51,3 +51,6 @@ Settings: the General tab (theme, saved on this device, no API) and, for the own
 
 ## keys.ts
 - `settingsKeys`: `permissions`. Manager access is `managerKeys.access(userId)` in `features/properties/keys.ts`, so invalidating `managerKeys.all` covers it.
+
+## Tests (`npm test`)
+- `access.test.ts`: `groupCatalog`, `defaultKeys`, `sameSet`, `managerPropertyNames`, `scopeText`.

@@ -43,6 +43,7 @@ Starts the app on http://localhost:5173. The port is fixed: the backend's CORS o
 | `npm run dev` | Dev server with hot reload on port 5173. |
 | `npm run build` | Type-checks (`tsc -b`) and builds to `dist/`. |
 | `npm run lint` | ESLint, including the React Compiler and hooks rules. |
+| `npm test` | Unit tests (Vitest, runs once) for the money, date, permission and URL helpers. Time zone pinned to UTC; some tests also run in America/New_York. |
 | `npm run preview` | Serves the `dist/` build locally. |
 
 ## Structure
