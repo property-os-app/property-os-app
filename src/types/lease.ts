@@ -14,6 +14,14 @@ export interface LeaseTenant {
   isPrimary: boolean;
 }
 
+/** The lease's template, embedded in Lease. */
+export interface LeaseTemplateRef {
+  id: string;
+  name: string;
+  version: number;
+  archived: boolean;
+}
+
 /** GET /leases and GET /leases/:id (LeaseResponse). */
 export interface Lease {
   id: string;
@@ -39,12 +47,16 @@ export interface Lease {
   autoRenew: boolean;
   tags: string[];
   notes: string | null;
+  /** The pinned lease template version; null when the lease has no template. */
+  templateVersionId: string | null;
   createdById: string;
   /** ISO timestamp. */
   createdAt: string;
   /** ISO timestamp. */
   updatedAt: string;
   unit: { id: string; unitNumber: string; property: { id: string; name: string } };
+  /** The template of the pinned version. `version` is the PINNED version (can be older than the template's currentVersion). */
+  template: LeaseTemplateRef | null;
   /** Primary first, then co-tenants by fullName A→Z (sorted by the API); [] when none. */
   tenants: LeaseTenant[];
   /** Whole months, end date inclusive; null if a date is missing. */
@@ -78,15 +90,17 @@ export interface LeaseCreateBody {
   notes?: string;
   primaryTenantId?: string;
   coTenantIds?: string[];
+  /** A template that exists and isn't archived; the lease pins its current version. Never null on create. */
+  templateId?: string;
 }
 
 /**
  * PATCH /leases/:id body: any subset, never status. unitId only while DRAFT.
- * null clears startDate, endDate, rent, deposit, rentDueDay, notes and primaryTenantId (DRAFT; on ACTIVE only notes).
+ * null clears startDate, endDate, rent, deposit, rentDueDay, notes and primaryTenantId (DRAFT; on ACTIVE only notes), and templateId (unless signed).
  * null on any other field gives 400 "<field> cannot be null; omit it to leave it unchanged".
  */
 export type LeaseUpdateBody = Partial<
-  Omit<LeaseCreateBody, "status" | "startDate" | "endDate" | "rent" | "deposit" | "rentDueDay" | "notes" | "primaryTenantId">
+  Omit<LeaseCreateBody, "status" | "startDate" | "endDate" | "rent" | "deposit" | "rentDueDay" | "notes" | "primaryTenantId" | "templateId">
 > & {
   startDate?: string | null;
   endDate?: string | null;
@@ -95,6 +109,8 @@ export type LeaseUpdateBody = Partial<
   rentDueDay?: number | null;
   notes?: string | null;
   primaryTenantId?: string | null;
+  /** A different id re-pins to its current version; the same id changes nothing; null removes it. 409 while SIGNED. */
+  templateId?: string | null;
 };
 
 /** POST /leases/:id/end body. Default ENDED. */

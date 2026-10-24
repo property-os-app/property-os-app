@@ -15,6 +15,8 @@ export type TicketPriority = "Low" | "Normal" | "Urgent" | "Emergency";
 export type UnitStatus = "VACANT" | "OCCUPIED" | "RESERVED" | "UNDER_MAINTENANCE";
 export type InsuranceStatus = "Valid" | "Expiring" | "Expired";
 export type ApprovalStatus = "Approved" | "Pending" | "Rejected";
+/** UI status of a lease template, from isDefault and archivedAt (GET /lease-templates). */
+export type TemplateStatus = "DEFAULT" | "ACTIVE" | "ARCHIVED";
 
 export const statusTone = {
   rent: { PAID: "success", PARTIAL: "warning", UNPAID: "warning", OVERDUE: "danger", NOT_BILLED: "neutral" },
@@ -25,6 +27,7 @@ export const statusTone = {
   unit: { VACANT: "neutral", OCCUPIED: "success", RESERVED: "info", UNDER_MAINTENANCE: "warning" },
   insurance: { Valid: "success", Expiring: "warning", Expired: "danger" },
   approval: { Approved: "success", Pending: "warning", Rejected: "danger" },
+  template: { DEFAULT: "success", ACTIVE: "neutral", ARCHIVED: "neutral" },
 } as const satisfies Record<string, Record<string, Tone>>;
 
 /** Friendly label per enum key. Domains not listed here already use display words as keys. */
@@ -33,6 +36,7 @@ export const statusLabel = {
   lease: { DRAFT: "Draft", ACTIVE: "Active", EXPIRING: "Expiring", ENDED: "Ended", TERMINATED: "Terminated" },
   esign: { NOT_SENT: "Not sent", PENDING: "Pending", SIGNED: "Signed" },
   unit: { VACANT: "Vacant", OCCUPIED: "Occupied", RESERVED: "Reserved", UNDER_MAINTENANCE: "Under maintenance" },
+  template: { DEFAULT: "Default", ACTIVE: "Active", ARCHIVED: "Archived" },
 } as const satisfies Partial<{ [D in keyof typeof statusTone]: Record<keyof (typeof statusTone)[D], string> }>;
 
 export type StatusDomain = keyof typeof statusTone;

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/molecules";
-import { ApiError, apiFetch, errorText } from "@/lib/api";
+import { ApiError, apiFetch, apiFetchBlob, errorText, type ApiBlob } from "@/lib/api";
 import { friendlyLeaseMessage, parseMissingMessage } from "@/features/leases/stats";
 import { leaseKeys, rentRollPrefix, type LeaseListParams } from "@/features/leases/keys";
 import { tenantKeys } from "@/features/tenants/keys";
@@ -33,6 +33,17 @@ export function useTagSuggestions() {
   return useQuery({
     queryKey: leaseKeys.tagSuggestions,
     queryFn: ({ signal }) => apiFetch<string[]>("/leases/tag-suggestions", { signal }),
+  });
+}
+
+/**
+ * GET /leases/:id/document: the lease as a PDF from its pinned template version (anyone who can read the lease).
+ * `download` asks for an attachment named "{leaseNumber}.pdf". 409 when the lease has no template. A mutation, so it runs only on a click.
+ */
+export function useLeaseDocument() {
+  return useMutation({
+    mutationFn: ({ id, download }: { id: string; download: boolean }): Promise<ApiBlob> =>
+      apiFetchBlob(`${leasePath(id)}/document`, { query: { download: download ? "true" : undefined } }),
   });
 }
 

@@ -1,6 +1,7 @@
 import { env } from "@/lib/env";
 import type { User } from "firebase/auth";
 import { auth, authReady } from "@/lib/firebase";
+import { filenameFromDisposition } from "@/lib/pdf";
 
 type QueryValue = string | number | boolean | null | undefined;
 
@@ -82,19 +83,18 @@ function friendlyMessages(status: number, code: string | undefined, messages: st
   return messages;
 }
 
-/** Calls the backend: adds the Firebase token when signed in, parses JSON, throws ApiError on failure. */
-export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+/** Sends the request with the Firebase token when signed in. A network failure becomes the offline ApiError. */
+async function send(path: string, options: ApiFetchOptions, accept: string): Promise<Response> {
   const { method = "GET", body, query, signal } = options;
 
   await authReady;
-  const headers: Record<string, string> = { Accept: "application/json" };
+  const headers: Record<string, string> = { Accept: accept };
   const user = auth.currentUser;
   if (user) headers.Authorization = `Bearer ${await getToken(user)}`;
   if (body !== undefined) headers["Content-Type"] = "application/json";
 
-  let res: Response;
   try {
-    res = await fetch(buildUrl(path, query), {
+    return await fetch(buildUrl(path, query), {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -104,28 +104,59 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     throw new ApiError(0, [OFFLINE_MESSAGE]);
   }
+}
 
+/** Reads a body as JSON when it parses, else as text; "" for 204 or an empty body. */
+async function readBody(res: Response): Promise<unknown> {
   const text = res.status === 204 ? "" : await res.text();
-  let data: unknown = undefined;
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = text;
-    }
+  if (!text) return undefined;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
   }
+}
 
-  if (!res.ok) {
-    const obj = typeof data === "object" && data !== null ? (data as { message?: unknown; error?: unknown; code?: unknown }) : {};
-    const code = typeof obj.code === "string" ? obj.code : undefined;
-    const messages = typeof data === "string" ? toMessages(data) : toMessages(obj.message);
-    throw new ApiError(
-      res.status,
-      friendlyMessages(res.status, code, messages),
-      typeof obj.error === "string" ? obj.error : res.statusText || undefined,
-      code,
-    );
-  }
+/** The ApiError for a failed response body (JSON error body or plain text). */
+function toApiError(res: Response, data: unknown): ApiError {
+  const obj = typeof data === "object" && data !== null ? (data as { message?: unknown; error?: unknown; code?: unknown }) : {};
+  const code = typeof obj.code === "string" ? obj.code : undefined;
+  const messages = typeof data === "string" ? toMessages(data) : toMessages(obj.message);
+  return new ApiError(
+    res.status,
+    friendlyMessages(res.status, code, messages),
+    typeof obj.error === "string" ? obj.error : res.statusText || undefined,
+    code,
+  );
+}
 
+/** Calls the backend: adds the Firebase token when signed in, parses JSON, throws ApiError on failure. */
+export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+  const res = await send(path, options, "application/json");
+  const data = await readBody(res);
+  if (!res.ok) throw toApiError(res, data);
   return data as T;
+}
+
+/** A file answer: the bytes and the filename from Content-Disposition (null when missing). */
+export interface ApiBlob {
+  blob: Blob;
+  filename: string | null;
+}
+
+/**
+ * Calls an endpoint that answers with a file (the lease and template PDFs). Checks res.ok first: errors come back as the
+ * normal JSON error body and throw ApiError like apiFetch.
+ */
+export async function apiFetchBlob(path: string, options: ApiFetchOptions = {}): Promise<ApiBlob> {
+  const res = await send(path, options, "application/pdf, application/json");
+  if (!res.ok) throw toApiError(res, await readBody(res));
+  let blob: Blob;
+  try {
+    blob = await res.blob();
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    throw new ApiError(0, [OFFLINE_MESSAGE]);
+  }
+  return { blob, filename: filenameFromDisposition(res.headers.get("Content-Disposition")) };
 }

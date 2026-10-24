@@ -18,6 +18,12 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - `errorText(err)`: one display text for any error.
 - Friendly texts instead of the backend's: `OFFLINE_MESSAGE` (status 0: server unreachable, or Firebase `auth/network-request-failed` while getting the token), `SERVER_ERROR_MESSAGE` (any 5xx), `FORBIDDEN_MESSAGE` (403 `FORBIDDEN_ROLE`). Other errors keep the backend message, so 403 `FORBIDDEN_PERMISSION` says which switch to ask the owner for.
 - `ApiFetchOptions`: options type.
+- `apiFetchBlob(path, options)`: same token and errors as `apiFetch`, for endpoints that answer with a file (lease and template PDFs). Checks `res.ok` first (errors are JSON and throw `ApiError`), then returns `{ blob, filename }` (filename from `Content-Disposition`, null when missing). `ApiBlob`: its type.
+
+## pdf.ts
+- `filenameFromDisposition(header)`: the filename in a Content-Disposition header (`filename*=UTF-8''…` decoded first, then `filename="…"` or bare); null when missing.
+- `openPdfInNewTab(load)`: opens a tab right away (inside the click, so it isn't blocked as a pop-up) showing "Loading PDF...", then points it at the blob from `load`; on failure closes it and rethrows. The object URL is freed after a minute.
+- `saveBlob(blob, filename)`: downloads a blob with a temporary `<a download>`, then frees the object URL.
 
 ## useDocumentTitle.ts
 - `useDocumentTitle(title)`: sets the browser tab to "<title> · PropertyOS".
@@ -94,3 +100,4 @@ Links that open the user's own phone and email apps (no backend).
 - `contact.test.ts`: `telHref`, `mailtoHref` (encoding, optional parts), `firstName`.
 - `clipboard.test.ts`: `copyText` on the Clipboard API path and that it never throws.
 - `tableParams.test.ts`: reading and writing list state in the URL, fallbacks and round trip.
+- `pdf.test.ts`: `filenameFromDisposition` (quoted, bare, `filename*`, bad escape, missing).

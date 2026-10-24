@@ -1,6 +1,6 @@
 # src/features/settings
 
-Settings: the General tab (theme, saved on this device, no API) and, for the owner only, Users and Permissions (which properties each manager sees and what they may change).
+Settings: the General tab (theme, saved on this device, no API), the Lease templates tab (built in `src/features/lease-templates`) and, for the owner only, Users and Permissions (which properties each manager sees and what they may change).
 
 ## theme.ts
 - `ThemePreference`: `"light" | "dark" | "system"`.
@@ -21,8 +21,8 @@ Settings: the General tab (theme, saved on this device, no API) and, for the own
 - `changeThemeWithReveal(origin, dark, setPreference)`: saves "light" or "dark" (same key as Settings) and shows the new theme in a circle growing from `origin` over 400 ms (View Transitions API). No support or reduced motion: instant. Used by the Topbar ThemeSwitch; Settings stays instant. The CSS that turns off the default cross-fade is in `src/index.css`.
 
 ## SettingsFrame.tsx
-- `SettingsFrame({ active, children })`: PageHeader "Settings" + `SettingsLayout` left nav: General, plus "Users and Permissions" with `access.manage` (owner).
-- `SettingsTab`: `"general" | "users"`.
+- `SettingsFrame({ active, children })`: PageHeader "Settings" + `SettingsLayout` left nav: General, "Users and Permissions" with `access.manage` (owner), and "Lease templates" for everyone (the page lives in `features/lease-templates`).
+- `SettingsTab`: `"general" | "users" | "templates"`.
 
 ## SettingsPage.tsx
 - `SettingsPage`: `/settings`, the General tab. An "Appearance" card with a Theme `SegmentedControl` (Dark / Light / System). Applies right away, no Save button, no toast.

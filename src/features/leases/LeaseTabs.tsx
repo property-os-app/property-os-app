@@ -1,12 +1,13 @@
 import { useState, type ReactNode } from "react";
 import { FileX } from "lucide-react";
-import { Avatar, Caption, Dash, H3, Num, Select, Tag } from "@/components/atoms";
+import { Avatar, Badge, Caption, Dash, H3, Num, Select, Tag } from "@/components/atoms";
 import { Card, CardHeader, EmptyState, InlineError, KeyValueList, StatusBadge, toast } from "@/components/molecules";
 import { cn } from "@/lib/cn";
 import { formatCurrency, formatDate, ordinal, toCents } from "@/lib/format";
 import { labelOptions, paymentFrequencyLabels, signatureStatusLabels } from "@/lib/labels";
 import { leaseErrorText, useUpdateLease } from "@/features/leases/hooks";
-import { coTenants, dueNote, dueState, isClosed, primaryTenant } from "@/features/leases/stats";
+import { coTenants, dueNote, dueState, isClosed, primaryTenant, templateLine } from "@/features/leases/stats";
+import { LeaseDocumentCard } from "@/features/leases/LeaseDocumentCard";
 import { TagEditor } from "@/features/leases/TagEditor";
 import { ContactLink } from "@/features/shared/ContactLink";
 import { useTenants } from "@/features/tenants/hooks";
@@ -16,7 +17,7 @@ import type { Lease, SignatureStatus } from "@/types/lease";
 
 const orDash = (value: ReactNode) => (value === null || value === undefined || value === "" ? <Dash /> : value);
 
-/** Details tab: the key values (with Notes) in a card, E-signature and Tags cards on the right. */
+/** Details tab: the key values (with Notes and Template) in a card; Lease document (PDF), E-signature and Tags cards on the right. */
 export function DetailsTab({ lease, canEdit }: { lease: Lease; canEdit: boolean }) {
   const primary = primaryTenant(lease);
   const co = coTenants(lease);
@@ -62,6 +63,17 @@ export function DetailsTab({ lease, canEdit }: { lease: Lease; canEdit: boolean 
             },
             { label: "Lease number", value: lease.leaseNumber },
             {
+              label: "Template",
+              value: lease.template ? (
+                <span className="inline-flex flex-wrap items-center gap-2">
+                  {templateLine(lease)}
+                  {lease.template.archived && <Badge tone="neutral">Archived</Badge>}
+                </span>
+              ) : (
+                "No template"
+              ),
+            },
+            {
               label: "Balance",
               value: (
                 <span className="flex flex-col">
@@ -75,6 +87,9 @@ export function DetailsTab({ lease, canEdit }: { lease: Lease; canEdit: boolean 
         />
       </Card>
       <div className="flex flex-col gap-6 lg:col-span-4">
+        <Card>
+          <LeaseDocumentCard lease={lease} canEdit={canEdit} />
+        </Card>
         <Card>
           <SignatureSection lease={lease} canChange={canEdit && !closed} />
         </Card>

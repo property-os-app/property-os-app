@@ -43,7 +43,7 @@ Atoms combined to do one job.
 
 | Component | What it does | Main props | When to use |
 | --- | --- | --- | --- |
-| `StatusBadge` | Maps a domain status to a tone and a friendly label | `domain` rent/lease/esign/ticket/priority/unit/insurance/approval, `status` (API enum for rent/lease/esign/unit, e.g. `UNDER_MAINTENANCE`; lease also takes UI-only `EXPIRING`), `children` (label override). `statusLabel` holds the labels. | Every status in a table or drawer. |
+| `StatusBadge` | Maps a domain status to a tone and a friendly label | `domain` rent/lease/esign/ticket/priority/unit/insurance/approval/template, `status` (API enum for rent/lease/esign/unit, e.g. `UNDER_MAINTENANCE`; lease also takes UI-only `EXPIRING`; template takes UI `DEFAULT`/`ACTIVE`/`ARCHIVED`), `children` (label override). `statusLabel` holds the labels. | Every status in a table or drawer. |
 | `FormField` | Label, control, help or error text | `label`, `htmlFor`, `required`, `help`, `error`, `action` | Wrap every form control. |
 | `SearchInput` | Input with a search icon | Input props, `shortcut` | Toolbar search. |
 | `SegmentedControl` | Button group with counts; scrolls sideways inside itself when too wide | `value`, `onChange`, `segments`, `aria-label` | Status filter (Rent Roll). |
@@ -233,3 +233,4 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | 2026-10-24 | `organisms/DataTable.tsx` | Optional `rowClickable(row)`: with `onRowClick`, rows where it returns false get no `cursor-pointer` and no click (hover stays). Without it every row is clickable, as before. | The Owner row in Settings → Users and Permissions showed a pointer but clicking did nothing. |
 | 2026-10-24 | `lib/format.ts` | Added `daysSince(date)` (local calendar days since a past date, at least 1, built on `daysUntil`). Nothing else changed. | One day count for "{n} days overdue" on screen and in the reminder email (was inline `Math.max(1, -daysUntil(...))` in two places). |
 | 2026-10-24 | `lib/format.ts` (`formatCompactCurrency`) | Rounds in integer cents first, then picks $, K or M: $999.50 is "$1.0K" (was "$1000"), $999,950 is "$1.0M" (was "$1000.0K"); a value that rounds to $0 has no minus ("-0.40" is "$0", was "-$0"). Other values unchanged. | Found by the new unit tests (`src/lib/format.test.ts`). |
+| 2026-10-24 | `molecules/StatusBadge.tsx` | New `template` domain (`TemplateStatus`): `DEFAULT` success "Default", `ACTIVE` neutral "Active", `ARCHIVED` neutral "Archived". Other domains unchanged. | Settings → Lease templates shows each template's status; feature code must not pick badge colors. |

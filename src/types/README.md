@@ -34,8 +34,16 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 ## lease.ts
 - `LeaseStatus`, `SignatureStatus`, `PaymentFrequency`: lease enums.
 - `LeaseTenant`: one tenant on a lease (`isPrimary`).
-- `Lease`: one row from GET /leases (dates "YYYY-MM-DD", money strings with 2 decimals, `tenants` primary first then by name, `endingSoon`, `balance`).
-- `LeaseCreateBody`: POST /leases body (only `unitId` required; `status` DRAFT or ACTIVE). `LeaseUpdateBody`: PATCH body (never `status`; dates, rent, deposit, rentDueDay, notes, primaryTenantId may be null). `LeaseEndBody`: `{ status?: ENDED | TERMINATED }`.
+- `Lease`: one row from GET /leases (dates "YYYY-MM-DD", money strings with 2 decimals, `tenants` primary first then by name, `endingSoon`, `balance`, `templateVersionId`, `template`).
+- `LeaseTemplateRef`: the lease's embedded template `{ id, name, version, archived }`; `version` is the pinned one.
+- `LeaseCreateBody`: POST /leases body (only `unitId` required; `status` DRAFT or ACTIVE). `LeaseUpdateBody`: PATCH body (never `status`; dates, rent, deposit, rentDueDay, notes, primaryTenantId, templateId may be null). Both take `templateId`. `LeaseEndBody`: `{ status?: ENDED | TERMINATED }`.
+
+## leaseTemplate.ts
+- `LeaseTemplateListItem`: one row of GET /lease-templates (`defaultTermMonths`, `isDefault`, `archivedAt`, `currentVersion`, `leaseCount`).
+- `LeaseTemplateDetail`: GET /lease-templates/:id and every template write (adds `currentVersionId`, `body` in Markdown, `versions` newest first).
+- `LeaseTemplateVersionSummary`: one history entry (`version`, `createdAt`, `createdBy`, `leaseCount`). `LeaseTemplateVersion`: one version with its `body`.
+- `MergeField`: one GET /lease-templates/merge-fields item (`key`, `group`, `label`, `sample`).
+- `LeaseTemplateCreateBody`: POST body. `LeaseTemplateUpdateBody`: PATCH body (details only; `description`, `defaultTermMonths` may be null).
 
 ## ledger.ts
 - `ChargeType`, `PaymentMethod`, `LedgerEntryKind`: money enums.

@@ -175,7 +175,13 @@ export const leaseFieldLabels: Record<string, string> = {
   tags: "Tags",
   notes: "Notes",
   status: "Status",
+  templateId: "Template",
 };
+
+/** "Standard Lease – 12-month · v2": the lease's template and its pinned version; null without a template. */
+export function templateLine(lease: Pick<Lease, "template">): string | null {
+  return lease.template ? `${lease.template.name} · v${lease.template.version}` : null;
+}
 
 /** "rent" -> "Monthly rent"; an unknown name stays as it is. */
 export const leaseFieldLabel = (field: string) => leaseFieldLabels[field] ?? field;
