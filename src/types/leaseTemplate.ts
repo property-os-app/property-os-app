@@ -29,7 +29,8 @@ export interface LeaseTemplateVersionSummary {
   version: number;
   /** ISO timestamp. */
   createdAt: string;
-  createdBy: { id: string; name: string };
+  /** null = created by the system (version 1 of a built-in template). */
+  createdBy: { id: string; name: string } | null;
   /** Leases pinned to this version. */
   leaseCount: number;
 }

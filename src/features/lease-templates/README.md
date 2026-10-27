@@ -16,6 +16,7 @@ Lease templates: the Settings → Lease templates tab (list, default, archive, d
 ## status.ts
 - `templateStatus(t)`: "ARCHIVED", "DEFAULT" or "ACTIVE" for `StatusBadge domain="template"`.
 - `termText(months)`: "12 months" / "1 month", or null.
+- `versionAuthor(v)`: who saved a version, or "Built-in" when `createdBy` is null.
 
 ## markdown.ts
 Pure text helpers (unit-tested).
@@ -68,4 +69,5 @@ Pure text helpers (unit-tested).
 
 ## Tests (`npm test`)
 - `markdown.test.ts`: insert at the cursor, bold / italic wrapping and toggling, line prefixes (heading, bullets, numbers, quotes, empty line), divider block, merge keys and unknown keys, grouping and search.
+- `status.test.ts`: status order, term text, a version with no author shows "Built-in".
 - `editorForm.test.ts`: schema (trim, term 1–120, blank text), create body, detail changes (only changed, null when cleared, never the body), trimmed body compare, error routing.

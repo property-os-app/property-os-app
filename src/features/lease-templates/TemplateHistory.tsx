@@ -7,6 +7,7 @@ import { formatTimestampDate } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import { openPdfInNewTab } from "@/lib/pdf";
 import { useTemplatePreviewPdf, useTemplateVersion } from "@/features/lease-templates/hooks";
+import { versionAuthor } from "@/features/lease-templates/status";
 import type { LeaseTemplateDetail, LeaseTemplateVersionSummary } from "@/types/leaseTemplate";
 
 /** The saved text of one version, loaded when shown. */
@@ -39,7 +40,7 @@ function VersionRow({ template, v }: { template: LeaseTemplateDetail; v: LeaseTe
             {current && <Badge tone="success">Current</Badge>}
           </div>
           <Caption className="block">
-            {formatTimestampDate(v.createdAt)} · {v.createdBy.name} · {v.leaseCount === 0 ? "No leases" : `Used by ${plural(v.leaseCount, "lease")}`}
+            {formatTimestampDate(v.createdAt)} · {versionAuthor(v)} · {v.leaseCount === 0 ? "No leases" : `Used by ${plural(v.leaseCount, "lease")}`}
           </Caption>
         </div>
         <div className="flex gap-2 max-md:w-full">

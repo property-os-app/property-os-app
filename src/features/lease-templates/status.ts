@@ -1,5 +1,5 @@
 import type { TemplateStatus } from "@/components/molecules";
-import type { LeaseTemplateListItem } from "@/types/leaseTemplate";
+import type { LeaseTemplateListItem, LeaseTemplateVersionSummary } from "@/types/leaseTemplate";
 
 /** The UI status of a template: Archived wins, then Default, else Active. */
 export function templateStatus(t: Pick<LeaseTemplateListItem, "isDefault" | "archivedAt">): TemplateStatus {
@@ -11,4 +11,9 @@ export function templateStatus(t: Pick<LeaseTemplateListItem, "isDefault" | "arc
 export function termText(months: number | null): string | null {
   if (months === null) return null;
   return months === 1 ? "1 month" : `${months} months`;
+}
+
+/** Who saved a version: the user's name, or "Built-in" when the system created it (createdBy null). */
+export function versionAuthor(v: Pick<LeaseTemplateVersionSummary, "createdBy">): string {
+  return v.createdBy?.name ?? "Built-in";
 }
