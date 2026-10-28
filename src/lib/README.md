@@ -84,9 +84,14 @@ Links that open the user's own phone and email apps (no backend).
 
 ## forms.ts
 - `applyServerError(setError, error, fieldNames)`: backend messages starting with a field name go under that field; returns the others for an InlineError at the top. Works with string or array messages.
+- `applyServerErrorBy(setError, error, fieldOf)`: the same, but `fieldOf(message)` picks the field or null (messages that don't start with a field name, e.g. a 409 under Name).
 
 ## useClientTable.ts
 - `useClientTable({ rows, searchText, initialFilters, matchFilters, filterValues, sorts, initialSort, pageSize, inUrl })`: search, filters, sort (text / number / money via `toCents` / "YYYY-MM-DD" date) and 25-row pages on the client. With `inUrl` (list pages) the state lives in the URL query, every change replaces the history entry without a scroll jump, and the search reaches the URL after 300 ms; without it, in memory (a table inside a page). Back to page 1 on search or filter change. `setPage` scrolls the `listId` element's top into view when it is off screen. Returns `pageRows`, `showPagination`, `summary`, `clearFilters`, `resetFilters` (filters only, keeps the search), `isFiltered`, `activeFilterCount` (filters not at their start value), `listId`...
+
+## useServerTable.ts
+- `useServerTable({ initialFilters, filterValues, sortKeys, initialSort })`: list state for a paginated API (Expenses). Same URL keys as `useClientTable` (`?q=&{filter}=&sort=&page=`, replace without a scroll jump); the box shows `search` at once and `savedSearch` (send this) follows after 300 ms. `setFilter` / `setFilters` / `clearFilters` / `resetFilters` go back to page 1; `setPage` scrolls the `listId` element into view. The page builds the request; rows and page count come from the answer.
+- `serverPageSummary(page, pageSize, totalItems)`: "26–50 of 312".
 
 ## tableParams.ts
 - `readTableParams(params, defaults)`: a table's state from query params (`q`, filter keys, `sort=key-asc|desc`, `page`); missing or invalid values fall back to the defaults.

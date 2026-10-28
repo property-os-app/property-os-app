@@ -6,11 +6,13 @@
 import { statusLabel } from "@/components/molecules/StatusBadge";
 import type { UserRole } from "@/types/auth";
 import type { LeaseStatus, PaymentFrequency, SignatureStatus } from "@/types/lease";
+import type { ExpenseStatus, ExpenseType } from "@/types/expense";
 import type { ChargeType, LedgerEntryKind, PaymentMethod } from "@/types/ledger";
 import type { PropertyType } from "@/types/property";
 import type { RentRollStatus } from "@/types/rentRoll";
 import type { ContactMethod, TenantType } from "@/types/tenant";
 import type { UnitStatus, UnitType } from "@/types/unit";
+import type { VendorInsuranceStatus, VendorRateUnit } from "@/types/vendor";
 
 export const userRoleLabels: Record<UserRole, string> = {
   OWNER: "Owner",
@@ -96,6 +98,23 @@ export const ledgerKindLabels: Record<LedgerEntryKind, string> = {
   CHARGE: "Charge",
   PAYMENT: "Payment",
 };
+
+export const expenseTypeLabels: Record<ExpenseType, string> = {
+  OPERATING: "Operating",
+  CAPITAL: "Capital",
+};
+
+export const expenseStatusLabels: Record<ExpenseStatus, string> = statusLabel.approval;
+
+/** Rate unit in a sentence: "$110.00 / hour". */
+export const rateUnitLabels: Record<VendorRateUnit, string> = {
+  HOUR: "hour",
+  VISIT: "visit",
+  MONTH: "month",
+  JOB: "job",
+};
+
+export const insuranceStatusLabels: Record<VendorInsuranceStatus, string> = statusLabel.insurance;
 
 /** Options for a Select, in the order of the map: [{ value, label }]. */
 export function labelOptions<K extends string>(labels: Record<K, string>): { value: K; label: string }[] {

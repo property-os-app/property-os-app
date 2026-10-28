@@ -27,7 +27,8 @@ const pick = (keys: ModuleKey[]): NavItem[] => keys.flatMap((key) => navItems.ge
 const navGroups: NavGroup[] = [
   { label: "Overview", items: pick(["dashboard"]) },
   { label: "Leasing", items: pick(["properties", "units", "tenants", "leases"]) },
-  { label: "Money", items: pick(["rentroll"]) },
+  { label: "Money", items: pick(["rentroll", "expenses"]) },
+  { label: "Operations", items: pick(["vendors"]) },
   { label: "Admin", items: pick(["settings"]) },
 ];
 

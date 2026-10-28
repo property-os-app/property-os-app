@@ -55,10 +55,10 @@ Sign-in and who is signed in: the auth state, the route guards, the auth screens
 - `verificationEmailErrorText(err)`: verification-email errors in simple words.
 
 ## permissions.ts
-- `Action`: the actions the UI checks (`property.create`, `rent.generate`, `entry.void`, `template.manage`, `access.manage`, ...).
-- `can(me, action)`: OWNER can do everything. PROPERTY_MANAGER only when the action's backend key (`ACTION_KEYS`, e.g. `unit.delete` → `units.delete`; `charge.create`, `payment.create`, `rent.generate` → `money.record`; `template.manage` → `templates.manage`, every lease template write, off by default for managers) is in `me.permissions` from GET /auth/me. `property.delete`, `manager.assign` and `access.manage` are owner only. TENANT: nothing. Hide what's not allowed (never disable).
+- `Action`: the actions the UI checks (`property.create`, `rent.generate`, `entry.void`, `template.manage`, `vendor.manage`, `expense.record`, `expense.approve`, `access.manage`, ...).
+- `can(me, action)`: OWNER can do everything. PROPERTY_MANAGER only when the action's backend key (`ACTION_KEYS`, e.g. `unit.delete` → `units.delete`; `charge.create`, `payment.create`, `rent.generate` → `money.record`; `template.manage` → `templates.manage`, every lease template write, off by default for managers; `vendor.manage` → `vendors.manage`; `expense.record` → `expenses.record`, only the Add Expense button (every expense button comes from its `allowedActions`); `expense.approve` → `expenses.approve`; `entry.void` (`money.void`) also voids expenses) is in `me.permissions` from GET /auth/me. `property.delete`, `manager.assign` and `access.manage` are owner only. TENANT: nothing. Hide what's not allowed (never disable).
 - `toSidebarRole(role)`: OWNER → "admin", PROPERTY_MANAGER → "manager".
 - `roleLabel(role)`: "Owner", "Property Manager" (from `lib/labels.ts`).
 
 ## Tests (`npm test`)
-- `permissions.test.ts`: `can()` for OWNER, TENANT and managers with and without keys (OWNER-only actions stay off; `leases.manage` alone doesn't grant `template.manage`), `toSidebarRole`, `roleLabel`.
+- `permissions.test.ts`: `can()` for OWNER, TENANT and managers with and without keys (OWNER-only actions stay off; `leases.manage` alone doesn't grant `template.manage`, `expenses.record` doesn't grant `expense.approve`), `toSidebarRole`, `roleLabel`.

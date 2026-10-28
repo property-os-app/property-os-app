@@ -55,3 +55,20 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 - `RentRollStatus`: `PAID | PARTIAL | UNPAID | OVERDUE | NOT_BILLED`.
 - `RentRollRow`, `RentRollResponse`: GET /rent-roll (rows with `openingBalance`, `charged`, `paid`, `balance`, plus a summary that ignores status and search).
 - `GenerateRentResponse`: POST /rent-roll/generate counts.
+
+## vendor.ts
+- `VendorRateUnit` (`HOUR | VISIT | MONTH | JOB`), `VendorInsuranceStatus` (`NONE | EXPIRED | EXPIRING | VALID`, computed by the server).
+- `Vendor`: GET /vendors rows, GET /vendors/:id and every vendor write (`rateAmount` money string with `rateUnit`, `insuranceExpiresOn` "YYYY-MM-DD", `archivedAt`, `expenseCount`, `createdBy`).
+- `VendorTrade`: one GET /vendors/trades item (`key`, `label`).
+- `VendorCreateBody`, `VendorUpdateBody`: request bodies (`rateAmount` is a number; PATCH clears with null, except name and trade).
+
+## expense.ts
+- `ExpenseType` (`OPERATING | CAPITAL`), `ExpenseStatus` (`PENDING_APPROVAL | APPROVED | REJECTED`; voiding is the `voided` flag).
+- `Expense`: one expense (money string `amount`, "YYYY-MM-DD" `date`, `property` / `unit` / `vendor` refs or null (no property = portfolio-wide), approved / rejected / voided by and at, `rejectionReason`, `voidReason`, `allowedActions` for the caller).
+- `ExpenseAllowedActions`: `{ edit, approve, reject, void, delete }`.
+- `ExpenseList`: GET /expenses page (`items`, `page`, `pageSize`, `totalItems`, `totalPages`, `totals` over every matching row).
+- `ExpenseSummary`, `CategoryTotal`: GET /expenses/summary (total, previous period, `changePercent` or null, average monthly, largest category, pending ignoring dates, by category).
+- `ExpenseCategory`: one GET /expenses/categories item (`key`, `label`, `defaultType`).
+- `ExpenseListQuery`, `ExpenseSummaryQuery`: the query params (type aliases, so they fit `apiFetch`'s `query`).
+- `ExpenseCreateBody`, `ExpenseUpdateBody`: request bodies (`amount` is a number; no / null `propertyId` = portfolio-wide).
+

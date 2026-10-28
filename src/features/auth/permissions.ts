@@ -21,12 +21,17 @@ export type Action =
   | "rent.generate"
   | "entry.void"
   | "template.manage"
+  | "vendor.manage"
+  | "expense.record"
+  | "expense.approve"
   | "access.manage";
 
 /**
  * The backend permission key each action needs (API.md, Permissions). null = OWNER only, never a switch.
  * lease.edit also covers activate, end and delete draft, and picking a lease template; charge.create also covers billing a partial month.
  * template.manage covers every lease template write (create, new version, details, default, archive, delete, live preview).
+ * vendor.manage covers create, edit, archive, unarchive and delete. expense.record only gates "Add Expense": every expense
+ * button comes from the expense's allowedActions. entry.void (money.void) also voids expenses.
  */
 const ACTION_KEYS: Record<Action, string | null> = {
   "property.create": "properties.create",
@@ -46,6 +51,9 @@ const ACTION_KEYS: Record<Action, string | null> = {
   "rent.generate": "money.record",
   "entry.void": "money.void",
   "template.manage": "templates.manage",
+  "vendor.manage": "vendors.manage",
+  "expense.record": "expenses.record",
+  "expense.approve": "expenses.approve",
   "access.manage": null,
 };
 

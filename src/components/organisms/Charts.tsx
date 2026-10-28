@@ -90,16 +90,33 @@ export function DonutChart({ slices, centerLabel, centerSub, format = (n) => Str
   );
 }
 
-/** Horizontal comparison bars (Property Performance). Values are labeled. */
-export function HBarList({ items, format = (n) => String(n), className }: { items: { label: string; value: number }[]; format?: (n: number) => string; className?: string }) {
+/**
+ * Horizontal comparison bars (Property Performance, expenses by category). Values are labeled; `detail` adds a muted note
+ * after the value ("26.2%"). Under md, and with `stacked`, the label and value share a line and the bar sits under them
+ * (for narrow cards); otherwise label, bar and value are one row. `key` defaults to the label.
+ */
+export function HBarList({
+  items,
+  format = (n) => String(n),
+  stacked,
+  className,
+}: {
+  items: { key?: string; label: string; value: number; detail?: string }[];
+  format?: (n: number) => string;
+  stacked?: boolean;
+  className?: string;
+}) {
   const max = Math.max(...items.map((i) => i.value)) || 1;
   return (
-    <ul className={cn("m-0 flex list-none flex-col gap-2 p-0", className)}>
+    <ul className={cn("m-0 flex list-none flex-col p-0", stacked ? "gap-3" : "gap-3 md:gap-2", className)}>
       {items.map((it) => (
-        <li key={it.label} className="flex items-center gap-4">
-          <span className="w-44 shrink-0 text-small">{it.label}</span>
-          <div className="h-5 flex-1 overflow-hidden rounded-pill bg-surface-3"><div className="h-full rounded-pill bg-success" style={{ width: `${(it.value / max) * 100}%` }} /></div>
-          <span className="w-24 shrink-0 text-right text-small tabular">{format(it.value)}</span>
+        <li key={it.key ?? it.label} className={cn("grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1", !stacked && "md:flex md:gap-4")}>
+          <span className={cn("min-w-0 truncate text-small", !stacked && "md:w-44 md:shrink-0")} title={it.label}>{it.label}</span>
+          <span className={cn("whitespace-nowrap text-right text-small tabular", !stacked && "md:order-last md:min-w-24 md:shrink-0")}>
+            {format(it.value)}
+            {it.detail && <span className="ml-2 text-text-secondary">{it.detail}</span>}
+          </span>
+          <div aria-hidden className={cn("col-span-2 h-2 overflow-hidden rounded-pill bg-surface-3", !stacked && "md:h-5 md:flex-1")}><div className="h-full rounded-pill bg-success" style={{ width: `${(it.value / max) * 100}%` }} /></div>
         </li>
       ))}
     </ul>

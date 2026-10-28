@@ -20,10 +20,13 @@ const ACTIONS: Action[] = [
   "rent.generate",
   "entry.void",
   "template.manage",
+  "vendor.manage",
+  "expense.record",
+  "expense.approve",
   "access.manage",
 ];
 
-const ALL_KEYS = ["properties.create", "properties.edit", "units.create_edit", "units.delete", "tenants.create_edit", "tenants.delete", "leases.manage", "templates.manage", "money.record", "money.void"];
+const ALL_KEYS = ["properties.create", "properties.edit", "units.create_edit", "units.delete", "tenants.create_edit", "tenants.delete", "leases.manage", "templates.manage", "money.record", "money.void", "vendors.manage", "expenses.record", "expenses.approve"];
 
 const user = (role: Me["role"], permissions: string[] = []): Pick<Me, "role" | "permissions"> => ({ role, permissions });
 
@@ -52,6 +55,8 @@ describe("can", () => {
     expect(can(m, "tenant.edit")).toBe(false);
     // Off by default for managers: leases.manage alone doesn't grant template writes.
     expect(can(user("PROPERTY_MANAGER", ["leases.manage"]), "template.manage")).toBe(false);
+    // Recording expenses doesn't grant approving them.
+    expect(can(user("PROPERTY_MANAGER", ["expenses.record"]), "expense.approve")).toBe(false);
   });
 
   it("each action maps to its key", () => {
@@ -64,6 +69,9 @@ describe("can", () => {
       ["lease.edit", "leases.manage"],
       ["entry.void", "money.void"],
       ["template.manage", "templates.manage"],
+      ["vendor.manage", "vendors.manage"],
+      ["expense.record", "expenses.record"],
+      ["expense.approve", "expenses.approve"],
     ];
     for (const [action, key] of pairs) expect(can(user("PROPERTY_MANAGER", [key]), action)).toBe(true);
   });

@@ -4,7 +4,7 @@ import { Badge, type Tone } from "@/components/atoms/Badge";
 /**
  * Domain status map from the guideline, section 7.
  * Keeps color decisions out of feature code: pass the domain and the raw status string.
- * rent, lease, esign and unit use the backend enums as keys (../property-os-api/docs/frontend-handoff/API.md section 2) and show a friendly label.
+ * rent, lease, esign, unit, insurance and approval use the backend enums as keys (../property-os-api/docs/frontend-handoff/API.md section 2) and show a friendly label.
  */
 export type RentStatus = "PAID" | "PARTIAL" | "UNPAID" | "OVERDUE" | "NOT_BILLED";
 /** Backend LeaseStatus plus the UI-only "EXPIRING" (an ACTIVE lease with endingSoon = true). */
@@ -13,8 +13,10 @@ export type ESignStatus = "NOT_SENT" | "PENDING" | "SIGNED";
 export type TicketStatus = "Open" | "Assigned" | "In Progress" | "Resolved" | "Open past SLA";
 export type TicketPriority = "Low" | "Normal" | "Urgent" | "Emergency";
 export type UnitStatus = "VACANT" | "OCCUPIED" | "RESERVED" | "UNDER_MAINTENANCE";
-export type InsuranceStatus = "Valid" | "Expiring" | "Expired";
-export type ApprovalStatus = "Approved" | "Pending" | "Rejected";
+/** Vendor insuranceStatus (computed by the backend). */
+export type InsuranceStatus = "VALID" | "EXPIRING" | "EXPIRED" | "NONE";
+/** Backend ExpenseStatus. */
+export type ApprovalStatus = "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
 /** UI status of a lease template, from isDefault and archivedAt (GET /lease-templates). */
 export type TemplateStatus = "DEFAULT" | "ACTIVE" | "ARCHIVED";
 
@@ -25,8 +27,8 @@ export const statusTone = {
   ticket: { Open: "neutral", Assigned: "warning", "In Progress": "info", Resolved: "success", "Open past SLA": "danger" },
   priority: { Low: "neutral", Normal: "info", Urgent: "warning", Emergency: "danger" },
   unit: { VACANT: "neutral", OCCUPIED: "success", RESERVED: "info", UNDER_MAINTENANCE: "warning" },
-  insurance: { Valid: "success", Expiring: "warning", Expired: "danger" },
-  approval: { Approved: "success", Pending: "warning", Rejected: "danger" },
+  insurance: { VALID: "success", EXPIRING: "warning", EXPIRED: "danger", NONE: "neutral" },
+  approval: { PENDING_APPROVAL: "warning", APPROVED: "success", REJECTED: "danger" },
   template: { DEFAULT: "success", ACTIVE: "neutral", ARCHIVED: "neutral" },
 } as const satisfies Record<string, Record<string, Tone>>;
 
@@ -37,6 +39,8 @@ export const statusLabel = {
   esign: { NOT_SENT: "Not sent", PENDING: "Pending", SIGNED: "Signed" },
   unit: { VACANT: "Vacant", OCCUPIED: "Occupied", RESERVED: "Reserved", UNDER_MAINTENANCE: "Under maintenance" },
   template: { DEFAULT: "Default", ACTIVE: "Active", ARCHIVED: "Archived" },
+  insurance: { VALID: "Valid", EXPIRING: "Expiring", EXPIRED: "Expired", NONE: "No insurance" },
+  approval: { PENDING_APPROVAL: "Pending approval", APPROVED: "Approved", REJECTED: "Rejected" },
 } as const satisfies Partial<{ [D in keyof typeof statusTone]: Record<keyof (typeof statusTone)[D], string> }>;
 
 export type StatusDomain = keyof typeof statusTone;
