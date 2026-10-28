@@ -48,3 +48,5 @@ Numbers the frontend computes (money in integer cents). The API gives only `unit
 
 ## PropertyFormModal.tsx
 - `PropertyFormModal`: add / edit modal (react-hook-form + zod). Acquisition date is "YYYY-MM-DD" in and out (kept as it is). Trims text, US state / ZIP format (on edit only when changed), PATCH sends only changed fields (`description: null` when cleared), property value more than $0 and at most $9,999,999,999.99, "Assign managers" on create only with `manager.assign` (owner; a manager sending `managerIds` gets 403, and is assigned to the new property automatically), "Number of units" (0–200, not sent) on create only with `unit.create`, `onCreated(property, unitCount)`, server errors under fields or at the top, "Discard changes?" on close. Mount it only while open.
+
+The desktop Cards view uses the design system `CardGrid` (equal-width columns; long text never widens a card).

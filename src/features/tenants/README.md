@@ -45,3 +45,5 @@ Tenants: one directory page (/tenants) with Cards / Table views, the tenant draw
 
 ## TenantDeleteDialog.tsx
 - `TenantDeleteDialog`: ConfirmDialog for DELETE /tenants/:id with busy state and the backend's 409 inside; toast and `onDeleted` on success.
+
+The desktop Cards view uses the design system `CardGrid` (equal-width columns; long text never widens a card).

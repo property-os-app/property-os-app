@@ -140,7 +140,7 @@ export function ExpensesPage() {
     preset === "custom" ? table.setFilters({ range: "custom", from: range.from, to: range.to }) : table.setFilters({ range: preset, from: "", to: "" });
   const pendingOn = filters.status === "PENDING_APPROVAL";
 
-  const search = <SearchInput placeholder="Search description, vendor or number" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />;
+  const search = <SearchInput placeholder="Search expenses" aria-label="Search description, vendor, number or reference" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />;
   const propertySelect = (id?: string) => (
     <Select
       id={id}
@@ -304,8 +304,8 @@ export function ExpensesPage() {
       )}
       {isMobile && <div>{pendingChip}</div>}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
-        <div id={table.listId} className="min-w-0 scroll-mt-24">
+      <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
+        <div id={table.listId} className="min-w-0 flex-1 scroll-mt-24">
           <ExpensesTable
             view={view}
             isMobile={isMobile}
@@ -322,14 +322,17 @@ export function ExpensesPage() {
             onOpen={(e) => setOpen(e.id)}
           />
         </div>
-        <CategoryBreakdown
-          summary={s}
-          pending={summary.isPending}
-          error={summary.isError ? summary.error : null}
-          onRetry={() => void summary.refetch()}
-          periodLabel={capitalize(period)}
-          categoryLabel={categoryLabel}
-        />
+        {/* Fixed 320px beside the list from xl; the list (flex-1, min-w-0) can't push into it. */}
+        <div className="min-w-0 xl:w-80 xl:shrink-0">
+          <CategoryBreakdown
+            summary={s}
+            pending={summary.isPending}
+            error={summary.isError ? summary.error : null}
+            onRetry={() => void summary.refetch()}
+            periodLabel={capitalize(period)}
+            categoryLabel={categoryLabel}
+          />
+        </div>
       </div>
 
       {openId && <ExpenseDrawer key={openId} id={openId} placeholder={placeholder} onClose={() => setOpen(null)} />}

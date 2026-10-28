@@ -44,6 +44,11 @@ export interface ListCardProps {
  * the content above it ignores the pointer, except the kebab. No z-index on purpose: an open kebab menu must stay
  * above the next card (positioned elements paint in DOM order, so the kebab is already above the tap area).
  */
+/** Hover text for a value that may be cut off: only plain strings and numbers (elements bring their own). */
+function tip(node: React.ReactNode): string | undefined {
+  return typeof node === "string" || typeof node === "number" ? String(node) : undefined;
+}
+
 export function ListCard({
   title, subtitle, leading, badge, facts, amount, note, strip, muted, actions, href, onOpen, openLabel, renderLink, flat, className,
 }: ListCardProps) {
@@ -56,7 +61,7 @@ export function ListCard({
   return (
     <article
       className={cn(
-        "relative flex flex-col gap-3 bg-surface-1 p-4 text-text-primary",
+        "relative flex min-w-0 flex-col gap-3 bg-surface-1 p-4 text-text-primary",
         !flat && "rounded-card border border-border-subtle",
         interactive && (flat ? "transition-colors duration-fast hover:bg-surface-3" : "transition-colors duration-fast hover:border-border-strong"),
         className,
@@ -67,14 +72,14 @@ export function ListCard({
       <div className={cn("pointer-events-none relative flex items-start gap-3", muted && "text-text-muted")}>
         {leading && <span className="shrink-0">{leading}</span>}
         <div className="min-w-0 flex-1">
-          <div className={cn("truncate font-semibold", muted ? "text-text-muted" : "text-text-primary")}>{title}</div>
-          {subtitle && <Small className="block truncate">{subtitle}</Small>}
+          <div className={cn("line-clamp-2 break-words font-semibold", muted ? "text-text-muted" : "text-text-primary")} title={tip(title)}>{title}</div>
+          {subtitle && <Small className="block truncate" title={tip(subtitle)}>{subtitle}</Small>}
           {badge && <div className="mt-2 flex flex-wrap items-center gap-1.5">{badge}</div>}
         </div>
         {amount && (
           <div className="flex shrink-0 flex-col items-end text-right">
             {amount.label && <Overline>{amount.label}</Overline>}
-            <span className="tabular font-semibold">{amount.value}</span>
+            <span className="whitespace-nowrap tabular font-semibold">{amount.value}</span>
             {amount.caption && <Caption className="whitespace-nowrap">{amount.caption}</Caption>}
           </div>
         )}
@@ -85,12 +90,12 @@ export function ListCard({
           {facts.map((f) => (
             <div key={f.label} className="flex min-w-0 flex-col gap-1">
               <dt><Overline>{f.label}</Overline></dt>
-              <dd className={cn("m-0 truncate text-small", muted ? "text-text-muted" : "text-text-primary")}>{f.value}</dd>
+              <dd className={cn("m-0 min-w-0 truncate text-small", muted ? "text-text-muted" : "text-text-primary")} title={tip(f.value)}>{f.value}</dd>
             </div>
           ))}
         </dl>
       )}
-      {note && <Caption className="pointer-events-none relative block">{note}</Caption>}
+      {note && <Caption className="pointer-events-none relative block min-w-0 break-words">{note}</Caption>}
     </article>
   );
 }

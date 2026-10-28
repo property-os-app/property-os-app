@@ -91,7 +91,8 @@ export function DonutChart({ slices, centerLabel, centerSub, format = (n) => Str
 }
 
 /**
- * Horizontal comparison bars (Property Performance, expenses by category). Values are labeled; `detail` adds a muted note
+ * Horizontal comparison bars (Property Performance, expenses by category). Labels wrap to 2 lines (full text on hover);
+ * the value never shrinks. Values are labeled; `detail` adds a muted note
  * after the value ("26.2%"). Under md, and with `stacked`, the label and value share a line and the bar sits under them
  * (for narrow cards); otherwise label, bar and value are one row. `key` defaults to the label.
  */
@@ -110,8 +111,8 @@ export function HBarList({
   return (
     <ul className={cn("m-0 flex list-none flex-col p-0", stacked ? "gap-3" : "gap-3 md:gap-2", className)}>
       {items.map((it) => (
-        <li key={it.key ?? it.label} className={cn("grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1", !stacked && "md:flex md:gap-4")}>
-          <span className={cn("min-w-0 truncate text-small", !stacked && "md:w-44 md:shrink-0")} title={it.label}>{it.label}</span>
+        <li key={it.key ?? it.label} className={cn("grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1", !stacked && "md:flex md:gap-4")}>
+          <span className={cn("line-clamp-2 min-w-0 break-words text-small", !stacked && "md:w-44 md:shrink-0")} title={it.label}>{it.label}</span>
           <span className={cn("whitespace-nowrap text-right text-small tabular", !stacked && "md:order-last md:min-w-24 md:shrink-0")}>
             {format(it.value)}
             {it.detail && <span className="ml-2 text-text-secondary">{it.detail}</span>}

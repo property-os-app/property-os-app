@@ -54,3 +54,5 @@ Vendors: the /vendors directory (Cards / Table views, KPIs, filters), the vendor
 ## Tests (`npm test`)
 - `vendorText.test.ts`: rate text (each unit, both or neither), insurance badge text (4 statuses, year when not this year, trusts the backend status).
 - `vendorStats.test.ts`: KPIs (active only, empty), service areas, filters (inactive, trade, insurance, area ignoring case).
+
+The desktop Cards view uses the design system `CardGrid` (equal-width columns; long text never widens a card).

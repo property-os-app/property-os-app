@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { Plus, SearchX, Users } from "lucide-react";
 import { Button, Dash, Select, Skeleton } from "@/components/atoms";
 import { Card, EmptyState, FilterChip, FormField, InlineError, KpiCard, SearchInput } from "@/components/molecules";
-import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
+import { CardGrid, KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { centsToAmount, formatCompactCurrency, formatPercent } from "@/lib/format";
 import { plural } from "@/lib/labels";
@@ -272,13 +272,13 @@ export function TenantsPage() {
           </Card>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <CardGrid>
               {state === "loading"
                 ? Array.from({ length: 6 }).map((_, i) => <TenantCardSkeleton key={i} />)
                 : table.pageRows.map((row) => (
                     <TenantCard key={row.tenant.id} row={row} onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} />
                   ))}
-            </div>
+            </CardGrid>
             {pagination && <div className="flex items-center justify-between text-small text-text-secondary">{pagination}</div>}
           </>
         )}

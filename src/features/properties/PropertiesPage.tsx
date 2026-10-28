@@ -2,7 +2,7 @@ import { useMemo, type ReactNode } from "react";
 import { Plus, SearchX } from "lucide-react";
 import { Button, Dash, Select, Skeleton } from "@/components/atoms";
 import { Card, EmptyState, FormField, InlineError, KpiCard, SearchInput } from "@/components/molecules";
-import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
+import { CardGrid, KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { centsToAmount, formatCompactCurrency, formatPercent } from "@/lib/format";
 import { labelOptions, plural, propertyTypeLabels } from "@/lib/labels";
@@ -243,11 +243,11 @@ export function PropertiesPage() {
           </Card>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <CardGrid max={2}>
               {state === "loading"
                 ? Array.from({ length: 4 }).map((_, i) => <PropertyCardSkeleton key={i} />)
                 : table.pageRows.map((row) => <PropertyCard key={row.property.id} row={row} />)}
-            </div>
+            </CardGrid>
             {pagination && <div className="flex items-center justify-between text-small text-text-secondary">{pagination}</div>}
           </>
         )}

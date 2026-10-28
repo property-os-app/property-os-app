@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { Plus, SearchX, Truck } from "lucide-react";
 import { Button, Checkbox, Dash, Select, Skeleton } from "@/components/atoms";
 import { Card, EmptyState, FormField, InlineError, KpiCard, SearchInput, toast } from "@/components/molecules";
-import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
+import { CardGrid, KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { insuranceStatusLabels, labelOptions, plural } from "@/lib/labels";
 import { useClientTable, type SortColumn } from "@/lib/useClientTable";
@@ -230,11 +230,11 @@ export function VendorsPage() {
           </Card>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <CardGrid>
               {state === "loading"
                 ? Array.from({ length: 6 }).map((_, i) => <VendorCardSkeleton key={i} />)
                 : table.pageRows.map((v) => <VendorCard key={v.id} vendor={v} tradeLabel={tradeLabel(v.trade)} onOpen={(x) => setOpenId(x.id)} actions={actions} />)}
-            </div>
+            </CardGrid>
             {pagination && <div className="flex items-center justify-between text-small text-text-secondary">{pagination}</div>}
           </>
         )}
