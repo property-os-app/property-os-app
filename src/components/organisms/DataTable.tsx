@@ -86,7 +86,8 @@ export function DataTable<Row>({
           <div className="flex items-center gap-2">{bulkActions(selected!)}</div>
         </div>
       )}
-      <div className="overflow-x-auto">
+      {/* relative: screen-reader-only labels (absolute) inside the table use this box, so they scroll with it instead of widening the page. */}
+      <div className="relative overflow-x-auto">
         <table className="w-full border-collapse text-body">
           {caption && <caption className="sr-only">{caption}</caption>}
           <thead>
