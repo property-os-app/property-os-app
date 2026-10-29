@@ -4,6 +4,7 @@ import { ListCard } from "@/components/molecules";
 import { CardList, DataTable, type Column, type DataTableProps } from "@/components/organisms";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { ContactLink } from "@/features/shared/ContactLink";
+import { RatingText } from "@/features/shared/Rating";
 import { InactiveBadge, InsuranceBadge, VendorMenu, type VendorActions } from "@/features/vendors/VendorParts";
 import { rateText, tradeLine } from "@/features/vendors/vendorText";
 import type { Vendor } from "@/types/vendor";
@@ -15,7 +16,7 @@ type Props = Pick<DataTableProps<Vendor>, "rows" | "state" | "sort" | "onSortCha
 };
 
 /**
- * The Table view of the vendor directory (from md up): Vendor and Expenses sort; on phones the same rows as cards
+ * The Table view of the vendor directory (from md up): Vendor, Expenses, Rating and Jobs sort; on phones the same rows as cards
  * (the Cards view on phones too). Row or card opens the drawer; the kebab and contact links don't.
  */
 export function VendorsTable({ tradeLabel, onOpen, actions, ...props }: Props) {
@@ -53,6 +54,9 @@ export function VendorsTable({ tradeLabel, onOpen, actions, ...props }: Props) {
         ),
       },
       { key: "insurance", header: "Insurance", cell: (v) => <InsuranceBadge vendor={v} /> },
+      { key: "rating", header: "Rating", sortable: true, cell: (v) => <RatingText rating={v.rating} count={v.ratingCount} compact /> },
+      { key: "jobs", header: "Jobs", align: "right", sortable: true, cell: (v) => <Num>{v.jobsCount}</Num> },
+      { key: "active", header: "Active", align: "right", cell: (v) => <Num>{v.activeTickets}</Num> },
       { key: "expenses", header: "Expenses", align: "right", sortable: true, cell: (v) => <Num>{v.expenseCount}</Num> },
     ];
     if (actions) cols.push({ key: "actions", header: <span className="sr-only">Actions</span>, width: 56, cell: (v) => <VendorMenu vendor={v} actions={actions} /> });
@@ -86,6 +90,7 @@ export function VendorsTable({ tradeLabel, onOpen, actions, ...props }: Props) {
             facts={[
               { label: "Rate", value: rateText(v) ?? <Dash /> },
               { label: "Phone", value: <ContactLink kind="phone" value={v.phone} /> },
+              { label: "Rating", value: <RatingText rating={v.rating} count={v.ratingCount} compact /> },
             ]}
             note={v.email ? <ContactLink kind="email" value={v.email} /> : undefined}
             actions={actions ? <VendorMenu vendor={v} actions={actions} /> : undefined}

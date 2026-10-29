@@ -58,10 +58,13 @@ export interface TabsProps<V extends string> {
   className?: string;
 }
 
-/** Underline tabs for drawers, property pages and settings. */
+/** Underline tabs for drawers, property pages and settings. Scrolls sideways inside itself when too wide (the base line is an inset shadow, so scrolling never clips the active underline). */
 export function Tabs<V extends string>({ value, onChange, tabs, className }: TabsProps<V>) {
   return (
-    <div role="tablist" className={cn("flex gap-6 border-b border-border-subtle", className)}>
+    <div
+      role="tablist"
+      className={cn("flex max-w-full gap-6 overflow-x-auto [scrollbar-width:none] shadow-[inset_0_-1px_0_var(--color-border-subtle)]", className)}
+    >
       {tabs.map((t) => {
         const on = t.value === value;
         return (
@@ -72,7 +75,7 @@ export function Tabs<V extends string>({ value, onChange, tabs, className }: Tab
             aria-selected={on}
             onClick={() => onChange(t.value)}
             className={cn(
-              "-mb-px inline-flex items-center gap-2 border-b-2 py-3 text-body font-semibold transition-colors duration-fast focus-visible:focus-ring",
+              "inline-flex shrink-0 items-center gap-2 border-b-2 py-3 text-body font-semibold whitespace-nowrap transition-colors duration-fast focus-visible:focus-ring focus-visible:outline-offset-[-2px]",
               on ? "border-success text-text-primary" : "border-transparent text-text-secondary hover:text-text-primary",
             )}
           >

@@ -19,6 +19,8 @@ const saved: Expense = {
   unitId: "u1",
   unit: { id: "u1", unitNumber: "4B" },
   vendorId: null,
+  maintenanceTicketId: null,
+  maintenanceTicket: null,
   vendor: null,
   createdById: "m1",
   createdBy: { id: "m1", name: "Manager" },
@@ -79,5 +81,12 @@ describe("expenseErrorField", () => {
     expect(expenseErrorField('Vendor "Ridgeway" is archived, so it can\'t be picked for an expense. Unarchive it first.')).toBe("vendorId");
     expect(expenseErrorField("amount must be greater than 0")).toBe("amount");
     expect(expenseErrorField("This expense was changed by someone else at the same time. Please retry.")).toBeNull();
+  });
+});
+
+describe("expenseChanges for an expense from a ticket", () => {
+  it("never sends property or unit (they follow the ticket)", () => {
+    const linked: Expense = { ...saved, maintenanceTicketId: "t1", maintenanceTicket: { id: "t1", ticketNumber: 1042, title: "Leak" } };
+    expect(expenseChanges(expenseSchema.parse({ ...expenseDefaults(linked), propertyId: "p2", unitId: "", notes: "x" }), linked)).toEqual({ notes: "x" });
   });
 });

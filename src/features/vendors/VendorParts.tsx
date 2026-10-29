@@ -1,6 +1,7 @@
 import { Archive, ArchiveRestore, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/atoms";
 import { KebabMenu, StatusBadge, type MenuItem } from "@/components/molecules";
+import { maybeDeletable } from "@/features/vendors/vendorStats";
 import { insuranceText } from "@/features/vendors/vendorText";
 import type { Vendor } from "@/types/vendor";
 
@@ -26,12 +27,12 @@ export function InactiveBadge({ vendor }: { vendor: Vendor }) {
   return vendor.archivedAt ? <Badge tone="neutral">Inactive</Badge> : null;
 }
 
-/** The "⋮" menu: Edit, Archive or Unarchive, and Delete only while no expense uses the vendor. Nothing without `actions`. */
+/** The "⋮" menu: Edit, Archive or Unarchive, and Delete only while `maybeDeletable`. Nothing without `actions`. */
 export function VendorMenu({ vendor, actions }: { vendor: Vendor; actions?: VendorActions }) {
   if (!actions) return null;
   const items: MenuItem[] = [{ label: "Edit", icon: <Pencil strokeWidth={1.5} />, onSelect: () => actions.onEdit(vendor) }];
   if (vendor.archivedAt) items.push({ label: "Unarchive", icon: <ArchiveRestore strokeWidth={1.5} />, onSelect: () => actions.onUnarchive(vendor) });
   else items.push({ label: "Archive", icon: <Archive strokeWidth={1.5} />, onSelect: () => actions.onArchive(vendor) });
-  if (vendor.expenseCount === 0) items.push({ label: "Delete", icon: <Trash2 strokeWidth={1.5} />, destructive: true, onSelect: () => actions.onDelete(vendor) });
+  if (maybeDeletable(vendor)) items.push({ label: "Delete", icon: <Trash2 strokeWidth={1.5} />, destructive: true, onSelect: () => actions.onDelete(vendor) });
   return <KebabMenu label={`Actions for ${vendor.name}`} items={items} />;
 }

@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { expenseKeys } from "@/features/expenses/keys";
+import { maintenanceKeys } from "@/features/maintenance/keys";
 import { vendorKeys } from "@/features/vendors/keys";
 import type { Vendor, VendorCreateBody, VendorTrade, VendorUpdateBody } from "@/types/vendor";
 
@@ -39,11 +40,14 @@ export function useTradeLabel() {
   return useCallback((key: string) => trades.data?.find((t) => t.key === key)?.label ?? key, [trades.data]);
 }
 
-/** After a vendor change: the saved detail into the cache, the list, and expenses (they embed the vendor's name and trade). */
-function refreshAfterVendorChange(qc: QueryClient, saved?: Vendor, withExpenses = true) {
+/** After a vendor change: the saved detail into the cache, the list, and expenses and tickets (they embed the vendor's name and trade). */
+function refreshAfterVendorChange(qc: QueryClient, saved?: Vendor, withEmbeds = true) {
   if (saved) qc.setQueryData(vendorKeys.detail(saved.id), saved);
   void qc.invalidateQueries({ queryKey: vendorKeys.all });
-  if (withExpenses) void qc.invalidateQueries({ queryKey: expenseKeys.all });
+  if (withEmbeds) {
+    void qc.invalidateQueries({ queryKey: expenseKeys.all });
+    void qc.invalidateQueries({ queryKey: maintenanceKeys.all });
+  }
 }
 
 /** POST /vendors. 409 on a name clash (the message says to unarchive when the other vendor is archived). */
@@ -74,7 +78,7 @@ export function useArchiveVendor() {
   });
 }
 
-/** DELETE /vendors/:id: only while expenseCount is 0 (409 otherwise: "… Archive it instead."). */
+/** DELETE /vendors/:id: only while no expense and no ticket uses it (409 otherwise: "… Archive it instead."). */
 export function useDeleteVendor() {
   const qc = useQueryClient();
   return useMutation({

@@ -16,6 +16,7 @@ const tenantsHandle: RouteHandle = { title: "Tenants", nav: "tenants" };
 const leasesHandle: RouteHandle = { title: "Leases", nav: "leases" };
 const rentRollHandle: RouteHandle = { title: "Rent Roll", nav: "rentroll" };
 const expensesHandle: RouteHandle = { title: "Expenses", nav: "expenses" };
+const maintenanceHandle: RouteHandle = { title: "Maintenance", nav: "maintenance" };
 const vendorsHandle: RouteHandle = { title: "Vendors", nav: "vendors" };
 const settingsHandle: RouteHandle = { title: "Settings", nav: "settings" };
 const usersHandle: RouteHandle = { title: "Users and Permissions", nav: "settings" };
@@ -77,6 +78,7 @@ export const router = createBrowserRouter([
                   { path: "leases/:id", handle: leaseHandle, ...lazyPage(() => import("@/features/leases/LeasePage").then((m) => m.LeasePage)) },
                   { path: "rent-roll", handle: rentRollHandle, ...lazyPage(() => import("@/features/rent-roll/RentRollPage").then((m) => m.RentRollPage)) },
                   { path: "expenses", handle: expensesHandle, ...lazyPage(() => import("@/features/expenses/ExpensesPage").then((m) => m.ExpensesPage)) },
+                  { path: "maintenance", handle: maintenanceHandle, ...lazyPage(() => import("@/features/maintenance/MaintenancePage").then((m) => m.MaintenancePage)) },
                   { path: "vendors", handle: vendorsHandle, ...lazyPage(() => import("@/features/vendors/VendorsPage").then((m) => m.VendorsPage)) },
                   { path: "settings", handle: settingsHandle, ...lazyPage(() => import("@/features/settings/SettingsPage").then((m) => m.SettingsPage)) },
                   { path: "settings/users", handle: usersHandle, ...lazyPage(() => import("@/features/settings/UsersPage").then((m) => m.UsersPage)) },

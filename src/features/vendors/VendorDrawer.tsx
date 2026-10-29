@@ -15,11 +15,14 @@ import { useExpenses } from "@/features/expenses/hooks";
 import { ContactLink } from "@/features/shared/ContactLink";
 import { useTradeLabel, useVendor } from "@/features/vendors/hooks";
 import { InactiveBadge, InsuranceBadge, type VendorActions } from "@/features/vendors/VendorParts";
+import { maybeDeletable } from "@/features/vendors/vendorStats";
+import { VendorTicketsTab } from "@/features/vendors/VendorTicketsTab";
+import { RatingText } from "@/features/shared/Rating";
 import { rateText, tradeLine } from "@/features/vendors/vendorText";
 import type { Expense } from "@/types/expense";
 import type { Vendor } from "@/types/vendor";
 
-type Tab = "overview" | "expenses";
+type Tab = "overview" | "tickets" | "expenses";
 
 const orDash = (value: string | null | undefined) => (value ? value : <Dash />);
 const PAGE_SIZE = 10;
@@ -32,7 +35,8 @@ export interface VendorDrawerProps {
 }
 
 /**
- * One vendor (lg drawer): Overview (contact, trade, rate, license, notes; Insurance card) and Expenses (GET /expenses?vendorId=,
+ * One vendor (lg drawer): Overview (contact, trade, rate, license, rating, jobs, notes; Insurance card), Tickets
+ * (GET /maintenance-tickets?vendorId=, a row opens it on the Maintenance page) and Expenses (GET /expenses?vendorId=,
  * newest first, 10 per page; a row opens it on the Expenses page). Footer with vendors.manage: Delete (unused only),
  * Archive / Unarchive, Edit vendor. Mount it only while open.
  */
@@ -59,6 +63,7 @@ export function VendorDrawer({ vendor: row, actions, onClose }: VendorDrawerProp
             onChange={setTab}
             tabs={[
               { value: "overview", label: "Overview" },
+              { value: "tickets", label: "Tickets", count: vendor.activeTickets > 0 ? vendor.activeTickets : undefined },
               { value: "expenses", label: "Expenses", count: vendor.expenseCount },
             ]}
           />
@@ -67,7 +72,7 @@ export function VendorDrawer({ vendor: row, actions, onClose }: VendorDrawerProp
       footer={
         canAct ? (
           <>
-            {vendor.expenseCount === 0 && (
+            {maybeDeletable(vendor) && (
               <Button variant="ghost" onClick={() => actions.onDelete(vendor)}>
                 Delete
               </Button>
@@ -90,6 +95,8 @@ export function VendorDrawer({ vendor: row, actions, onClose }: VendorDrawerProp
         </Card>
       ) : tab === "overview" ? (
         <Overview vendor={vendor} tradeLabel={tradeLabel(vendor.trade)} />
+      ) : tab === "tickets" ? (
+        <VendorTicketsTab vendor={vendor} />
       ) : (
         <ExpensesTab vendor={vendor} />
       )}
@@ -112,6 +119,8 @@ function Overview({ vendor, tradeLabel }: { vendor: Vendor; tradeLabel: string }
             { label: "Service area", value: orDash(vendor.serviceArea) },
             { label: "Rate", value: rateText(vendor) ?? <Dash /> },
             { label: "License number", value: orDash(vendor.licenseNumber) },
+            { label: "Rating", value: <RatingText rating={vendor.rating} count={vendor.ratingCount} /> },
+            { label: "Jobs", value: `${plural(vendor.jobsCount, "resolved ticket")} · ${vendor.activeTickets} active` },
             { label: "Notes", value: vendor.notes ? <span className="whitespace-pre-line">{vendor.notes}</span> : <Dash /> },
             { label: "Added", value: `${formatTimestampDate(vendor.createdAt)} by ${vendor.createdBy.name}` },
           ]}

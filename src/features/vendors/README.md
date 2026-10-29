@@ -9,7 +9,7 @@ Vendors: the /vendors directory (Cards / Table views, KPIs, filters), the vendor
 - `useVendors()`: GET /vendors?includeArchived=true, once; the page searches and filters on the client.
 - `useVendor(id, placeholder?)`: GET /vendors/:id (404 = not found), showing the list row until it answers.
 - `useVendorTrades()`: GET /vendors/trades, kept 1 hour. `useTradeLabel()`: key → label (the key until loaded).
-- `useCreateVendor()`, `useUpdateVendor()`, `useArchiveVendor()` (`{ id, archive }`), `useDeleteVendor()`: the writes. Each refreshes the vendor list; updates and archive also refresh expenses (they embed the vendor's name and trade).
+- `useCreateVendor()`, `useUpdateVendor()`, `useArchiveVendor()` (`{ id, archive }`), `useDeleteVendor()`: the writes. Each refreshes the vendor list; updates and archive also refresh expenses and tickets (they embed the vendor's name and trade). Ticket writes refresh vendors (rating, jobs, active).
 
 ## vendorText.ts
 - `rateText(v)`: "$110.00 / hour", or null without a rate.
@@ -17,7 +17,9 @@ Vendors: the /vendors directory (Cards / Table views, KPIs, filters), the vendor
 - `insuranceText(v, today?)`: "Expired Sep 15" / "Expires Oct 29" / "Valid to Mar 2027" / "No insurance on file", from the backend's `insuranceStatus` (never computed here); the year is added when it isn't this year.
 
 ## vendorStats.ts
-- `vendorKpis(vendors)`: active vendors only: `total`, `trades`, `expiring`, `expired`, `none`. `VendorKpis`.
+- `vendorKpis(vendors)`: active vendors only: `total`, `trades`, `expiring`, `expired`, `none`, `activeJobs` (sum of `activeTickets`), `vendorsWithJobs`, `averageRating`, `ratingCount`. `VendorKpis`.
+- `averageRating(vendors)`: every rating averaged (each vendor's `rating` weighted by `ratingCount`), 1 decimal, null when none.
+- `maybeDeletable(v)`: no expense, no resolved or active ticket (cancelled tickets aren't counted on the vendor, so the server may still answer 409).
 - `serviceAreas(vendors)`: the Service area filter options (once each ignoring case, A→Z).
 - `VendorFilters`, `initialVendorFilters`, `matchesVendorFilters(v, f)`: trade, insurance, area (ignoring case), show inactive.
 - `vendorSearchText(v, tradeLabel)`: name, contact name, trade label (the same fields as the server search).
@@ -30,19 +32,19 @@ Vendors: the /vendors directory (Cards / Table views, KPIs, filters), the vendor
 ## VendorParts.tsx
 - `VendorActions`: Edit / Archive / Unarchive / Delete handlers (omitted without vendors.manage).
 - `InsuranceBadge`: `StatusBadge domain="insurance"` with `insuranceText`. `InactiveBadge`: "Inactive" for archived vendors.
-- `VendorMenu`: the kebab; Delete only while `expenseCount` is 0.
+- `VendorMenu`: the kebab; Delete only while `maybeDeletable`.
 
 ## VendorsPage.tsx
-- `VendorsPage`: /vendors. PageHeader with "Add Vendor", 3 KPIs (Total vendors + trades, Insurance expiring + expired, No insurance on file; active vendors, not the filters), toolbar (search, Trade, Insurance, Service area, Show inactive, Clear all, then Sort in Cards view and the Cards / Table `ViewToggle`, saved with `useListView("vendors", "cards")`). Search, filters, sort and page in the URL (`useClientTable` `inUrl`): `?q=&trade=&insurance=&area=&show=&sort=&page=`. Phones: search plus the "Filters" sheet. Unarchive runs from the kebab with a toast. All states.
+- `VendorsPage`: /vendors. PageHeader with "Add Vendor", 4 KPIs (Total vendors + trades, Active jobs "across N vendors", Average rating "from N ratings", Insurance expiring + expired with the no-insurance count in the note; active vendors, not the filters), toolbar (search, Trade, Insurance, Service area, Show inactive, Clear all, then Sort in Cards view and the Cards / Table `ViewToggle`, saved with `useListView("vendors", "cards")`). Search, filters, sort and page in the URL (`useClientTable` `inUrl`): `?q=&trade=&insurance=&area=&show=&sort=&page=`. Phones: search plus the "Filters" sheet. Unarchive runs from the kebab with a toast. All states.
 
 ## VendorCard.tsx
-- `VendorCard`: Cards view card (3 per row from xl): avatar, name, "Trade · area", rate, kebab; contact name, phone and email (`ContactLink`); License and the insurance badge. Archived ones muted. `VendorCardSkeleton`: its loading shape.
+- `VendorCard`: Cards view card (3 per row from xl): avatar, name, "Trade · area", rate, kebab; contact name, phone and email (`ContactLink`); License and the insurance badge; Rating ("★ 4.7 (3)"), Jobs, Active. Archived ones muted. `VendorCardSkeleton`: its loading shape.
 
 ## VendorsTable.tsx
-- `VendorsTable`: Table view (Vendor + contact, Trade, Service area, Rate, Phone, Insurance, Expenses; Vendor and Expenses sort; kebab). On phones a `CardList` of `ListCard`s (insurance badge, Rate, Phone, email).
+- `VendorsTable`: Table view (Vendor + contact, Trade, Service area, Rate, Phone, Insurance, Rating, Jobs, Active, Expenses; Vendor, Rating, Jobs and Expenses sort; kebab). On phones a `CardList` of `ListCard`s (insurance badge, Rate, Phone, Rating, email).
 
 ## VendorDrawer.tsx
-- `VendorDrawer`: lg drawer. Overview (details with `ContactLink`s, added by / on; Insurance card with provider, policy number, expiry and badge) and Expenses (GET /expenses?vendorId=, voided included, 10 per page; a manager sees only their properties'). A row goes to `/expenses?vendor=…&expense=…`, where the expense drawer opens (a drawer never opens on another). Footer with vendors.manage: Delete (unused only), Archive / Unarchive, Edit vendor. "Vendor not found" on 404.
+- `VendorDrawer`: lg drawer. Overview (details with `ContactLink`s, rating, jobs and active tickets, added by / on; Insurance card with provider, policy number, expiry and badge), Tickets (`VendorTicketsTab`) and Expenses (GET /expenses?vendorId=, voided included, 10 per page; a manager sees only their properties'). A row goes to `/expenses?vendor=…&expense=…`, where the expense drawer opens (a drawer never opens on another). Footer with vendors.manage: Delete (unused only), Archive / Unarchive, Edit vendor. "Vendor not found" on 404.
 
 ## VendorFormModal.tsx
 - `VendorFormModal({ vendor?, onSaved?, onClose })`: add / edit modal (name, trade, contact, area, phone, email, rate + per, license, insurance provider, policy number, expiry, notes). Backend messages under their field (name clash under Name) or at the top. "Discard changes?" on close.
@@ -56,3 +58,6 @@ Vendors: the /vendors directory (Cards / Table views, KPIs, filters), the vendor
 - `vendorStats.test.ts`: KPIs (active only, empty), service areas, filters (inactive, trade, insurance, area ignoring case).
 
 The desktop Cards view uses the design system `CardGrid` (equal-width columns; long text never widens a card).
+
+## VendorTicketsTab.tsx
+- `VendorTicketsTab({ vendor })`: GET /maintenance-tickets?vendorId= (cancelled included, newest first, 10 per page; a manager sees only their properties'): #, ticket + location, status, rating stars, created. A row goes to `/maintenance?ticket=…`, where the ticket drawer opens.

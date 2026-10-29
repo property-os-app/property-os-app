@@ -8,6 +8,7 @@ import { applyServerErrorBy } from "@/lib/forms";
 import { expenseTypeLabels, labelOptions, paymentMethodLabels } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
 import { createExpenseBody, expenseChanges, expenseDefaults, expenseErrorField, expenseSchema, PORTFOLIO, type ExpenseFormInput, type ExpenseFormOutput } from "@/features/expenses/form";
+import { propertyText } from "@/features/expenses/expenseText";
 import { useCreateExpense, useExpenseCategories, useUpdateExpense } from "@/features/expenses/hooks";
 import { useProperties } from "@/features/properties/hooks";
 import { useScope } from "@/features/scope/scopeContext";
@@ -25,7 +26,8 @@ export interface ExpenseFormModalProps {
 /**
  * Add / edit expense. Type follows the category's defaultType until the user picks one; the unit list shows only the chosen
  * property's units and clears when the property changes; vendors are active ones (plus the expense's own, even archived).
- * "Portfolio-wide (no single property)" is Owner only. A manager saving a REJECTED expense resubmits it.
+ * "Portfolio-wide (no single property)" is Owner only. A manager saving a REJECTED expense resubmits it. An expense from a
+ * maintenance ticket shows its property and unit read-only (they follow the ticket).
  * Backend 400 / 403 / 404 / 409 messages go under their field or at the top. Mount it only while open.
  */
 export function ExpenseFormModal({ expense, onSaved, onClose }: ExpenseFormModalProps) {
@@ -45,6 +47,7 @@ export function ExpenseFormModal({ expense, onSaved, onClose }: ExpenseFormModal
   // categories are loaded): a saved type that differs from its category's default was picked by hand.
   const [typeTouched, setTypeTouched] = useState<boolean | null>(expense ? null : false);
   const resubmits = !isOwner && expense?.status === "REJECTED";
+  const ticket = expense?.maintenanceTicket ?? null;
 
   const {
     register,
@@ -171,27 +174,41 @@ export function ExpenseFormModal({ expense, onSaved, onClose }: ExpenseFormModal
             ))}
           </Select>
         </FormField>
-        <FormField label="Property" htmlFor="ef-property" required error={errors.propertyId?.message}>
-          <Select id="ef-property" {...register("propertyId", { onChange: () => setValue("unitId", "", { shouldDirty: true }) })}>
-            <option value="">{properties.isPending ? "Loading properties..." : "Choose a property"}</option>
-            {isOwner && <option value={PORTFOLIO}>Portfolio-wide (no single property)</option>}
-            {properties.data?.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </Select>
-        </FormField>
-        <FormField label="Unit" htmlFor="ef-unit" error={errors.unitId?.message} help={propertyId && propertyId !== PORTFOLIO ? "Optional." : "Choose a property first."}>
-          <Select id="ef-unit" disabled={!propertyId || propertyId === PORTFOLIO} {...register("unitId")}>
-            <option value="">{units.isPending ? "Loading units..." : "Whole property"}</option>
-            {unitOptions.map((u) => (
-              <option key={u.id} value={u.id}>
-                Unit {u.unitNumber}
-              </option>
-            ))}
-          </Select>
-        </FormField>
+        {ticket ? (
+          <>
+            {/* From a maintenance ticket: property and unit follow the ticket (409 otherwise), so they show read-only and keep their saved values. */}
+            <FormField label="Property" htmlFor="ef-property" help={`Follows ticket #${ticket.ticketNumber}.`}>
+              <Input id="ef-property" readOnly value={expense ? propertyText(expense) : ""} />
+            </FormField>
+            <FormField label="Unit" htmlFor="ef-unit" help={`Follows ticket #${ticket.ticketNumber}.`}>
+              <Input id="ef-unit" readOnly value={expense?.unit ? `Unit ${expense.unit.unitNumber}` : "Whole property"} />
+            </FormField>
+          </>
+        ) : (
+          <>
+            <FormField label="Property" htmlFor="ef-property" required error={errors.propertyId?.message}>
+              <Select id="ef-property" {...register("propertyId", { onChange: () => setValue("unitId", "", { shouldDirty: true }) })}>
+                <option value="">{properties.isPending ? "Loading properties..." : "Choose a property"}</option>
+                {isOwner && <option value={PORTFOLIO}>Portfolio-wide (no single property)</option>}
+                {properties.data?.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField label="Unit" htmlFor="ef-unit" error={errors.unitId?.message} help={propertyId && propertyId !== PORTFOLIO ? "Optional." : "Choose a property first."}>
+              <Select id="ef-unit" disabled={!propertyId || propertyId === PORTFOLIO} {...register("unitId")}>
+                <option value="">{units.isPending ? "Loading units..." : "Whole property"}</option>
+                {unitOptions.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    Unit {u.unitNumber}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+          </>
+        )}
         <FormField label="Vendor" htmlFor="ef-vendor" error={errors.vendorId?.message}>
           <Select id="ef-vendor" {...register("vendorId")}>
             <option value="">{vendors.isPending ? "Loading vendors..." : "No vendor"}</option>

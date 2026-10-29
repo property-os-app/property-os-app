@@ -51,6 +51,9 @@ export interface Expense {
   vendorId: string | null;
   /** May be archived. */
   vendor: { id: string; name: string; trade: string } | null;
+  /** Set when a ticket's resolve recorded it; while set, propertyId and unitId can't change. */
+  maintenanceTicketId: string | null;
+  maintenanceTicket: { id: string; ticketNumber: number; title: string } | null;
   createdById: string;
   createdBy: UserRef;
   approvedById: string | null;
@@ -129,6 +132,8 @@ export type ExpenseListQuery = {
   unitId?: string;
   category?: string;
   vendorId?: string;
+  /** Only the expenses that ticket's resolves recorded. */
+  maintenanceTicketId?: string;
   type?: ExpenseType;
   status?: ExpenseStatus;
   from?: string;

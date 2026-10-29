@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { ApiError, apiFetch } from "@/lib/api";
 import { expenseKeys } from "@/features/expenses/keys";
+import { maintenanceKeys } from "@/features/maintenance/keys";
 import { vendorKeys } from "@/features/vendors/keys";
 import type { Expense, ExpenseCategory, ExpenseCreateBody, ExpenseList, ExpenseListQuery, ExpenseSummary, ExpenseSummaryQuery, ExpenseUpdateBody } from "@/types/expense";
 
@@ -50,11 +51,15 @@ export function useCategoryLabel() {
   return useCallback((key: string) => categories.data?.find((c) => c.key === key)?.label ?? key, [categories.data]);
 }
 
-/** After any expense write: the saved detail into the cache, then lists, summaries and vendors (their expenseCount). */
+/**
+ * After any expense write: the saved detail into the cache, then lists, summaries, vendors (their expenseCount) and tickets
+ * (a linked expense's approval, void or amount changes the ticket's actualCost and the maintenance cost KPIs).
+ */
 function refreshAfterExpenseChange(qc: QueryClient, saved?: Expense) {
   if (saved) qc.setQueryData(expenseKeys.detail(saved.id), saved);
   void qc.invalidateQueries({ queryKey: expenseKeys.all });
   void qc.invalidateQueries({ queryKey: vendorKeys.all });
+  void qc.invalidateQueries({ queryKey: maintenanceKeys.all });
 }
 
 /** A 409 means someone else changed it ("already approved", "changed at the same time"): refetch so the screen is current. */

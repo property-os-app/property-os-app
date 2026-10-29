@@ -1,9 +1,11 @@
-/** Dashboard numbers, computed from GET /rent-roll, /units, /leases and /properties. Pure functions; only hooks.ts calls them. */
+/** Dashboard numbers, computed from GET /rent-roll, /units, /leases, /properties and /maintenance-tickets/summary. Pure functions; only hooks.ts calls them. */
 import { addMonthsYM, daysUntil, formatCurrency, formatMonth, formatPercent, toCents } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import { expiresWithin, isPastEnd } from "@/features/leases/stats";
+import { emergencyNote } from "@/features/maintenance/ticketText";
 import { canGenerateRent, collectionBreakdown, collectionNote, statusDate, upcomingRows } from "@/features/rent-roll/stats";
 import type { Lease } from "@/types/lease";
+import type { TicketSummary } from "@/types/maintenance";
 import type { RentRollResponse, RentRollRow } from "@/types/rentRoll";
 import type { Unit, UnitStatus } from "@/types/unit";
 
@@ -192,6 +194,32 @@ export function attentionItems(p: { month: string; roll: RentRollResponse; lease
   const drafts = p.leases.filter((l) => l.status === "DRAFT").length;
   if (drafts > 0) {
     items.push({ key: "drafts", title: `${plural(drafts, "draft lease")} not active yet`, text: "Activate them to start billing.", action: { label: "View leases", to: "/leases" } });
+  }
+  return items;
+}
+
+/**
+ * Maintenance items for Needs attention, from GET /maintenance-tickets/summary (same scope): open emergencies first, then
+ * tickets past their SLA. Each links to the Maintenance page filtered to them. Shown before the rent and lease items.
+ */
+export function maintenanceAttention(summary: Pick<TicketSummary, "emergency" | "pastSlaCount">, now = new Date()): AttentionItem[] {
+  const items: AttentionItem[] = [];
+  const e = summary.emergency;
+  if (e.openCount > 0) {
+    items.push({
+      key: "emergencies",
+      title: `${plural(e.openCount, "open emergency", "open emergencies")}`,
+      text: `${emergencyNote(e, now)}. Emergencies have a 4-hour SLA.`,
+      action: { label: "View tickets", to: "/maintenance?priority=EMERGENCY" },
+    });
+  }
+  if (summary.pastSlaCount > 0) {
+    items.push({
+      key: "past-sla",
+      title: `${plural(summary.pastSlaCount, "ticket")} past SLA`,
+      text: "Open past the response time (emergency 4h, urgent 24h).",
+      action: { label: "View tickets", to: "/maintenance?pastSla=1" },
+    });
   }
   return items;
 }

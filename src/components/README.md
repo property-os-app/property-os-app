@@ -43,11 +43,11 @@ Atoms combined to do one job.
 
 | Component | What it does | Main props | When to use |
 | --- | --- | --- | --- |
-| `StatusBadge` | Maps a domain status to a tone and a friendly label | `domain` rent/lease/esign/ticket/priority/unit/insurance/approval/template, `status` (API enum for rent/lease/esign/unit/insurance/approval, e.g. `UNDER_MAINTENANCE`, `EXPIRING`, `PENDING_APPROVAL`; lease also takes UI-only `EXPIRING`; template takes UI `DEFAULT`/`ACTIVE`/`ARCHIVED`), `children` (label override). `statusLabel` holds the labels. | Every status in a table or drawer. |
+| `StatusBadge` | Maps a domain status to a tone and a friendly label | `domain` rent/lease/esign/ticket/priority/unit/insurance/approval/template, `status` (API enum for rent/lease/esign/unit/insurance/approval/ticket/priority, e.g. `UNDER_MAINTENANCE`, `EXPIRING`, `PENDING_APPROVAL`, `IN_PROGRESS`, `EMERGENCY`; lease also takes UI-only `EXPIRING`, ticket UI-only `PAST_SLA`; template takes UI `DEFAULT`/`ACTIVE`/`ARCHIVED`), `children` (label override). `statusLabel` holds the labels. | Every status in a table or drawer. |
 | `FormField` | Label, control, help or error text | `label`, `htmlFor`, `required`, `help`, `error`, `action` | Wrap every form control. |
 | `SearchInput` | Input with a search icon | Input props, `shortcut` | Toolbar search. |
 | `SegmentedControl` | Button group with counts; scrolls sideways inside itself when too wide | `value`, `onChange`, `segments`, `aria-label` | Status filter (Rent Roll). |
-| `Tabs` | Underline tabs with counts | `value`, `onChange`, `tabs` | Drawer tabs, Tenants page tabs. |
+| `Tabs` | Underline tabs with counts; scrolls sideways inside itself when too wide (no scrollbar) | `value`, `onChange`, `tabs` | Drawer tabs, Tenants page tabs, Maintenance board columns on phones. |
 | `FilterChip` | Pill filter, removable when active | `active`, `count`, `onRemove` | Applied filters in a toolbar. |
 | `Card` | White bordered surface | `padding` none/compact/default, `as` | Grouping content. |
 | `ListCard` + `ListCardSkeleton` | One list row as a card (phones): title, subtitle, `leading` (Avatar), `badge` row, 2-3 `facts`, right `amount` (label, value, caption), `note`, red `strip`, `muted`, kebab `actions`. The tap area is one link (`href` + `renderLink`) or button (`onOpen`) stretched over the card, named by `openLabel`; the kebab never opens the card | `title`, `subtitle`, `facts`, `amount`, `strip`, `actions`, `href`/`onOpen`, `openLabel`, `renderLink`, `flat` (divided rows inside a card or drawer) | Every list under md, through `CardList`. `strip` means one thing only in this app: behind on rent. |
@@ -91,7 +91,7 @@ Page sections. They own no data.
 | `BarChart` | Vertical bars, grouped series, one y-axis, grid lines, legend for 2+ series, tooltips (hover + keyboard), hidden table, 5 states | `series` (label, color), `data` (key, label, fullLabel, values), `formatValue`, `formatTick`, `tooltip`, `integer`, `onBarClick`, `caption`, `height`, `state`/`empty`/`error` | Dashboard charts. Fluid width; values as integers (cents, counts). |
 | `StackedBar` | One horizontal bar split into parts, legend with count and %, tooltips, hidden table | `segments` (key, label, value, color), `onSegmentClick`, `caption`, `state`/`empty`/`error` | Units by status. |
 | `IncomeExpenseChart`, `DonutChart`, `HBarList` | Simple SVG/CSS charts. `HBarList` items take an optional `detail` ("26.2%") and `key`; `stacked` puts the label and value above the bar (always under md) | `data` / `slices` / `items`, `format`, `stacked` | Finance charts. |
-| `KanbanBoard` | 4-column ticket board | `tickets`, `onOpen`, `onMove` | Maintenance tickets. |
+| `KanbanBoard` | 4-column ticket board with drag-and-drop | `tickets`, `onOpen`, `onMove` | Not used: our Maintenance board (`features/maintenance/TicketBoard`) needs per-column loading / error, "Showing 100 of N" and moves that ask for input. |
 | `AiActionPanel`, `AiCommandCenter` | AI panels | `actions` / `score`, `headline` | AI features. |
 | `ActivityTimeline` | Grouped activity feed | `events`, `limit` | Activity page / widget. |
 | `RenterTabBar`, `OwnerNav` | Renter and owner portal nav | `active` | Other portals. |
@@ -141,7 +141,7 @@ Based on docs/BRIEF.md (admin portal: login, Properties, Units, Tenants, Leases,
 
 **Used**
 - Atoms: Button, LinkButton, Badge, Tag, Count, Delta, Typography (H1-H3, Body, Small, Caption, Overline, Display, Num, Dash), Input, Textarea, Select, CurrencyInput, Checkbox, Toggle, Avatar, Skeleton, Divider, CollectionProgress, Bar
-- Molecules: StatusBadge, FormField, SearchInput, SegmentedControl, Tabs, FilterChip, Card, CardHeader, KpiCard, HeroStatCard, KeyValueList, EmptyState, InlineError, Toaster + toast, KebabMenu, Stepper (Add Lease wizard), ThemeSwitch (Topbar)
+- Molecules: StatusBadge, FormField, SearchInput, SegmentedControl, Tabs, FilterChip, Card, CardHeader, KpiCard, HeroStatCard, KeyValueList, EmptyState, InlineError, Toaster + toast, KebabMenu, Stepper (Add Lease wizard), ThemeSwitch (Topbar), TimelineItem (ticket history)
 - Organisms: Sidebar, Topbar, PageHeader, Toolbar, KpiRow, DataTable, Pagination, Drawer, Modal, ConfirmDialog, BarChart, StackedBar
 - Templates: WorkspaceShell, AuthLayout, SettingsLayout
 - Dashboard: HeroStatCard, CollectionProgress, BarChart, StackedBar (RentCollectionHero is not used: see Known gaps)
@@ -149,7 +149,7 @@ Based on docs/BRIEF.md (admin portal: login, Properties, Units, Tenants, Leases,
 **Not used** (out of scope in the brief)
 - AI: AiActionItem, AiHeading, AiActionPanel, AiCommandCenter, Ring, Button `variant="ai"`
 - Charts: IncomeExpenseChart, DonutChart, HBarList
-- Maintenance / chat / activity: KanbanBoard, StatusTracker, ChatBubble, TimelineItem, TimelineDay, ActivityTimeline, ThreePaneLayout
+- Maintenance / chat / activity: KanbanBoard, StatusTracker, ChatBubble, TimelineDay, ActivityTimeline, ThreePaneLayout
 - Other portals: RenterTabBar, OwnerNav, RenterShell, OwnerShell
 - Other: FileDropzone (no uploads), InternalNote, Banner, Kbd
 
@@ -240,4 +240,6 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | 2026-10-28 | `organisms/CardList.tsx` | New `CardGrid` (1 / 2 from md / 3 from xl, `max={2}`; minmax(0,1fr) columns; `*:min-w-0` on every child). `grid` mode uses the same columns with `min-w-0` on each `li`, and each `li` is a one-column minmax(0,1fr) grid (was an implicit `auto` column). | Grid items default to `min-width: auto`, so a card was at least as wide as its longest unbroken line (truncated text too): long expense descriptions made cards wider than their column, covering the next card and the "By category" panel. |
 | 2026-10-28 | `molecules/ListCard.tsx` | `min-w-0` on the card and the facts; the title wraps to at most 2 lines (`line-clamp-2`, was one truncated line); subtitle and facts still truncate, now with the full text on hover (`title`, plain text only); the amount is `whitespace-nowrap` (never shrinks or wraps); the note breaks long words. | Same bug: cards must fit their column, and a long title should be readable instead of widening the card. |
 | 2026-10-28 | `organisms/Charts.tsx` (`HBarList`) | Labels wrap to 2 lines (`line-clamp-2`, full text on hover) instead of truncating; each row is `min-w-0`. | "By category" labels were cut off. |
-
+| 2026-10-29 | `molecules/StatusBadge.tsx` | `ticket` and `priority` domains use the backend enums as keys: ticket `OPEN` neutral, `ASSIGNED` warning, `IN_PROGRESS` info "In progress", `RESOLVED` success, new `CANCELLED` neutral, UI-only `PAST_SLA` danger "Past SLA"; priority `EMERGENCY` danger, `URGENT` warning, `NORMAL` info, `LOW` neutral. Labels added to `statusLabel`. `TicketStatus` / `TicketPriority` types follow. | Maintenance passes API values straight in; the old display-word keys ("In Progress", "Emergency") didn't match the API and had no Cancelled. |
+| 2026-10-29 | `organisms/Kanban.tsx` | Only `t.priority === "EMERGENCY"` (was `"Emergency"`), to follow the `TicketPriority` type above. Still unused. | Keeps it compiling after the StatusBadge key change. |
+| 2026-10-29 | `molecules/SegmentedControl.tsx` (`Tabs`) | The tab list scrolls sideways inside itself (`max-w-full overflow-x-auto`, scrollbar hidden); tabs don't shrink or wrap (`shrink-0 whitespace-nowrap`); the base line is an inset shadow instead of `border-b` + `-mb-px` (so the scroll box never clips the active underline); the focus ring is drawn inside (`outline-offset-[-2px]`) so the scroll box never clips it. Looks the same when the tabs fit. | The Maintenance board on phones (Open · Assigned · In progress · Resolved with counts) didn't fit 375px: "In progress" wrapped and Resolved was cut off. |

@@ -3,6 +3,7 @@ import { Avatar, Dash, Divider, Overline, Skeleton, Small } from "@/components/a
 import { Card } from "@/components/molecules";
 import { cn } from "@/lib/cn";
 import { ContactLink } from "@/features/shared/ContactLink";
+import { RatingText } from "@/features/shared/Rating";
 import { InactiveBadge, InsuranceBadge, VendorMenu, type VendorActions } from "@/features/vendors/VendorParts";
 import { rateText, tradeLine } from "@/features/vendors/vendorText";
 import type { Vendor } from "@/types/vendor";
@@ -25,7 +26,7 @@ export interface VendorCardProps {
 
 /**
  * Cards view card (3 per row from xl): avatar, name, "Trade · area", rate, kebab; contact name, phone and email (ContactLink);
- * License and the insurance badge. Opens the vendor drawer; the kebab and contact links don't. Archived vendors are muted.
+ * License and the insurance badge; rating, jobs (resolved tickets) and active tickets. Opens the vendor drawer; the kebab and contact links don't. Archived vendors are muted.
  */
 export function VendorCard({ vendor, tradeLabel, onOpen, actions }: VendorCardProps) {
   const rate = rateText(vendor);
@@ -80,6 +81,20 @@ export function VendorCard({ vendor, tradeLabel, onOpen, actions }: VendorCardPr
           <InsuranceBadge vendor={vendor} />
         </Stat>
       </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        <Stat label="Rating">
+          <Small className="max-w-full">
+            <RatingText rating={vendor.rating} count={vendor.ratingCount} compact />
+          </Small>
+        </Stat>
+        <Stat label="Jobs">
+          <Small className="font-semibold tabular text-text-primary">{vendor.jobsCount}</Small>
+        </Stat>
+        <Stat label="Active">
+          <Small className="font-semibold tabular text-text-primary">{vendor.activeTickets}</Small>
+        </Stat>
+      </div>
     </Card>
   );
 }
@@ -100,6 +115,11 @@ export function VendorCardSkeleton() {
       <Skeleton className="h-3.5 w-48" />
       <Skeleton className="h-px" />
       <div className="grid grid-cols-2 gap-3">
+        <Skeleton className="h-10" />
+        <Skeleton className="h-10" />
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <Skeleton className="h-10" />
         <Skeleton className="h-10" />
         <Skeleton className="h-10" />
       </div>

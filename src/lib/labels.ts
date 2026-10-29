@@ -6,6 +6,7 @@
 import { statusLabel } from "@/components/molecules/StatusBadge";
 import type { UserRole } from "@/types/auth";
 import type { LeaseStatus, PaymentFrequency, SignatureStatus } from "@/types/lease";
+import type { MaintenancePriority, MaintenanceStatus } from "@/types/maintenance";
 import type { ExpenseStatus, ExpenseType } from "@/types/expense";
 import type { ChargeType, LedgerEntryKind, PaymentMethod } from "@/types/ledger";
 import type { PropertyType } from "@/types/property";
@@ -115,6 +116,18 @@ export const rateUnitLabels: Record<VendorRateUnit, string> = {
 };
 
 export const insuranceStatusLabels: Record<VendorInsuranceStatus, string> = statusLabel.insurance;
+
+/** EMERGENCY first (the API's priority order). */
+export const priorityLabels: Record<MaintenancePriority, string> = statusLabel.priority;
+
+/** Ticket statuses in flow order (OPEN → … → CANCELLED). */
+export const ticketStatusLabels: Record<MaintenanceStatus, string> = {
+  OPEN: statusLabel.ticket.OPEN,
+  ASSIGNED: statusLabel.ticket.ASSIGNED,
+  IN_PROGRESS: statusLabel.ticket.IN_PROGRESS,
+  RESOLVED: statusLabel.ticket.RESOLVED,
+  CANCELLED: statusLabel.ticket.CANCELLED,
+};
 
 /** Options for a Select, in the order of the map: [{ value, label }]. */
 export function labelOptions<K extends string>(labels: Record<K, string>): { value: K; label: string }[] {

@@ -93,6 +93,7 @@ export function createExpenseBody(v: ExpenseFormOutput): ExpenseCreateBody {
 /**
  * PATCH body with only the changed fields (null when cleared). A category change always sends the type too (the server
  * would reset it to the new category's default otherwise); a property change always sends the unit (null or the new one).
+ * An expense from a maintenance ticket never sends its property or unit (they follow the ticket: 409 otherwise).
  */
 export function expenseChanges(v: ExpenseFormOutput, e: Expense): ExpenseUpdateBody {
   const body: ExpenseUpdateBody = {};
@@ -104,7 +105,9 @@ export function expenseChanges(v: ExpenseFormOutput, e: Expense): ExpenseUpdateB
     body.type = v.type;
   } else if (v.type !== e.type) body.type = v.type;
   const propertyId = propertyOf(v.propertyId);
-  if (propertyId !== e.propertyId) {
+  if (e.maintenanceTicketId) {
+    // Locked: property and unit follow the ticket.
+  } else if (propertyId !== e.propertyId) {
     body.propertyId = propertyId;
     body.unitId = propertyId && v.unitId ? v.unitId : null;
   } else if ((v.unitId || null) !== e.unitId) body.unitId = v.unitId || null;

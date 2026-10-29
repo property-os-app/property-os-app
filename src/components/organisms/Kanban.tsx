@@ -67,7 +67,7 @@ export function KanbanBoard({ tickets, onOpen, onMove, onAdd, className }: Kanba
                 onClick={() => onOpen(t)}
                 className={cn(
                   "flex cursor-grab flex-col gap-2 rounded-control border bg-surface-2 p-3 hover:border-border-strong",
-                  t.priority === "Emergency" ? "border-danger/50" : "border-border-subtle",
+                  t.priority === "EMERGENCY" ? "border-danger/50" : "border-border-subtle",
                   t.column === "resolved" && "opacity-80",
                 )}
               >

@@ -5,7 +5,7 @@ import { CardList, DataTable, type Column, type DataTableProps } from "@/compone
 import { cn } from "@/lib/cn";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { expenseTypeLabels } from "@/lib/labels";
-import { ExpenseAmount, ExpenseStatusBadges } from "@/features/expenses/ExpenseParts";
+import { ExpenseAmount, ExpenseStatusBadges, ExpenseTicketLink } from "@/features/expenses/ExpenseParts";
 import { propertyLine, propertyText } from "@/features/expenses/expenseText";
 import type { Expense, ExpenseList } from "@/types/expense";
 
@@ -29,7 +29,7 @@ function pendingText(totals: ExpenseList["totals"]): string | null {
 /**
  * The expenses list: a DataTable (Date and Amount sort on the server) with a "Total, filtered" row (approved, non-voided,
  * every matching row) and the pending amount beside it; or ListCards (phones, Cards view) with the same totals in a summary
- * card. Voided rows are muted and struck through. A row or card opens the drawer.
+ * card. Voided rows are muted and struck through. Expenses from a ticket link to it ("Ticket #1025"). A row or card opens the drawer.
  */
 export function ExpensesTable({ view, isMobile, categoryLabel, totals, updating, onOpen, ...props }: Props) {
   const columns = useMemo<Column<Expense>[]>(
@@ -45,6 +45,12 @@ export function ExpensesTable({ view, isMobile, categoryLabel, totals, updating,
             </div>
             <Caption className="block">
               {e.expenseNumber} · {expenseTypeLabels[e.type]}
+              {e.maintenanceTicket && (
+                <>
+                  {" · "}
+                  <ExpenseTicketLink expense={e} className="text-caption" />
+                </>
+              )}
             </Caption>
           </div>
         ),
@@ -103,6 +109,7 @@ export function ExpensesTable({ view, isMobile, categoryLabel, totals, updating,
             badge={<ExpenseStatusBadges expense={e} />}
             amount={{ label: "Amount", value: <ExpenseAmount expense={e} /> }}
             muted={e.voided}
+            note={e.maintenanceTicket ? <ExpenseTicketLink expense={e} /> : undefined}
             facts={[
               { label: "Category", value: categoryLabel(e.category) },
               { label: "Vendor", value: e.vendor?.name ?? <Dash /> },

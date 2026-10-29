@@ -10,7 +10,7 @@ import { expenseTypeLabels, paymentMethodLabels } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
 import { ExpenseDeleteDialog } from "@/features/expenses/ExpenseDeleteDialog";
 import { ExpenseFormModal } from "@/features/expenses/ExpenseFormModal";
-import { ExpenseStatusBadges } from "@/features/expenses/ExpenseParts";
+import { ExpenseStatusBadges, ExpenseTicketLink } from "@/features/expenses/ExpenseParts";
 import { isAutoApproved, propertyText } from "@/features/expenses/expenseText";
 import { useCategoryLabel, useExpense, useExpenseAction } from "@/features/expenses/hooks";
 import { ReasonModal } from "@/features/expenses/ReasonModal";
@@ -194,6 +194,19 @@ function Body({ expense: e, meId, categoryLabel }: { expense: Expense; meId?: st
             { label: "Property", value: propertyText(e) },
             { label: "Unit", value: e.unit ? `Unit ${e.unit.unitNumber}` : <Dash /> },
             { label: "Vendor", value: orDash(e.vendor?.name) },
+            ...(e.maintenanceTicket
+              ? [
+                  {
+                    label: "Maintenance",
+                    value: (
+                      <span>
+                        <ExpenseTicketLink expense={e} />
+                        <Caption className="block">{e.maintenanceTicket.title}. Property and unit follow the ticket.</Caption>
+                      </span>
+                    ),
+                  },
+                ]
+              : []),
             { label: "Payment method", value: e.paymentMethod ? paymentMethodLabels[e.paymentMethod] : <Dash /> },
             { label: "Reference", value: orDash(e.reference) },
             { label: "Notes", value: e.notes ? <span className="whitespace-pre-line">{e.notes}</span> : <Dash /> },

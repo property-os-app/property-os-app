@@ -10,7 +10,7 @@ Expenses: the /expenses page (summary KPIs, filters, the paginated list with a "
 - `useExpenseSummary(query)`: GET /expenses/summary (KPIs and "By category").
 - `useExpense(id, placeholder?)`: GET /expenses/:id (404 also when out of scope).
 - `useExpenseCategories()`: GET /expenses/categories, kept 1 hour. `useCategoryLabel()`: key → label (the key until loaded).
-- `useCreateExpense()`, `useUpdateExpense()`, `useExpenseAction()` (`{ id, action: approve | reject | void, reason? }`), `useDeleteExpense()`: the writes. Each puts the saved expense in the cache and refreshes every expense query (lists, summaries, vendor lists) and vendors (`expenseCount`). A 409 (already approved, changed at the same time) refreshes the same, so the screen shows the current state. `ExpenseAction`.
+- `useCreateExpense()`, `useUpdateExpense()`, `useExpenseAction()` (`{ id, action: approve | reject | void, reason? }`), `useDeleteExpense()`: the writes. Each puts the saved expense in the cache and refreshes every expense query (lists, summaries, vendor lists) vendors (`expenseCount`) and tickets (a linked expense changes the ticket's `actualCost` and the maintenance cost KPIs). A 409 (already approved, changed at the same time) refreshes the same, so the screen shows the current state. `ExpenseAction`.
 
 ## dateRange.ts
 - `RangePreset`, `RANGE_PRESETS`, `rangePresetLabels`: Year to date, This month, Last month, This quarter, Last 12 months, Last year, Custom range.
@@ -32,11 +32,12 @@ Expenses: the /expenses page (summary KPIs, filters, the paginated list with a "
 ## form.ts
 - `expenseSchema`, `ExpenseFormInput`, `ExpenseFormOutput`, `ExpenseField`, `EXPENSE_FIELDS`, `PORTFOLIO` (the Property select's portfolio-wide value): rules.md "Expenses".
 - `expenseDefaults(expense?, scope?)`: a new one starts today, on the scope's property.
-- `createExpenseBody(values)`: no `propertyId` for portfolio-wide, the amount as a number. `expenseChanges(values, expense)`: only changes (null when cleared); a category change also sends `type`, a property change also sends `unitId`.
+- `createExpenseBody(values)`: no `propertyId` for portfolio-wide, the amount as a number. `expenseChanges(values, expense)`: only changes (null when cleared); a category change also sends `type`, a property change also sends `unitId`; an expense from a ticket never sends property or unit.
 - `expenseErrorField(message)`: property, unit and vendor messages (403 / 400 / 404 / 409) to their field; others by their leading field name.
 
 ## ExpenseParts.tsx
 - `ExpenseStatusBadges`: `StatusBadge domain="approval"` plus "Voided". `ExpenseAmount`: struck through when voided.
+- `ExpenseTicketLink`: "Ticket #1025" to `/maintenance?ticket=…` for an expense a ticket's resolve recorded (stops the click, so it never opens the row); nothing otherwise. Used in the table (under the description), the card note and the drawer.
 
 ## ExpensesPage.tsx
 - `ExpensesPage`: /expenses. Header + "Add Expense"; KPIs from the summary (Total for the range with the % vs the same period last year ("–" when null), Largest category, Average monthly over N months, Pending approvals: count, amount, a click filters to pending); toolbar (search, Property = sidebar scope + "Portfolio-wide only" for the Owner, Category, Vendor (archived marked), Status, Date range (+ From / To for Custom), "Pending approval" chip, Include voided, Clear all, then Sort in Cards view and the Cards / Table toggle, saved with `useListView("expenses", "table")`); the list (flex-1, min-w-0) beside a fixed 320px "By category" from xl (under it below xl). Search placeholder "Search expenses". Everything in the URL (`useServerTable`): `?q=&portfolio=&category=&vendor=&status=&range=&from=&to=&voided=&sort=&page=`, plus `?expense=<id>` for the open drawer. A page past the end goes to the last page. Phones: search, the "Filters" sheet, the Pending chip, the list cards.
@@ -63,3 +64,5 @@ Expenses: the /expenses page (summary KPIs, filters, the paginated list with a "
 - `dateRange.test.ts`: every preset, January, quarter edges, leap years, custom ranges (swapped, missing), labels, month count.
 - `expenseQuery.test.ts`: defaults (year to date), scope, Portfolio-wide only (Owner vs manager), search / filters / voided / sort / page, custom range, summary query, filter count.
 - `form.test.ts`: create body (portfolio-wide, number amount), changes (empty, category + type, property + unit, cleared fields, money in cents), error routing.
+
+Expenses from a maintenance ticket: "Ticket #1025" links in the table, cards and drawer; the edit form shows their property and unit read-only ("Follows ticket #1025"), since they follow the ticket.

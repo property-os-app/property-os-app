@@ -38,6 +38,14 @@ export interface Vendor {
   archivedAt: string | null;
   /** Expenses that use it, voided ones too (delete needs 0). */
   expenseCount: number;
+  /** Average vendorRating over its RESOLVED tickets, 1 decimal (4.3); null when none is rated. */
+  rating: number | null;
+  /** RESOLVED tickets with a rating. */
+  ratingCount: number;
+  /** RESOLVED tickets. */
+  jobsCount: number;
+  /** ASSIGNED + IN_PROGRESS tickets. */
+  activeTickets: number;
   createdById: string;
   createdBy: { id: string; name: string };
   /** ISO timestamps. */

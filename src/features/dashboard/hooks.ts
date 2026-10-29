@@ -8,12 +8,15 @@ import {
   billedPoint,
   expirationsByMonth,
   headerDescription,
+  maintenanceAttention,
   monthRange,
   overdueRows,
   rentCollection,
   unitCounts,
 } from "@/features/dashboard/stats";
 import { useLeases } from "@/features/leases/hooks";
+import { useTicketSummary } from "@/features/maintenance/hooks";
+import { ticketSummaryQuery } from "@/features/maintenance/ticketQuery";
 import { expiresWithin } from "@/features/leases/stats";
 import { useProperties } from "@/features/properties/hooks";
 import { rentRollQuery, useRentRoll } from "@/features/rent-roll/hooks";
@@ -44,7 +47,7 @@ const EXPIRY_MONTHS = 12;
 /**
  * Every dashboard number, for the sidebar scope (propertyId or null for all) and the current UTC month.
  * Sections load and fail on their own. A future GET /dashboard endpoint should only need changes in this file.
- * Uses the same query keys as the Rent Roll, Units, Leases and Properties pages, so their caches are shared.
+ * Uses the same query keys as the Rent Roll, Units, Leases, Properties and Maintenance pages, so their caches are shared.
  */
 export function useDashboardStats(scope: string | null) {
   const { me } = useAuth();
@@ -55,6 +58,8 @@ export function useDashboardStats(scope: string | null) {
   const units = useUnits({ propertyId: scope ?? undefined });
   const leases = useLeases({ propertyId: scope ?? undefined });
   const rentRoll = useRentRoll(month, scope);
+  // Same key as the Maintenance page KPIs (cache shared).
+  const tickets = useTicketSummary(ticketSummaryQuery(scope));
 
   const chartMonths = monthRange(month, CHART_MONTHS);
   const history = useQueries({ queries: chartMonths.map((m) => rentRollQuery(m, scope)) });
@@ -92,7 +97,10 @@ export function useDashboardStats(scope: string | null) {
   const expirations = section([leases], () => expirationsByMonth(leases.data!, expiryMonths));
   const unitStatus = section([units], () => unitCounts(units.data!));
 
-  const attention = section([rentRoll, leases], () => attentionItems({ month, roll: rentRoll.data!, leases: leases.data!, canGenerate: can(user, "rent.generate") }));
+  const attention = section([rentRoll, leases, tickets], () => [
+    ...maintenanceAttention(tickets.data!),
+    ...attentionItems({ month, roll: rentRoll.data!, leases: leases.data!, canGenerate: can(user, "rent.generate") }),
+  ]);
 
   return { month, header, rent, kpis, atRisk, overdue, billed, expirations, unitStatus, attention };
 }

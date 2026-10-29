@@ -3,7 +3,7 @@
 The "/" home page. Every number comes from one hook, `useDashboardStats(scope)`, which follows the sidebar scope and the current UTC month. Each section (header, rent card, KPIs, tables, charts, Needs attention) loads and fails on its own. A future `GET /dashboard` endpoint should only need changes in `hooks.ts`.
 
 ## hooks.ts
-- `useDashboardStats(scope)`: reads GET /properties, /units, /leases (scope), /rent-roll for this month and the last 6 months (`useQueries`, same keys as the Rent Roll page, so the cache is shared). Returns `month` and one `Section` per part: `header` (`noProperties`, `description`), `rent` (rent collection), `kpis`, `atRisk`, `overdue`, `billed`, `expirations`, `unitStatus`, `attention`.
+- `useDashboardStats(scope)`: reads GET /properties, /units, /leases (scope), /maintenance-tickets/summary (scope, same key as the Maintenance page), /rent-roll for this month and the last 6 months (`useQueries`, same keys as the Rent Roll page, so the cache is shared). Returns `month` and one `Section` per part: `header` (`noProperties`, `description`), `rent` (rent collection), `kpis`, `atRisk`, `overdue`, `billed`, `expirations`, `unitStatus`, `attention`.
 - `Section<T>`: `data` once every query it needs has loaded, `isPending`, `error`, `retry` (refetches only the failed queries).
 
 ## stats.ts
@@ -17,6 +17,7 @@ Pure functions; only `hooks.ts` calls them.
 - `expirationsByMonth(leases, months)`: ACTIVE leases per end month.
 - `overdueRows(rows)`: OVERDUE rows, oldest unpaid first, with "{n} days overdue".
 - `BilledPoint`, `billedPoint(month, roll)`: cents for the chart and the tooltip text ("Not billed" when nothing is billed).
+- `maintenanceAttention(summary, now?)`: open emergencies ("1 open emergency", "Open 2h, unassigned…", → `/maintenance?priority=EMERGENCY`) and tickets past SLA (→ `/maintenance?pastSla=1`), shown before the rent and lease items.
 - `AttentionItem`, `AttentionAction`, `attentionItems(...)`: not billed (only with `canGenerate` = `rent.generate`, and only leases Generate rent would bill, via `upcomingRows`), overdue, past end, ending within 30 days, drafts (in that order).
 
 ## DashboardPage.tsx
@@ -36,3 +37,6 @@ Pure functions; only `hooks.ts` calls them.
 - `BilledCollectedChart`: last 6 months, Billed (grey) vs Collected (green), tooltips from the summary strings, table values from cents.
 - `ExpirationsChart`: ACTIVE leases ending per month, next 12 months; a bar opens /leases.
 - `UnitsByStatusChart`: one bar split by unit status (StatusBadge colors), legend with counts and percents; opens /units.
+
+## Tests (`npm test`)
+- `stats.test.ts`: `maintenanceAttention` (nothing, emergencies then past SLA with their links, plurals).

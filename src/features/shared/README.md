@@ -33,6 +33,13 @@ Phone (under md) toolbar pieces; desktop toolbars use only the compact `SortSele
 ## listView.ts
 - `ListView`: "cards" | "table", a main list's desktop view.
 - `useListView(page, fallback)`: the saved choice (`useStoredView`, key `propertyos.{page}.view`). Used by Properties and Tenants (default Cards) and Leases, Units, Rent Roll (default Table). Phones ignore it (always cards).
+- `BoardView`: "board" | "table". `useBoardView(page, fallback)`: the same for Maintenance (default Board; phones use it too).
 
 ## ViewToggle.tsx
 - `ViewToggle({ value, onChange })`: the Cards / Table `SegmentedControl` (grid and list icons), placed at the right end of the desktop toolbar on the 5 main lists. Hidden on phones.
+- `BoardViewToggle({ value, onChange })`: the Board / Table control on Maintenance (also on phones).
+
+## Rating.tsx
+- `RatingText({ rating, count?, compact?, className? })`: "★ 4.7 (3 ratings)" (`compact`: "(3)"); Dash when not rated. Vendor cards, table, drawer and the Average rating KPI.
+- `RatingStars({ value })`: five stars, `value` filled (read only, "4 stars out of 5" for screen readers). Ticket history and the vendor Tickets tab.
+- `RatingInput({ value, onChange, aria-label | aria-labelledby, disabled })`: 1–5 picker as a radio group ("1 star" … "5 stars"): one tab stop, Arrow keys / Home / End move and pick, 44px targets, visible focus ring. Resolve modal and the resolved ticket's edit.

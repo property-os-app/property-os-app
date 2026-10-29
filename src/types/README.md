@@ -58,17 +58,22 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 
 ## vendor.ts
 - `VendorRateUnit` (`HOUR | VISIT | MONTH | JOB`), `VendorInsuranceStatus` (`NONE | EXPIRED | EXPIRING | VALID`, computed by the server).
-- `Vendor`: GET /vendors rows, GET /vendors/:id and every vendor write (`rateAmount` money string with `rateUnit`, `insuranceExpiresOn` "YYYY-MM-DD", `archivedAt`, `expenseCount`, `createdBy`).
+- `Vendor`: GET /vendors rows, GET /vendors/:id and every vendor write (`rateAmount` money string with `rateUnit`, `insuranceExpiresOn` "YYYY-MM-DD", `archivedAt`, `expenseCount`, ticket stats `rating` (1 decimal or null), `ratingCount`, `jobsCount`, `activeTickets`, `createdBy`).
 - `VendorTrade`: one GET /vendors/trades item (`key`, `label`).
 - `VendorCreateBody`, `VendorUpdateBody`: request bodies (`rateAmount` is a number; PATCH clears with null, except name and trade).
 
 ## expense.ts
 - `ExpenseType` (`OPERATING | CAPITAL`), `ExpenseStatus` (`PENDING_APPROVAL | APPROVED | REJECTED`; voiding is the `voided` flag).
-- `Expense`: one expense (money string `amount`, "YYYY-MM-DD" `date`, `property` / `unit` / `vendor` refs or null (no property = portfolio-wide), approved / rejected / voided by and at, `rejectionReason`, `voidReason`, `allowedActions` for the caller).
+- `Expense`: one expense (money string `amount`, "YYYY-MM-DD" `date`, `property` / `unit` / `vendor` refs or null (no property = portfolio-wide), `maintenanceTicket` (`{ id, ticketNumber, title }` or null: recorded by a ticket's resolve), approved / rejected / voided by and at, `rejectionReason`, `voidReason`, `allowedActions` for the caller).
 - `ExpenseAllowedActions`: `{ edit, approve, reject, void, delete }`.
 - `ExpenseList`: GET /expenses page (`items`, `page`, `pageSize`, `totalItems`, `totalPages`, `totals` over every matching row).
 - `ExpenseSummary`, `CategoryTotal`: GET /expenses/summary (total, previous period, `changePercent` or null, average monthly, largest category, pending ignoring dates, by category).
 - `ExpenseCategory`: one GET /expenses/categories item (`key`, `label`, `defaultType`).
-- `ExpenseListQuery`, `ExpenseSummaryQuery`: the query params (type aliases, so they fit `apiFetch`'s `query`).
+- `ExpenseListQuery` (incl. `maintenanceTicketId`), `ExpenseSummaryQuery`: the query params (type aliases, so they fit `apiFetch`'s `query`).
 - `ExpenseCreateBody`, `ExpenseUpdateBody`: request bodies (`amount` is a number; no / null `propertyId` = portfolio-wide).
 
+## maintenance.ts
+- `MaintenancePriority` (`EMERGENCY | URGENT | NORMAL | LOW`), `MaintenanceStatus` (`OPEN | ASSIGNED | IN_PROGRESS | RESOLVED | CANCELLED`).
+- `MaintenanceTicket`: one ticket (`ticketNumber` number, `property` / `unit` / `vendor` refs, `locationNote`, timestamps, money strings `estimatedCost` / `actualCost`, linked `expenses`, resolution and cancel fields, `sla { hours, dueAt, pastSla }`, `allowedActions`). `TicketExpense`: one linked expense. `TicketAllowedActions`.
+- `TicketList`: GET /maintenance-tickets page with `statusCounts` (`TicketStatusCounts`: all 5 statuses, ignoring the status filter). `TicketSummary`: GET /maintenance-tickets/summary.
+- `TicketListQuery`, `TicketSummaryQuery`: the query params. `TicketCreateBody`, `TicketUpdateBody`, `TicketResolveBody`: request bodies (money as numbers).

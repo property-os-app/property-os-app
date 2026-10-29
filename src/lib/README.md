@@ -68,7 +68,7 @@ Links that open the user's own phone and email apps (no backend).
 - `cn(...classes)`: merges Tailwind class lists (clsx + tailwind-merge).
 
 ## labels.ts
-- One `...Labels` map per enum in ../property-os-api/docs/frontend-handoff/API.md section 2 (`propertyTypeLabels`, `unitTypeLabels` "1 BR", `paymentMethodLabels` "ACH bank transfer", `chargeTypeLabels`, `rentStatusLabels`, ...). Status labels come from the design system `statusLabel`.
+- One `...Labels` map per enum in ../property-os-api/docs/frontend-handoff/API.md section 2 (`propertyTypeLabels`, `unitTypeLabels` "1 BR", `paymentMethodLabels` "ACH bank transfer", `chargeTypeLabels`, `rentStatusLabels`, `priorityLabels`, `ticketStatusLabels` (flow order), ...). Status labels come from the design system `statusLabel`.
 - `labelOptions(labels)`: `[{ value, label }]` for a Select.
 - `plural(count, singular, plural?)`: "1 unit" / "3 units".
 - `unitLayout(unitType, bathrooms)`: "1 bd / 1 ba", "Studio / 1 ba", or "3 bd" when bathrooms is null.

@@ -24,6 +24,8 @@ export type Action =
   | "vendor.manage"
   | "expense.record"
   | "expense.approve"
+  | "ticket.manage"
+  | "ticket.cancel"
   | "access.manage";
 
 /**
@@ -31,7 +33,8 @@ export type Action =
  * lease.edit also covers activate, end and delete draft, and picking a lease template; charge.create also covers billing a partial month.
  * template.manage covers every lease template write (create, new version, details, default, archive, delete, live preview).
  * vendor.manage covers create, edit, archive, unarchive and delete. expense.record only gates "Add Expense": every expense
- * button comes from the expense's allowedActions. entry.void (money.void) also voids expenses.
+ * button comes from the expense's allowedActions. entry.void (money.void) also voids expenses. ticket.manage only gates
+ * "Add Ticket" (every ticket button comes from the ticket's allowedActions); ticket.cancel is off by default for managers.
  */
 const ACTION_KEYS: Record<Action, string | null> = {
   "property.create": "properties.create",
@@ -54,6 +57,8 @@ const ACTION_KEYS: Record<Action, string | null> = {
   "vendor.manage": "vendors.manage",
   "expense.record": "expenses.record",
   "expense.approve": "expenses.approve",
+  "ticket.manage": "maintenance.manage",
+  "ticket.cancel": "maintenance.cancel",
   "access.manage": null,
 };
 

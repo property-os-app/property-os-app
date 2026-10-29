@@ -10,6 +10,7 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { FilterGroup, MobileFilters, SortSelect, type SortOption } from "@/features/shared/MobileFilters";
+import { RatingText } from "@/features/shared/Rating";
 import { useListView } from "@/features/shared/listView";
 import { ViewToggle } from "@/features/shared/ViewToggle";
 import { useArchiveVendor, useTradeLabel, useVendors, useVendorTrades } from "@/features/vendors/hooks";
@@ -28,16 +29,21 @@ const insuranceOptions = labelOptions(insuranceStatusLabels).sort((a, b) => INSU
 const sorts: Record<string, SortColumn<Vendor>> = {
   vendor: { kind: "text", value: (v) => v.name },
   expenses: { kind: "number", value: (v) => v.expenseCount },
+  rating: { kind: "number", value: (v) => v.rating },
+  jobs: { kind: "number", value: (v) => v.jobsCount },
 };
 
 const sortOptions: SortOption[] = [
   { key: "vendor", label: "Vendor", kind: "text" },
   { key: "expenses", label: "Expenses", kind: "number" },
+  { key: "rating", label: "Rating", kind: "number" },
+  { key: "jobs", label: "Jobs", kind: "number" },
 ];
 
 /**
  * /vendors: the contractor directory (GET /vendors?includeArchived=true once; search, filters and sort on the client, in the
- * URL). Expired, then expiring insurance sorts first (server order). KPIs count the active vendors, not the filters.
+ * URL). Expired, then expiring insurance sorts first (server order). KPIs (total, active jobs, average rating, insurance)
+ * count the active vendors, not the filters.
  * Every write needs vendors.manage. Owner and every manager see all vendors.
  */
 export function VendorsPage() {
@@ -161,16 +167,25 @@ export function VendorsPage() {
         actions={addButton("primary")}
       />
 
-      <KpiRow className="lg:grid-cols-3">
+      <KpiRow>
         <KpiCard label="Total vendors" value={kpi(kpis.total)} note={ready ? (kpis.trades === 0 ? "No trades yet" : `across ${plural(kpis.trades, "trade")}`) : undefined} />
+        <KpiCard
+          label="Active jobs"
+          value={kpi(kpis.activeJobs)}
+          note={ready ? (kpis.activeJobs === 0 ? "No tickets assigned or in progress" : `across ${plural(kpis.vendorsWithJobs, "vendor")}`) : undefined}
+        />
+        <KpiCard
+          label="Average rating"
+          value={kpi(kpis.averageRating === null ? <Dash /> : <RatingText rating={kpis.averageRating} />)}
+          note={ready ? (kpis.ratingCount === 0 ? "Rate vendors when resolving tickets" : `from ${plural(kpis.ratingCount, "rating")}`) : undefined}
+        />
         <KpiCard
           label="Insurance expiring"
           tone={kpis.expiring > 0 ? "warning" : "default"}
           value={kpi(kpis.expiring)}
           delta={ready && kpis.expired > 0 ? { direction: "down", label: `${kpis.expired} expired` } : undefined}
-          note={ready ? "within 30 days" : undefined}
+          note={ready ? `within 30 days${kpis.none > 0 ? ` · ${plural(kpis.none, "vendor")} with no insurance on file` : ""}` : undefined}
         />
-        <KpiCard label="No insurance on file" value={kpi(kpis.none)} note={ready ? (kpis.none === 0 ? "Every vendor has a policy date" : "add their policy date") : undefined} />
       </KpiRow>
 
       {isMobile ? (
