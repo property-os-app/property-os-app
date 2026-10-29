@@ -5,7 +5,9 @@ import type { MaintenanceTicket } from "@/types/maintenance";
 
 /** What a ticket button or menu item asks the page to do. "open" opens the drawer. */
 export type TicketActionKind = "open" | "edit" | "assign" | "unassign" | "start" | "resolve" | "reopen" | "cancel";
-export type OnTicketAction = (kind: TicketActionKind, ticket: MaintenanceTicket) => void;
+/** `onSettled(ok)`: called once the action is done: saved (true), or failed / dialog cancelled (false). Board drops use it. */
+export type TicketActionOptions = { onSettled?: (ok: boolean) => void };
+export type OnTicketAction = (kind: TicketActionKind, ticket: MaintenanceTicket, options?: TicketActionOptions) => void;
 
 const icon = { size: 16, strokeWidth: 1.5 } as const;
 

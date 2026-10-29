@@ -55,9 +55,9 @@ export function refreshAfterTicketChange(qc: QueryClient, saved?: MaintenanceTic
   void qc.invalidateQueries({ queryKey: expenseKeys.all });
 }
 
-/** A 409 means the ticket changed meanwhile (someone else acted first): refetch so the screen shows the current state. */
+/** A 409 (changed meanwhile, someone else acted first) or 403 (a permission was just turned off): refetch so the screen shows the current state. */
 function refreshOnConflict(qc: QueryClient, err: unknown) {
-  if (err instanceof ApiError && err.status === 409) refreshAfterTicketChange(qc);
+  if (err instanceof ApiError && (err.status === 409 || err.status === 403)) refreshAfterTicketChange(qc);
 }
 
 /** POST /maintenance-tickets: ASSIGNED with a vendorId, else OPEN. */

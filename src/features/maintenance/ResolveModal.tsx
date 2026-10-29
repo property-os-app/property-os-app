@@ -25,7 +25,8 @@ const empty: ResolveInput = { resolutionNote: "", actualCost: "", paymentMethod:
  * there is a cost; vendor rating 1–5 only when the ticket has a vendor. Errors under their field or at the top.
  * Mount it only while open.
  */
-export function ResolveModal({ ticket, onClose }: { ticket: MaintenanceTicket; onClose: () => void }) {
+/** `onSaved`: called after a successful resolve, before `onClose`. */
+export function ResolveModal({ ticket, onSaved, onClose }: { ticket: MaintenanceTicket; onSaved?: (t: MaintenanceTicket) => void; onClose: () => void }) {
   const { me } = useAuth();
   const isOwner = me?.role === "OWNER";
   const canRecordCost = me ? can(me, "expense.record") : false;
@@ -58,6 +59,7 @@ export function ResolveModal({ ticket, onClose }: { ticket: MaintenanceTicket; o
               ? `${ticketNo(saved)} resolved. Expense ${added.expenseNumber} ${added.status === "APPROVED" ? "recorded" : "sent for approval"}`
               : `${ticketNo(saved)} resolved`,
           );
+          onSaved?.(saved);
           onClose();
         },
         onError: (err) => {

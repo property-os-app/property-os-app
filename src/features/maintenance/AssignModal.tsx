@@ -28,7 +28,8 @@ export function ExpiredInsuranceNote({ vendor }: { vendor: Vendor | undefined })
  * Assign or reassign a vendor (POST /assign { vendorId }). Lists active vendors only (archived → 409), without the current
  * assignee. An EXPIRED insurance shows a warning but doesn't block. Errors stay inside. Mount it only while open.
  */
-export function AssignModal({ ticket, onClose }: { ticket: MaintenanceTicket; onClose: () => void }) {
+/** `onSaved`: called after a successful assign, before `onClose`. */
+export function AssignModal({ ticket, onSaved, onClose }: { ticket: MaintenanceTicket; onSaved?: (t: MaintenanceTicket) => void; onClose: () => void }) {
   const vendors = useVendors();
   const tradeLabel = useTradeLabel();
   const action = useTicketAction();
@@ -50,6 +51,7 @@ export function AssignModal({ ticket, onClose }: { ticket: MaintenanceTicket; on
       {
         onSuccess: (saved) => {
           toast.success(`${ticketNo(saved)} ${reassign ? "reassigned" : "assigned"} to ${saved.vendor?.name ?? picked?.name ?? "the vendor"}`);
+          onSaved?.(saved);
           onClose();
         },
         onError: (err) => {

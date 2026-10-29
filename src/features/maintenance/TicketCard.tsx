@@ -13,14 +13,24 @@ export interface TicketCardProps {
   onAction: OnTicketAction;
   /** For "Just now" / "2h ago" and the SLA text (one clock per board render). */
   now: Date;
+  /** Desktop board: the card can be dragged to another column (the buttons and menu stay the keyboard way). */
+  drag?: {
+    onStart: (t: MaintenanceTicket) => void;
+    onEnd: () => void;
+    /** This card is being dragged (shown faded). */
+    active: boolean;
+    /** A drop is running or its dialog is open: shown faded and not draggable until it settles. */
+    pending: boolean;
+  };
 }
 
 /**
  * One board card: #1042 + priority + kebab; title (2 lines max); location; assignee avatar (a dashed "+" that opens Assign
  * when allowed); age and SLA ("SLA 4h", red with "Past SLA by 2h" once the server flags it); "est. $1,800.00" while active,
- * "Closed Oct 6 · $18.00" when resolved. Emergencies get a red border and left edge. The card opens the drawer.
+ * "Closed Oct 6 · $18.00" when resolved. Emergencies get a red border and left edge. The card opens the drawer (a click
+ * never fires after a drag). With `drag` (desktop) it can be dragged with the browser's built-in drag and drop.
  */
-export function TicketCard({ ticket: t, onAction, now }: TicketCardProps) {
+export function TicketCard({ ticket: t, onAction, now, drag }: TicketCardProps) {
   const open = () => onAction("open", t);
   const sla = slaText(t, now);
   const slaHours = slaHoursText(t);
@@ -34,6 +44,19 @@ export function TicketCard({ ticket: t, onAction, now }: TicketCardProps) {
       role="button"
       tabIndex={0}
       aria-label={`Open ${ticketNo(t)} ${t.title}`}
+      aria-busy={drag?.pending || undefined}
+      draggable={drag && !drag.pending ? true : undefined}
+      onDragStart={
+        drag && !drag.pending
+          ? (e) => {
+              // Firefox starts a drag only with data set.
+              e.dataTransfer.setData("text/plain", t.id);
+              e.dataTransfer.effectAllowed = "move";
+              drag.onStart(t);
+            }
+          : undefined
+      }
+      onDragEnd={drag ? drag.onEnd : undefined}
       onClick={open}
       onKeyDown={(e) => {
         if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
@@ -44,6 +67,8 @@ export function TicketCard({ ticket: t, onAction, now }: TicketCardProps) {
       className={cn(
         "flex min-w-0 cursor-pointer flex-col gap-2 p-4 transition-colors duration-fast hover:border-border-strong focus-visible:focus-ring",
         emergency && "border-danger border-l-4",
+        drag && !drag.pending && "active:cursor-grabbing",
+        (drag?.active || drag?.pending) && "opacity-50",
       )}
     >
       <div className="flex items-center gap-2">
