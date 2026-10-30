@@ -304,7 +304,7 @@ export function ExpensesPage() {
       )}
       {isMobile && <div>{pendingChip}</div>}
 
-      <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
+      <div className="flex flex-col gap-6 2xl:flex-row 2xl:items-start">
         <div id={table.listId} className="min-w-0 flex-1 scroll-mt-24">
           <ExpensesTable
             view={view}
@@ -322,8 +322,8 @@ export function ExpensesPage() {
             onOpen={(e) => setOpen(e.id)}
           />
         </div>
-        {/* Fixed 320px beside the list from xl; the list (flex-1, min-w-0) can't push into it. */}
-        <div className="min-w-0 xl:w-80 xl:shrink-0">
+        {/* Fixed 320px beside the list from 1536px (under it below that, so the table fits); the list (flex-1, min-w-0) can't push into it. */}
+        <div className="min-w-0 2xl:w-80 2xl:shrink-0">
           <CategoryBreakdown
             summary={s}
             pending={summary.isPending}

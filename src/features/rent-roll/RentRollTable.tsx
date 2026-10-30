@@ -10,6 +10,7 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { BalanceText } from "@/features/ledger/LedgerParts";
 import { balanceText } from "@/features/ledger/balance";
 import { paidCaption, rowTotals, statusDate, type UpcomingRow } from "@/features/rent-roll/stats";
+import { MergedSortHeader } from "@/features/shared/MergedSortHeader";
 import type { RentReminderLinks } from "@/features/shared/rentReminder";
 import type { RentRollRow } from "@/types/rentRoll";
 
@@ -53,13 +54,18 @@ function OwedTotal({ owedCents, creditCents }: { owedCents: number; creditCents:
   );
 }
 
-/** Amount with an optional caption under it, right-aligned. */
-function WithCaption({ children, caption }: { children: ReactNode; caption: string | null }) {
+/** "Unit 4B · Maple Court · LSE-2026-001" (the property only when the list spans properties). */
+function unitText(r: RentRollRow, showProperty: boolean): string {
+  return [`Unit ${r.unit.unitNumber}`, showProperty ? r.unit.property.name : null, r.leaseNumber].filter(Boolean).join(" · ");
+}
+
+/** Amount with an optional caption under it, right-aligned. `wrap`: the caption wraps (max 144px) instead of widening the column. */
+function WithCaption({ children, caption, wrap }: { children: ReactNode; caption: string | null; wrap?: boolean }) {
   if (!caption) return <>{children}</>;
   return (
     <span className="flex flex-col items-end">
       {children}
-      <Caption className="whitespace-nowrap font-normal">{caption}</Caption>
+      <Caption className={cn("font-normal", wrap ? "max-w-36 whitespace-normal" : "whitespace-nowrap")}>{caption}</Caption>
     </span>
   );
 }
@@ -70,6 +76,7 @@ function WithCaption({ children, caption }: { children: ReactNode; caption: stri
  */
 export function RentRollTable({ cards, totalRows, showProperty, pastMonth, upcoming, onOpen, onRecordPayment, onAddCharge, reminderFor, ...props }: Props) {
   const isMobile = useIsMobile();
+  const { sort, onSortChange } = props;
   const menu = useMemo(
     () => (r: RentRollRow) => {
       const items: MenuItem[] = [{ label: "Open ledger", icon: <Eye strokeWidth={1.5} />, onSelect: () => onOpen(r) }];
@@ -93,8 +100,8 @@ export function RentRollTable({ cards, totalRows, showProperty, pastMonth, upcom
     () => [
       {
         key: "tenant",
-        header: "Tenant",
-        sortable: true,
+        // Tenant and unit in one column (the unit is the second line); the header keeps both sorts.
+        header: <MergedSortHeader sort={sort} onSortChange={onSortChange} keys={[["tenant", "Tenant"], ["unit", "Unit"]]} />,
         cell: (r) => (
           <span className="flex min-w-0 items-center gap-3">
             <Avatar name={r.primaryTenant?.fullName ?? "-"} size={24} />
@@ -103,23 +110,27 @@ export function RentRollTable({ cards, totalRows, showProperty, pastMonth, upcom
                 <span className={cn("truncate font-semibold", !r.primaryTenant && "text-text-muted")}>{r.primaryTenant?.fullName ?? "No tenant"}</span>
                 {r.leaseStatus !== "ACTIVE" && <Badge tone="neutral">{leaseStatusLabels[r.leaseStatus]}</Badge>}
               </span>
-              <Caption>{r.leaseNumber}</Caption>
+              <Caption className="block max-w-44 truncate" title={unitText(r, showProperty)}>
+                {unitText(r, showProperty)}
+              </Caption>
             </span>
           </span>
         ),
       },
       {
-        key: "unit",
-        header: "Unit",
-        sortable: true,
-        cell: (r) => (
-          <span className="flex flex-col">
-            {r.unit.unitNumber}
-            {showProperty && <Caption>{r.unit.property.name}</Caption>}
+        key: "opening",
+        // Two lines, so the header isn't the widest thing in the column.
+        header: (
+          <span className="inline-block text-right leading-tight">
+            Previous
+            <br />
+            balance
           </span>
         ),
+        align: "right",
+        sortable: true,
+        cell: (r) => <PreviousBalance value={r.openingBalance} />,
       },
-      { key: "opening", header: "Previous balance", align: "right", sortable: true, cell: (r) => <PreviousBalance value={r.openingBalance} /> },
       { key: "charged", header: "Rent due", align: "right", cell: (r) => <Num>{formatCurrency(r.charged)}</Num> },
       {
         key: "paid",
@@ -127,7 +138,7 @@ export function RentRollTable({ cards, totalRows, showProperty, pastMonth, upcom
         align: "right",
         sortable: true,
         cell: (r) => (
-          <WithCaption caption={paidCaption(r)}>
+          <WithCaption caption={paidCaption(r)} wrap>
             <Num>{formatCurrency(r.paid)}</Num>
           </WithCaption>
         ),
@@ -162,7 +173,7 @@ export function RentRollTable({ cards, totalRows, showProperty, pastMonth, upcom
         cell: menu,
       },
     ],
-    [showProperty, pastMonth, upcoming, menu],
+    [showProperty, pastMonth, upcoming, menu, sort, onSortChange],
   );
 
   const t = rowTotals(totalRows);

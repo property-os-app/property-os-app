@@ -1,9 +1,12 @@
 import { useMemo } from "react";
-import { Avatar, Caption, Dash, Num, Small } from "@/components/atoms";
+import { Avatar, Caption, Dash, Num } from "@/components/atoms";
 import { ListCard } from "@/components/molecules";
 import { CardList, DataTable, type Column, type DataTableProps } from "@/components/organisms";
+import { formatCurrency } from "@/lib/format";
+import { plural, rateUnitLabels } from "@/lib/labels";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { ContactLink } from "@/features/shared/ContactLink";
+import { MergedSortHeader } from "@/features/shared/MergedSortHeader";
 import { RatingText } from "@/features/shared/Rating";
 import { InactiveBadge, InsuranceBadge, VendorMenu, type VendorActions } from "@/features/vendors/VendorParts";
 import { rateText, tradeLine } from "@/features/vendors/vendorText";
@@ -29,39 +32,77 @@ export function VendorsTable({ tradeLabel, onOpen, actions, ...props }: Props) {
         header: "Vendor",
         sortable: true,
         cell: (v) => (
-          <div className="flex min-w-0 items-center gap-2.5">
+          // py-2: room for the phone copy button's 44px tap area, so the last row doesn't overflow the table box.
+          <div className="flex min-w-0 items-center gap-2.5 py-2">
             <Avatar name={v.name} size={24} />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="truncate font-semibold">{v.name}</span>
                 <InactiveBadge vendor={v} />
               </div>
-              {v.contactName && <Caption className="block max-w-56 truncate">{v.contactName}</Caption>}
+              {(v.contactName || v.phone) && (
+                <Caption className="flex max-w-48 min-w-0 items-center gap-1.5">
+                  {v.contactName && (
+                    <span className="truncate" title={v.contactName}>
+                      {v.contactName}
+                    </span>
+                  )}
+                  {v.contactName && v.phone && <span aria-hidden>·</span>}
+                  {v.phone && <ContactLink kind="phone" value={v.phone} className="shrink-0" />}
+                </Caption>
+              )}
             </div>
           </div>
         ),
       },
-      { key: "trade", header: "Trade", cell: (v) => tradeLabel(v.trade) },
-      { key: "area", header: "Service area", cell: (v) => v.serviceArea ?? <Dash /> },
-      { key: "rate", header: "Rate", cell: (v) => (rateText(v) ? <Num>{rateText(v)}</Num> : <Dash />) },
       {
-        key: "phone",
-        header: "Phone",
+        key: "trade",
+        header: "Trade",
         cell: (v) => (
-          <Small>
-            <ContactLink kind="phone" value={v.phone} />
-          </Small>
+          <div className="min-w-0">
+            <div>{tradeLabel(v.trade)}</div>
+            {v.serviceArea && (
+              <Caption className="block max-w-40 truncate" title={v.serviceArea}>
+                {v.serviceArea}
+              </Caption>
+            )}
+          </div>
         ),
       },
+      {
+        key: "rate",
+        header: "Rate",
+        // "$110.00" with "per hour" under it, so the column stays narrow.
+        cell: (v) =>
+          v.rateAmount !== null && v.rateUnit !== null ? (
+            <div>
+              <Num>{formatCurrency(v.rateAmount)}</Num>
+              <Caption className="block">per {rateUnitLabels[v.rateUnit]}</Caption>
+            </div>
+          ) : (
+            <Dash />
+          ),
+      },
       { key: "insurance", header: "Insurance", cell: (v) => <InsuranceBadge vendor={v} /> },
-      { key: "rating", header: "Rating", sortable: true, cell: (v) => <RatingText rating={v.rating} count={v.ratingCount} compact /> },
-      { key: "jobs", header: "Jobs", align: "right", sortable: true, cell: (v) => <Num>{v.jobsCount}</Num> },
-      { key: "active", header: "Active", align: "right", cell: (v) => <Num>{v.activeTickets}</Num> },
-      { key: "expenses", header: "Expenses", align: "right", sortable: true, cell: (v) => <Num>{v.expenseCount}</Num> },
+      // Rating, jobs and active tickets in one column; the header keeps both sorts (Rating, Jobs).
+      {
+        key: "jobs",
+        header: <MergedSortHeader sort={props.sort} onSortChange={props.onSortChange} keys={[["rating", "Rating"], ["jobs", "Jobs"]]} />,
+        cell: (v) => (
+          <div>
+            <RatingText rating={v.rating} count={v.ratingCount} compact />
+            <Caption className="block tabular">
+              {plural(v.jobsCount, "job")} · {v.activeTickets} active
+            </Caption>
+          </div>
+        ),
+      },
+      // Only from 1440px; the drawer's Expenses tab shows the count too.
+      { key: "expenses", header: "Expenses", align: "right", sortable: true, wideOnly: true, cell: (v) => <Num>{v.expenseCount}</Num> },
     ];
     if (actions) cols.push({ key: "actions", header: <span className="sr-only">Actions</span>, width: 56, cell: (v) => <VendorMenu vendor={v} actions={actions} /> });
     return cols;
-  }, [tradeLabel, actions]);
+  }, [tradeLabel, actions, props.sort, props.onSortChange]);
 
   if (isMobile) {
     return (

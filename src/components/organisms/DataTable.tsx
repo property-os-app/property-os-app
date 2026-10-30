@@ -15,8 +15,13 @@ export interface Column<Row> {
   sortable?: boolean;
   /** Sticky first column for wide finance tables. */
   sticky?: boolean;
+  /** Only from 1440px wide: under that the whole column (header, cells, skeletons, totals) is hidden. Show its info elsewhere (a second line, the drawer). */
+  wideOnly?: boolean;
   className?: string;
 }
+
+/** Hides a `wideOnly` column's cells under 1440px. */
+const wide = (c: { wideOnly?: boolean } | undefined) => c?.wideOnly && "hidden min-[1440px]:table-cell";
 
 export type SortState = { key: string; direction: "asc" | "desc" } | null;
 
@@ -107,6 +112,7 @@ export function DataTable<Row>({
                     "whitespace-nowrap border-b border-border-subtle bg-surface-2 px-4 py-3 text-overline uppercase text-text-secondary",
                     c.align === "right" ? "text-right" : "text-left",
                     c.sticky && "sticky left-0 z-[1]",
+                    wide(c),
                   )}
                 >
                   {c.sortable && onSortChange ? (
@@ -125,7 +131,7 @@ export function DataTable<Row>({
                 <tr key={i} className={rowH}>
                   {selectable && <td className="border-b border-border-subtle px-4"><Skeleton className="size-[18px]" /></td>}
                   {columns.map((c) => (
-                    <td key={c.key} className="border-b border-border-subtle px-4">
+                    <td key={c.key} className={cn("border-b border-border-subtle px-4", wide(c))}>
                       <Skeleton className={cn("h-3", c.align === "right" ? "ml-auto w-16" : "w-28")} />
                     </td>
                   ))}
@@ -157,6 +163,7 @@ export function DataTable<Row>({
                           strip && i === 0 && !selectable && "relative",
                           c.align === "right" && "text-right tabular",
                           c.sticky && "sticky left-0 z-[1] bg-surface-1 group-hover:bg-surface-3",
+                          wide(c),
                           c.className,
                         )}
                       >
@@ -171,7 +178,7 @@ export function DataTable<Row>({
               <tr className="sticky bottom-0 h-12 bg-surface-2 font-bold">
                 {selectable && <td className="border-t border-border-strong" />}
                 {totals.map((t, i) => (
-                  <td key={i} className={cn("whitespace-nowrap border-t border-border-strong px-4", columns[i]?.align === "right" && "text-right tabular")}>{t}</td>
+                  <td key={i} className={cn("whitespace-nowrap border-t border-border-strong px-4", columns[i]?.align === "right" && "text-right tabular", wide(columns[i]))}>{t}</td>
                 ))}
               </tr>
             )}

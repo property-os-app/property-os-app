@@ -64,7 +64,7 @@ Maintenance: the /maintenance page (summary KPIs, filters, Board or Table view),
 - `TicketCard`: #, priority, kebab; title (2 lines); location; assignee avatar or a dashed "+" (opens Assign when allowed); age; "SLA 4h · Due in 1h" (red "Past SLA by 16h"); "est. $1,800.00", or "Closed Oct 6 · $18.00" when resolved (full contrast). Emergencies get a red border and left edge. With `drag` (desktop board) the card is `draggable`, faded while dragged or while its drop is pending; a click never fires after a drag, so clicking still opens the drawer. `TicketCardSkeleton`.
 
 ## TicketsTable.tsx
-- `TicketsTable`: Table view (#, Title + location, Priority, Status, Assignee, Age / SLA, Cost (actual, else "est."), Created, kebab; Created and Priority sort on the server). Phones: `ListCard`s.
+- `TicketsTable`: Table view (Title with "#1042 · location" under it, Priority / status (stacked; sorts by priority), Assignee, Age / SLA (sorts by created date, newest / oldest; the date on hover), Cost (actual, else "est."), kebab; sorting on the server). Phones: `ListCard`s.
 
 ## TicketDrawer.tsx
 - `TicketDrawer({ id, placeholder?, onAction, onClose })`: lg drawer: details (property, unit / note, SLA with the due time, assignee + trade, description), Costs (estimated, actual, linked expenses with their status; each opens `/expenses?expense=…`), History (`TimelineItem`s: created, assigned, started, resolved with stars and note, cancelled with the reason). Footer from `allowedActions`: the main action for the status (Assign / Start / Resolve / Reopen), a few buttons, the rest in a "⋮". 404: "Ticket not found".

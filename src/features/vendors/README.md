@@ -41,7 +41,7 @@ Vendors: the /vendors directory (Cards / Table views, KPIs, filters), the vendor
 - `VendorCard`: Cards view card (3 per row from xl): avatar, name, "Trade · area", rate, kebab; contact name, phone and email (`ContactLink`); License and the insurance badge; Rating ("★ 4.7 (3)"), Jobs, Active. Archived ones muted. `VendorCardSkeleton`: its loading shape.
 
 ## VendorsTable.tsx
-- `VendorsTable`: Table view (Vendor + contact, Trade, Service area, Rate, Phone, Insurance, Rating, Jobs, Active, Expenses; Vendor, Rating, Jobs and Expenses sort; kebab). On phones a `CardList` of `ListCard`s (insurance badge, Rate, Phone, Rating, email).
+- `VendorsTable`: Table view (Vendor with "contact · phone" under it, Trade with the service area under it, Rate ("per hour" under it), Insurance, Rating · Jobs (rating with "n jobs · n active" under it; the header sorts by Rating or Jobs, `MergedSortHeader`), Expenses (only from 1440px, `wideOnly`; the drawer's Expenses tab shows it); Vendor, Rating, Jobs and Expenses sort; kebab). On phones a `CardList` of `ListCard`s (insurance badge, Rate, Phone, Rating, email).
 
 ## VendorDrawer.tsx
 - `VendorDrawer`: lg drawer. Overview (details with `ContactLink`s, rating, jobs and active tickets, added by / on; Insurance card with provider, policy number, expiry and badge), Tickets (`VendorTicketsTab`) and Expenses (GET /expenses?vendorId=, voided included, 10 per page; a manager sees only their properties'). A row goes to `/expenses?vendor=…&expense=…`, where the expense drawer opens (a drawer never opens on another). Footer with vendors.manage: Delete (unused only), Archive / Unarchive, Edit vendor. "Vendor not found" on 404.

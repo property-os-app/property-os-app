@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Pencil, Trash2 } from "lucide-react";
-import { Dash, Num, Small } from "@/components/atoms";
+import { Caption, Dash, Num } from "@/components/atoms";
 import { KebabMenu, ListCard, StatusBadge, type MenuItem } from "@/components/molecules";
 import { CardList, DataTable, type Column, type DataTableProps } from "@/components/organisms";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -42,19 +42,52 @@ export function UnitsTable({ cards, onOpen, onEdit, onDelete, ...props }: Props)
 
   const columns = useMemo<Column<UnitListRow>[]>(() => {
     const cols: Column<UnitListRow>[] = [
-      { key: "unit", header: "Unit", sortable: true, cell: ({ unit }) => <span className="font-semibold">Unit {unit.unitNumber}</span> },
-      { key: "property", header: "Property", cell: (r) => (r.propertyName ? <Small>{r.propertyName}</Small> : <Dash />) },
-      { key: "layout", header: "Layout", cell: ({ unit }) => unitLayout(unit.unitType, unit.bathrooms) },
-      { key: "sqft", header: "Sq ft", align: "right", cell: ({ unit }) => <Num>{unit.floorArea.toLocaleString("en-US")}</Num> },
+      // Second lines (property, sq ft, lease end) keep the table inside 1280 without hiding anything.
+      {
+        key: "unit",
+        header: "Unit",
+        sortable: true,
+        cell: (r) => (
+          <div className="min-w-0">
+            <div className="font-semibold">Unit {r.unit.unitNumber}</div>
+            {r.propertyName && (
+              <Caption className="block max-w-48 truncate" title={r.propertyName}>
+                {r.propertyName}
+              </Caption>
+            )}
+          </div>
+        ),
+      },
+      {
+        key: "layout",
+        header: "Layout",
+        cell: ({ unit }) => (
+          <div>
+            <div>{unitLayout(unit.unitType, unit.bathrooms)}</div>
+            <Caption className="block tabular">{unit.floorArea.toLocaleString("en-US")} sq ft</Caption>
+          </div>
+        ),
+      },
       { key: "listed", header: "Listed rent", align: "right", sortable: true, cell: ({ unit }) => formatCurrency(unit.monthlyRent) },
       { key: "current", header: "Current rent", align: "right", sortable: true, cell: ({ active }) => (active ? formatCurrency(active.rent) : <Dash />) },
-      { key: "tenant", header: "Tenant", cell: ({ active }) => primaryTenantName(active) ?? <Dash /> },
-      { key: "status", header: "Status", cell: ({ unit }) => <StatusBadge domain="unit" status={unit.status} /> },
       {
-        key: "ends",
-        header: "Lease ends",
-        cell: ({ active }) => <EndsText active={active} />,
+        key: "tenant",
+        header: "Tenant / lease ends",
+        cell: ({ active }) =>
+          active ? (
+            <div className="min-w-0">
+              <div className="max-w-48 truncate" title={primaryTenantName(active) ?? undefined}>
+                {primaryTenantName(active) ?? <Dash />}
+              </div>
+              <Caption className="block">
+                Ends <EndsText active={active} />
+              </Caption>
+            </div>
+          ) : (
+            <Dash />
+          ),
       },
+      { key: "status", header: "Status", cell: ({ unit }) => <StatusBadge domain="unit" status={unit.status} /> },
     ];
     if (menu) cols.push({ key: "actions", header: <span className="sr-only">Actions</span>, width: 56, cell: menu });
     return cols;

@@ -69,8 +69,17 @@ export function TenantsTable({ onOpen, onEdit, onDelete, ...props }: Props) {
             <Dash />
           ),
       },
-      { key: "lease", header: "Lease", cell: ({ current }) => <TenantLeaseBadge lease={current} /> },
-      { key: "rentStatus", header: "Rent status", cell: ({ current }) => <RentStatusBadge lease={current} /> },
+      // Lease and rent status stacked in one column, so the table fits at 1280.
+      {
+        key: "status",
+        header: "Lease / rent",
+        cell: ({ current }) => (
+          <span className="flex flex-col items-start gap-1 py-2">
+            <TenantLeaseBadge lease={current} />
+            <RentStatusBadge lease={current} />
+          </span>
+        ),
+      },
       { key: "balance", header: "Balance", align: "right", sortable: true, cell: ({ current }) => <BalanceValue lease={current} /> },
     ];
     if (onEdit || onDelete) {

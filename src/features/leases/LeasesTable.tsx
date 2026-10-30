@@ -6,6 +6,7 @@ import { KebabMenu, ListCard, StatusBadge, type MenuItem } from "@/components/mo
 import { CardList, DataTable, type Column, type DataTableProps } from "@/components/organisms";
 import { cn } from "@/lib/cn";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { signatureStatusLabels } from "@/lib/labels";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { BalanceText } from "@/features/ledger/LedgerParts";
 import type { LeasePageState } from "@/features/leases/LeasePage";
@@ -90,21 +91,28 @@ export function LeasesTable({ cards, onOpen, onEdit, onActivate, onEnd, onDelete
         ),
       },
       { key: "rent", header: "Rent", align: "right", sortable: true, cell: (l) => (l.rent === null ? <Dash /> : <Num>{formatCurrency(l.rent)}</Num>) },
-      { key: "term", header: "Term", cell: (l) => (l.termMonths === null ? <Dash /> : `${l.termMonths} months`) },
       {
         key: "status",
         header: "Status",
-        // "Overdue" next to the lease status, as on the phone cards: the label that goes with the red strip.
+        // "Overdue" next to the lease status, as on the phone cards: the label that goes with the red strip. The e-signature
+        // status sits under them (its own column made the table wider than 1280).
         cell: (l) => (
-          <span className="flex items-center gap-1.5">
-            <LeaseBadge lease={l} />
-            {dueState(l).kind === "overdue" && <StatusBadge domain="rent" status="OVERDUE" />}
+          <span className="flex flex-col items-start gap-1 py-2">
+            <span className="flex items-center gap-1.5">
+              <LeaseBadge lease={l} />
+              {dueState(l).kind === "overdue" && <StatusBadge domain="rent" status="OVERDUE" />}
+            </span>
+            <StatusBadge domain="esign" status={l.signatureStatus}>
+              {`E-sign: ${signatureStatusLabels[l.signatureStatus].toLowerCase()}`}
+            </StatusBadge>
           </span>
         ),
       },
       {
         key: "tags",
         header: "Tags",
+        // Only from 1440px; the lease page shows them too.
+        wideOnly: true,
         cell: (l) =>
           l.tags.length === 0 ? (
             <Dash />
@@ -115,12 +123,16 @@ export function LeasesTable({ cards, onOpen, onEdit, onActivate, onEnd, onDelete
             </span>
           ),
       },
-      { key: "esign", header: "E-signature", cell: (l) => <StatusBadge domain="esign" status={l.signatureStatus} /> },
       {
         key: "expires",
         header: "Expires",
         sortable: true,
-        cell: (l) => <ExpiresText lease={l} />,
+        cell: (l) => (
+          <div>
+            <ExpiresText lease={l} />
+            {l.termMonths !== null && <Caption className="block">{l.termMonths} months</Caption>}
+          </div>
+        ),
       },
       { key: "balance", header: "Balance", align: "right", sortable: true, cell: (l) => <BalanceText value={l.balance} /> },
       {

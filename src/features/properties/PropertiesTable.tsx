@@ -17,11 +17,12 @@ const columns: Column<PropertyRow>[] = [
     cell: (r) => (
       <div className="flex flex-col py-2">
         <span className="font-semibold">{r.property.name}</span>
-        <Small>{formatAddress(r.property)}</Small>
+        <Small>
+          {propertyTypeLabels[r.property.propertyType]} · {formatAddress(r.property)}
+        </Small>
       </div>
     ),
   },
-  { key: "type", header: "Type", cell: (r) => propertyTypeLabels[r.property.propertyType] },
   { key: "units", header: "Units", sortable: true, cell: (r) => <Num>{r.property.unitCount}</Num> },
   { key: "occupancy", header: "Occupancy", sortable: true, cell: (r) => (r.occupancy === null ? <Dash /> : <Num>{formatPercent(r.occupancy)}</Num>) },
   { key: "rent", header: "Monthly rent", align: "right", cell: (r) => formatCurrency(centsToAmount(r.rentCents)) },

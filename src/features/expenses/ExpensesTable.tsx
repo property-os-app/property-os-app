@@ -4,7 +4,6 @@ import { ListCard } from "@/components/molecules";
 import { CardList, DataTable, type Column, type DataTableProps } from "@/components/organisms";
 import { cn } from "@/lib/cn";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { expenseTypeLabels } from "@/lib/labels";
 import { ExpenseAmount, ExpenseStatusBadges, ExpenseTicketLink } from "@/features/expenses/ExpenseParts";
 import { propertyLine, propertyText } from "@/features/expenses/expenseText";
 import type { Expense, ExpenseList } from "@/types/expense";
@@ -20,6 +19,11 @@ type Props = Pick<DataTableProps<Expense>, "rows" | "state" | "sort" | "onSortCh
   updating?: boolean;
   onOpen: (e: Expense) => void;
 };
+
+/** The description's second line: "EXP-2026-0001 · Repairs · Ace Plumbing" (no vendor: just the number and category). */
+function secondLine(e: Expense, categoryLabel: (key: string) => string): string {
+  return [e.expenseNumber, categoryLabel(e.category), e.vendor?.name].filter(Boolean).join(" · ");
+}
 
 /** "+ $1,840.00 pending (3)", or null with nothing pending. */
 function pendingText(totals: ExpenseList["totals"]): string | null {
@@ -39,16 +43,19 @@ export function ExpensesTable({ view, isMobile, categoryLabel, totals, updating,
         key: "description",
         header: "Description",
         cell: (e) => (
+          // Category and vendor live in the second line (their own columns made the table wider than its space).
           <div className="min-w-0">
-            <div className={cn("max-w-72 truncate font-semibold", e.voided && "text-text-muted line-through")} title={e.description}>
+            <div className={cn("max-w-56 truncate font-semibold", e.voided && "text-text-muted line-through")} title={e.description}>
               {e.description}
             </div>
-            <Caption className="block">
-              {e.expenseNumber} · {expenseTypeLabels[e.type]}
+            <Caption className="flex max-w-56 items-center gap-1">
+              <span className="truncate" title={secondLine(e, categoryLabel)}>
+                {secondLine(e, categoryLabel)}
+              </span>
               {e.maintenanceTicket && (
                 <>
-                  {" · "}
-                  <ExpenseTicketLink expense={e} className="text-caption" />
+                  <span aria-hidden>·</span>
+                  <ExpenseTicketLink expense={e} className="shrink-0 text-caption" />
                 </>
               )}
             </Caption>
@@ -60,13 +67,13 @@ export function ExpensesTable({ view, isMobile, categoryLabel, totals, updating,
         header: "Property",
         cell: (e) => (
           <div className="min-w-0">
-            <div className={cn("max-w-48 truncate", !e.property && "text-text-secondary")}>{propertyText(e)}</div>
+            <div className={cn("max-w-36 truncate", !e.property && "text-text-secondary")} title={propertyText(e)}>
+              {propertyText(e)}
+            </div>
             {e.unit && <Caption className="block">Unit {e.unit.unitNumber}</Caption>}
           </div>
         ),
       },
-      { key: "category", header: "Category", cell: (e) => <span className="block max-w-44 truncate">{categoryLabel(e.category)}</span> },
-      { key: "vendor", header: "Vendor", cell: (e) => (e.vendor ? <span className="block max-w-40 truncate">{e.vendor.name}</span> : <Dash />) },
       { key: "amount", header: "Amount", align: "right", sortable: true, cell: (e) => <ExpenseAmount expense={e} className="font-semibold" /> },
       { key: "status", header: "Status", cell: (e) => <ExpenseStatusBadges expense={e} /> },
     ],
@@ -75,7 +82,7 @@ export function ExpensesTable({ view, isMobile, categoryLabel, totals, updating,
 
   const pending = totals ? pendingText(totals) : null;
   const totalsRow: ReactNode[] | undefined = totals
-    ? ["Total, filtered", "", "", "", "", formatCurrency(totals.approvedAmount), pending ? <Small className="font-normal">{pending}</Small> : ""]
+    ? ["Total, filtered", "", "", formatCurrency(totals.approvedAmount), pending ? <Small className="font-normal">{pending}</Small> : ""]
     : undefined;
 
   if (isMobile || view === "cards") {

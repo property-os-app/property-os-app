@@ -43,3 +43,6 @@ Phone (under md) toolbar pieces; desktop toolbars use only the compact `SortSele
 - `RatingText({ rating, count?, compact?, className? })`: "★ 4.7 (3 ratings)" (`compact`: "(3)"); Dash when not rated. Vendor cards, table, drawer and the Average rating KPI.
 - `RatingStars({ value })`: five stars, `value` filled (read only, "4 stars out of 5" for screen readers). Ticket history and the vendor Tickets tab.
 - `RatingInput({ value, onChange, aria-label | aria-labelledby, disabled })`: 1–5 picker as a radio group ("1 star" … "5 stars"): one tab stop, Arrow keys / Home / End move and pick, 44px targets, visible focus ring. Resolve modal and the resolved ticket's edit.
+
+## MergedSortHeader.tsx
+- `MergedSortHeader({ sort, onSortChange, keys })`: the header of a DataTable column that merges sortable columns: one sort button per merged column ("Rating · Jobs", "Tenant · Unit"), same look and cycle as DataTable's own. Use it as the column `header`, without `sortable`. `MergedSortHeaderProps`.

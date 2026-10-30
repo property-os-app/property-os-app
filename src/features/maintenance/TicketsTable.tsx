@@ -26,7 +26,7 @@ function CostCell({ t }: { t: MaintenanceTicket }) {
 function AgeCell({ t, now }: { t: MaintenanceTicket; now: Date }) {
   const sla = slaText(t, now);
   return (
-    <div className="whitespace-nowrap">
+    <div className="whitespace-nowrap" title={`Created ${formatTimestampDate(t.createdAt)}`}>
       <div>{ageText(t.createdAt, now)}</div>
       {sla && <Caption className={cn("block", sla.tone === "danger" && "font-semibold text-danger")}>{sla.label}</Caption>}
     </div>
@@ -42,29 +42,47 @@ export function TicketsTable({ isMobile, updating, onAction, ...props }: Props) 
   const now = new Date();
   // Rebuilt each render so the ages use this render's clock.
   const columns: Column<MaintenanceTicket>[] = [
-    { key: "number", header: "#", cell: (t) => <span className="tabular text-text-secondary">{ticketNo(t)}</span> },
     {
       key: "title",
       header: "Title",
       cell: (t) => (
         <div className="min-w-0">
-          <div className="max-w-72 truncate font-semibold" title={t.title}>
+          <div className="max-w-64 truncate font-semibold" title={t.title}>
             {t.title}
           </div>
-          <Caption className="block max-w-72 truncate">{locationLabel(t)}</Caption>
+          <Caption className="block max-w-64 truncate" title={`${ticketNo(t)} · ${locationLabel(t)}`}>
+            <span className="tabular">{ticketNo(t)}</span> · {locationLabel(t)}
+          </Caption>
         </div>
       ),
     },
-    { key: "priority", header: "Priority", sortable: true, cell: (t) => <PriorityBadge priority={t.priority} /> },
-    { key: "status", header: "Status", cell: (t) => <TicketStatusBadges ticket={t} /> },
+    // Priority and status stacked in one column (sorted by priority, Emergency first).
+    {
+      key: "priority",
+      header: "Priority / status",
+      sortable: true,
+      cell: (t) => (
+        <span className="flex flex-col items-start gap-1 py-2">
+          <PriorityBadge priority={t.priority} />
+          <TicketStatusBadges ticket={t} />
+        </span>
+      ),
+    },
     {
       key: "assignee",
       header: "Assignee",
-      cell: (t) => (t.vendor ? <span className="block max-w-40 truncate">{t.vendor.name}</span> : <span className="text-text-secondary">Unassigned</span>),
+      cell: (t) =>
+        t.vendor ? (
+          <span className="block max-w-36 truncate" title={t.vendor.name}>
+            {t.vendor.name}
+          </span>
+        ) : (
+          <span className="text-text-secondary">Unassigned</span>
+        ),
     },
-    { key: "age", header: "Age / SLA", cell: (t) => <AgeCell t={t} now={now} /> },
+    // Age sorts by the created date (newest / oldest); the date shows on hover.
+    { key: "created", header: "Age / SLA", sortable: true, cell: (t) => <AgeCell t={t} now={now} /> },
     { key: "cost", header: "Cost", align: "right", cell: (t) => <CostCell t={t} /> },
-    { key: "created", header: "Created", sortable: true, cell: (t) => <span className="whitespace-nowrap">{formatTimestampDate(t.createdAt)}</span> },
     { key: "actions", header: <span className="sr-only">Actions</span>, cell: (t) => <TicketMenu ticket={t} onAction={onAction} /> },
   ];
 
