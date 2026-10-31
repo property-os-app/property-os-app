@@ -1,10 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Caption } from "@/components/atoms";
 import { InlineError, Stepper, toast } from "@/components/molecules";
 import { Modal } from "@/components/organisms";
 import { applyServerError } from "@/lib/forms";
+import { useAuth } from "@/features/auth/authContext";
+import { can } from "@/features/auth/permissions";
+import { useLeaseTemplates } from "@/features/lease-templates/hooks";
+import { TemplateEditor } from "@/features/lease-templates/TemplateEditor";
 import { useProperties } from "@/features/properties/hooks";
 import { useScope } from "@/features/scope/scopeContext";
 import { TenantFormModal } from "@/features/tenants/TenantFormModal";
@@ -28,7 +32,10 @@ import { useCreateLease, useUpdateLease } from "@/features/leases/hooks";
 import { friendlyLeaseMessage, isClosed, leaseUnitLine } from "@/features/leases/stats";
 import { DepositStep, PartiesStep, ReviewStep, TermsStep, type StepContext } from "@/features/leases/LeaseWizardSteps";
 import type { PickedTenant } from "@/features/leases/TenantPicker";
+import { templateEndDate } from "@/features/leases/templatePrefill";
+import { templateOptions } from "@/features/leases/templateOptions";
 import type { Lease } from "@/types/lease";
+import type { LeaseTemplateListItem } from "@/types/leaseTemplate";
 import type { Unit } from "@/types/unit";
 
 type SubmitKind = "draft" | "activate" | "save";
@@ -49,9 +56,12 @@ export interface LeaseWizardProps {
  * Add / Edit Lease: a 4-step modal (Parties, Terms, Deposit, Review). Continue checks only the step's format rules;
  * activation rules are checked on "Create & activate". Create: "Save as draft" (needs a unit) or one POST with status ACTIVE.
  * Edit: PATCH with only the changed fields; a DRAFT stays a DRAFT. Mount it only while open.
+ * Template: a new lease preselects the default template (once the list loads); an existing lease keeps its template unless
+ * the user changes it. A template's default term fills the end date (templateEndDate) until the user sets it by hand.
  */
 export function LeaseWizard({ lease, presetUnit, presetTenantId, onSaved, onClose }: LeaseWizardProps) {
   const { propertyId: scope } = useScope();
+  const { me } = useAuth();
   const isCreate = !lease;
   const closed = lease ? isClosed(lease) : false;
   const unitLocked = lease ? lease.status !== "DRAFT" : false;
@@ -60,6 +70,7 @@ export function LeaseWizard({ lease, presetUnit, presetTenantId, onSaved, onClos
   const update = useUpdateLease();
   const properties = useProperties();
   const tenants = useTenants();
+  const templates = useLeaseTemplates({ enabled: !closed });
 
   const [step, setStep] = useState(0);
   const [formErrors, setFormErrors] = useState<string[]>([]);
@@ -67,13 +78,19 @@ export function LeaseWizard({ lease, presetUnit, presetTenantId, onSaved, onClos
   const [newTenants, setNewTenants] = useState<PickedTenant[]>([]);
   // The due day follows the start date's day until set by hand. Edit keeps the saved value (follows only when it is empty).
   const [dueDayManual, setDueDayManual] = useState(lease ? lease.rentDueDay !== null : false);
+  // Templates made with "+ New template" here, until GET /lease-templates refetches.
+  const [newTemplates, setNewTemplates] = useState<LeaseTemplateListItem[]>([]);
+  const [creatingTemplate, setCreatingTemplate] = useState(false);
+  // The end date the template prefill wrote last; any other end date was set by hand and is never overwritten.
+  const [autoEnd, setAutoEnd] = useState("");
+  const defaultApplied = useRef(false);
 
   const form = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(schema),
     defaultValues: defaults({ lease, unit: presetUnit, propertyId: scope, tenantId: presetTenantId }),
     mode: "onTouched",
   });
-  const { control, handleSubmit, setError, setValue, getValues, trigger, formState } = form;
+  const { control, register, handleSubmit, setError, setValue, getValues, resetField, trigger, formState } = form;
   const { isDirty, isSubmitting } = formState;
 
   const values = useWatch({ control }) as FormInput;
@@ -87,6 +104,34 @@ export function LeaseWizard({ lease, presetUnit, presetTenantId, onSaved, onClos
     for (const t of newTenants) map.set(t.id, t);
     return (id: string) => map.get(id);
   }, [lease, tenants.data, newTenants]);
+
+  const options = useMemo(() => templateOptions(templates.data ?? [], lease?.template ?? null, newTemplates), [templates.data, lease, newTemplates]);
+
+  // New lease: preselect the default template once, as a default value (so it doesn't count as a change).
+  useEffect(() => {
+    if (!isCreate || defaultApplied.current || !templates.data) return;
+    defaultApplied.current = true;
+    const preset = templates.data.find((t) => t.isDefault);
+    if (!preset || getValues("templateId") !== "") return;
+    // resetField only works on a registered field, and the Terms step (where the select lives) may not be shown yet.
+    register("templateId");
+    resetField("templateId", { defaultValue: preset.id });
+  }, [isCreate, templates.data, getValues, register, resetField]);
+
+  /** Writes start + the template's term − 1 day into an empty or still-prefilled end date. */
+  const fillEnd = (start: string, months: number | null | undefined) => {
+    const end = templateEndDate({ start, end: getValues("endDate"), autoEnd, months });
+    if (!end) return;
+    setValue("endDate", end, { shouldDirty: true, shouldValidate: true });
+    setAutoEnd(end);
+  };
+  const monthsOf = (id: string) => options.find((o) => o.value === id)?.months;
+
+  const onTemplateSaved = (t: LeaseTemplateListItem) => {
+    setNewTemplates((list) => [...list, t]);
+    setValue("templateId", t.id, { shouldDirty: true });
+    fillEnd(getValues("startDate"), t.defaultTermMonths);
+  };
 
   const missing = closed ? [] : formMissing(values);
   const busy = isSubmitting;
@@ -163,6 +208,18 @@ export function LeaseWizard({ lease, presetUnit, presetTenantId, onSaved, onClos
     onAddTenant: setAddingTenant,
     dueDayManual,
     onDueDayEdited: () => setDueDayManual(true),
+    templates: options,
+    templatesPending: templates.isPending,
+    templatesError: templates.isError,
+    // The backend checks the STORED signature status (409), so a lease saved as signed keeps its template.
+    templateLocked:
+      lease?.signatureStatus === "SIGNED"
+        ? "Signed leases keep their template. To change it, set E-signature to Not sent or Pending, save, then edit again."
+        : null,
+    canCreateTemplate: can(me!, "template.manage"),
+    onNewTemplate: () => setCreatingTemplate(true),
+    onTemplateChange: (id) => fillEnd(getValues("startDate"), monthsOf(id)),
+    onStartChange: (start) => fillEnd(start, monthsOf(getValues("templateId"))),
   };
 
   const blockedBySave = !isCreate && lease?.status === "ACTIVE" && missing.length > 0;
@@ -223,6 +280,8 @@ export function LeaseWizard({ lease, presetUnit, presetTenantId, onSaved, onClos
       </Modal>
 
       {addingTenant && <TenantFormModal onSaved={onTenantSaved} onClose={() => setAddingTenant(null)} />}
+      {/* Opens over the wizard, which stays mounted, so nothing typed is lost. */}
+      {creatingTemplate && <TemplateEditor onSaved={onTemplateSaved} onClose={() => setCreatingTemplate(false)} />}
     </>
   );
 }

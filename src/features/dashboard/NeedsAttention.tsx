@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { CheckCircle2 } from "lucide-react";
-import { Button, buttonVariants, Skeleton, Small } from "@/components/atoms";
+import { buttonVariants, Skeleton, Small } from "@/components/atoms";
 import { Card, CardHeader, EmptyState, InlineError } from "@/components/molecules";
 import { errorText } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -8,7 +8,7 @@ import type { Section } from "@/features/dashboard/hooks";
 import type { AttentionItem } from "@/features/dashboard/stats";
 
 /** The design's action panel without AI: one row per rule that applies (bold title, one line, a small secondary button). */
-export function NeedsAttention({ attention, onGenerate }: { attention: Section<AttentionItem[]>; onGenerate: () => void }) {
+export function NeedsAttention({ attention }: { attention: Section<AttentionItem[]> }) {
   const items = attention.data;
   return (
     <Card as="section" padding="compact" aria-label="Needs attention">
@@ -31,15 +31,9 @@ export function NeedsAttention({ attention, onGenerate }: { attention: Section<A
                 <div className="font-semibold text-text-primary">{item.title}</div>
                 <Small className="block">{item.text}</Small>
               </div>
-              {"generate" in item.action ? (
-                <Button size="sm" className="shrink-0" onClick={onGenerate}>
-                  {item.action.label}
-                </Button>
-              ) : (
-                <Link to={item.action.to} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "shrink-0 no-underline")}>
-                  {item.action.label}
-                </Link>
-              )}
+              <Link to={item.action.to} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "shrink-0 no-underline max-md:h-11")}>
+                {item.action.label}
+              </Link>
             </li>
           ))}
         </ul>

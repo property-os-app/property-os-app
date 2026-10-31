@@ -38,6 +38,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: ({ signal }) => apiFetch<Me>("/auth/me", { signal }),
     enabled: Boolean(uid),
     staleTime: 5 * 60_000,
+    // Permissions can change any time (the Owner's Settings page): reload on every return to the tab, ignoring staleTime.
+    refetchOnWindowFocus: "always",
   });
 
   const errorCode = codeOf(meQuery.error);

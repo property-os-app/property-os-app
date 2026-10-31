@@ -23,7 +23,10 @@ export interface Charge {
   voidedAt: string | null;
   voidedById: string | null;
   voidReason: string | null;
-  createdById: string;
+  /** null = billed automatically by the system (API.md, Billing). */
+  createdById: string | null;
+  /** null = billed automatically: show "Auto-billed" (chargeAuthor). */
+  createdBy: { id: string; name: string } | null;
   createdAt: string;
   updatedAt: string;
 }

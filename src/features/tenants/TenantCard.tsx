@@ -2,8 +2,9 @@ import type { ReactNode } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { Avatar, Divider, Overline, Skeleton, Small } from "@/components/atoms";
 import { Card, KebabMenu, type MenuItem } from "@/components/molecules";
+import { ContactLink } from "@/features/shared/ContactLink";
 import { BalanceValue, RentStatusBadge, TenantLeaseBadge } from "@/features/tenants/TenantParts";
-import { unitLine, type TenantRow } from "@/features/tenants/stats";
+import { rentStatus, unitLine, type TenantRow } from "@/features/tenants/stats";
 
 function Stat({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -23,7 +24,11 @@ export interface TenantCardProps {
   onDelete?: (row: TenantRow) => void;
 }
 
-/** Compact clickable card for the Cards view; opens the tenant drawer. The kebab stops the click from opening it. */
+/**
+ * Compact clickable card for the Cards view; opens the tenant drawer. The kebab and the email / phone links and copy
+ * buttons (ContactLink) stop the click from opening it.
+ * Red left strip: behind on rent only (the Rent status badge says "Overdue").
+ */
 export function TenantCard({ row, onOpen, onEdit, onDelete }: TenantCardProps) {
   const { tenant, current } = row;
   const items: MenuItem[] = [];
@@ -43,8 +48,9 @@ export function TenantCard({ row, onOpen, onEdit, onDelete }: TenantCardProps) {
           onOpen(row);
         }
       }}
-      className="flex cursor-pointer flex-col gap-3 transition-colors duration-fast hover:border-border-strong focus-visible:focus-ring"
+      className="relative flex cursor-pointer flex-col gap-3 transition-colors duration-fast hover:border-border-strong focus-visible:focus-ring"
     >
+      {rentStatus(current) === "overdue" && <span aria-hidden className="absolute -inset-y-px -left-px w-1 rounded-l-card bg-danger" />}
       <div className="flex items-start gap-3">
         <Avatar name={tenant.fullName} size={40} />
         <div className="min-w-0 flex-1">
@@ -55,10 +61,12 @@ export function TenantCard({ row, onOpen, onEdit, onDelete }: TenantCardProps) {
       </div>
 
       <div className="flex min-w-0 flex-col gap-0.5">
-        <Small className="block truncate" title={tenant.email}>
-          {tenant.email}
+        <Small className="block truncate">
+          <ContactLink kind="email" value={tenant.email} />
         </Small>
-        <Small className="block truncate">{tenant.phone}</Small>
+        <Small className="block truncate">
+          <ContactLink kind="phone" value={tenant.phone} />
+        </Small>
       </div>
 
       <Divider />

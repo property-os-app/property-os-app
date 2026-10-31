@@ -142,6 +142,7 @@ export function useClientTable<Row, F extends Record<string, string> = Record<st
   const start = (current - 1) * pageSize;
   const pageRows = filteredRows.slice(start, start + pageSize);
   const isFiltered = search.trim() !== "" || filtersKey !== JSON.stringify(defaults.filters);
+  const activeFilterCount = Object.keys(defaults.filters).filter((key) => filters[key] !== defaults.filters[key]).length;
 
   return {
     search,
@@ -154,8 +155,12 @@ export function useClientTable<Row, F extends Record<string, string> = Record<st
       setSeenSearch("");
       write({ search: "", filters: defaults.filters, page: 1 });
     },
+    /** Resets every filter but keeps the search (the phone filter sheet). */
+    resetFilters: () => write({ filters: defaults.filters, page: 1 }),
     /** True when the search or a filter is not at its starting value. */
     isFiltered,
+    /** Filters not at their starting value (search not counted): the phone "Filters" button count. */
+    activeFilterCount,
     sort,
     setSort: (next: SortState) => write({ sort: next }),
     page: current,

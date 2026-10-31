@@ -1,6 +1,6 @@
 # src/features/settings
 
-User preferences saved on this device. For now only the theme (Light / Dark / System). No API: nothing here talks to the backend.
+Settings: the General tab (theme, saved on this device, no API), the Lease templates tab (built in `src/features/lease-templates`) and, for the owner only, Users and Permissions (which properties each manager sees and what they may change) and Billing (automatic rent billing).
 
 ## theme.ts
 - `ThemePreference`: `"light" | "dark" | "system"`.
@@ -20,5 +20,49 @@ User preferences saved on this device. For now only the theme (Light / Dark / Sy
 ## themeReveal.ts
 - `changeThemeWithReveal(origin, dark, setPreference)`: saves "light" or "dark" (same key as Settings) and shows the new theme in a circle growing from `origin` over 400 ms (View Transitions API). No support or reduced motion: instant. Used by the Topbar ThemeSwitch; Settings stays instant. The CSS that turns off the default cross-fade is in `src/index.css`.
 
+## SettingsFrame.tsx
+- `SettingsFrame({ active, children })`: PageHeader "Settings" + `SettingsLayout` left nav: General, "Users and Permissions" (`access.manage`) and "Billing" (`billing.manage`) for the owner only, and "Lease templates" for everyone (the page lives in `features/lease-templates`).
+- `SettingsTab`: `"general" | "users" | "billing" | "templates"`.
+
+## BillingPage.tsx
+- `BillingPage`: `/settings/billing`, Owner only (`billing.manage`; managers are sent to `/settings`). "Automatic rent billing" card: "Bill rent [1–28] days before the due date" with the example under it from the picked value (`leadDaysExample`), Save (enabled after a change; the backend's 400 message under the field; toast on success). "Run billing now" card: a small button ("Running billing…" while it runs) and the result inline under it, no modal or toast: created count, the run day and bill-through date, the four skipped counts, and one line per created charge (lease number linking to the lease's Ledger tab, month, due date, amount). A failed run shows an InlineError with Retry in the same place.
+
+## billing.ts
+- `LEAD_DAY_OPTIONS`: 1 to 28, every value PATCH /settings/billing accepts.
+- `billOnDate(dueDate, leadDays)`: the day rent due on `dueDate` is billed (due date − lead days).
+- `leadDaysExample(leadDays)`: "Due Nov 1 → billed Oct 18", using the 1st of next month (UTC).
+
 ## SettingsPage.tsx
-- `SettingsPage`: `/settings`. PageHeader, `SettingsLayout` with one section ("General"), and an "Appearance" card with a Theme `SegmentedControl` (Dark / Light / System). Applies right away, no Save button, no toast.
+- `SettingsPage`: `/settings`, the General tab. An "Appearance" card with a Theme `SegmentedControl` (Dark / Light / System). Applies right away, no Save button, no toast.
+
+## UsersPage.tsx
+- `UsersPage`: `/settings/users`. Without `access.manage` it redirects to `/settings`. H2 + one line, search (name or email) and a "{n} members" badge, then `MembersTable` with the owner (from GET /auth/me, "All properties", no kebab) and every manager (GET /managers; scope names from GET /properties). Loading / error / no-match states; a "No managers yet" card when there are none. Opens `EditAccessDrawer`.
+
+## MembersTable.tsx
+- `MemberRow`: one row (id, name, email, role, scope text, `manager` on manager rows).
+- `MembersTable`: DataTable from md up (Member, Role, Scope, kebab "Edit access" on manager rows; a manager row click opens it too; the owner row is a plain row: no pointer, no click), a `CardList` of `ListCard`s on phones (a manager card tap opens it).
+
+## EditAccessDrawer.tsx
+- `EditAccessDrawer({ manager, onClose })`: loads GET /managers/:id/access, GET /settings/permissions and GET /properties. Properties checklist with "Select all" and a "{name} won't see any property." warning when none is picked; switches grouped by catalog `group` (catalog order) with "On by default"; "Reset to defaults" sets only the switches. Save sends one PUT with both full lists (permissions in catalog order), toasts and closes; backend errors (400) show at the top. Closing with unsaved changes opens a "Discard changes?" ConfirmDialog. Full screen on phones (Drawer). Mount only while open.
+
+## access.ts
+- `groupCatalog(catalog)`: items grouped by `group`, keeping the API order.
+- `defaultKeys(catalog)`: the keys with `default: true`.
+- `sameSet(a, b)`: true when both sets hold the same values (dirty check).
+- `managerPropertyNames(id, properties)`: names (A→Z) of the properties whose embedded `managers` include the manager.
+- `scopeText(manager, properties)`: "No properties", up to 2 names, or "N properties"; falls back to `assignedPropertyCount` without the list.
+
+## hooks.ts
+- `usePermissionCatalog()`: GET /settings/permissions (owner), kept 1 hour.
+- `useManagerAccess(userId)`: GET /managers/:userId/access (owner).
+- `useBillingSettings(enabled)`: GET /settings/billing (owner; pass `false` for managers, who get 403).
+- `useUpdateBilling()`: PATCH /settings/billing { billingLeadDays }; stores the answer in the cache.
+- `useRunBilling()`: POST /settings/billing/run; then `refreshAfterMoneyChange` (rent roll, leases and ledgers, tenants).
+- `useUpdateManagerAccess(userId)`: PUT /managers/:userId/access; then refreshes every `managers` query (list, access) and every `properties` query (lists, details, the Property page Managers card, the scope picker).
+
+## keys.ts
+- `settingsKeys`: `permissions`, `billing`. Manager access is `managerKeys.access(userId)` in `features/properties/keys.ts`, so invalidating `managerKeys.all` covers it.
+
+## Tests (`npm test`)
+- `access.test.ts`: `groupCatalog`, `defaultKeys`, `sameSet`, `managerPropertyNames`, `scopeText`.
+- `billing.test.ts`: `billOnDate` (across months and years), `leadDaysExample` (14 → "Due Nov 1 → billed Oct 18", 1, 28, year change), the 1–28 options.

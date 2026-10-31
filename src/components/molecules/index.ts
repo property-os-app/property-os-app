@@ -3,6 +3,7 @@ export * from "./FormField";
 export * from "./SearchInput";
 export * from "./SegmentedControl";
 export * from "./Cards";
+export * from "./ListCard";
 export * from "./Feedback";
 export * from "./Stepper";
 export * from "./FileDropzone";

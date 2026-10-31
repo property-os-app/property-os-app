@@ -9,7 +9,7 @@ Sign-in and who is signed in: the auth state, the route guards, the auth screens
 - `useAuth()`: reads the auth state; throws outside `AuthProvider`.
 
 ## AuthProvider.tsx
-- `AuthProvider`: listens with `onAuthStateChanged`, then loads GET /auth/me (query key `["me", uid]`) and turns both into one status. `EMAIL_NOT_VERIFIED` → needsVerification, `USER_NOT_REGISTERED` → notRegistered (stays signed in), role TENANT → signs out with "This portal is for staff.", other errors → error (stays signed in). `signIn` sets Firebase persistence (local or session) before signing in. `signOut` clears the saved scope, signs out of Firebase, keeps the login notice, then `queryClient.clear()`.
+- `AuthProvider`: listens with `onAuthStateChanged`, then loads GET /auth/me (query key `["me", uid]`, reloaded every time the window gets focus, so a permission change by the owner shows without signing out) and turns both into one status. `EMAIL_NOT_VERIFIED` → needsVerification, `USER_NOT_REGISTERED` → notRegistered (stays signed in), role TENANT → signs out with "This portal is for staff.", other errors → error (stays signed in). `signIn` sets Firebase persistence (local or session) before signing in. `signOut` clears the saved scope, signs out of Firebase, keeps the login notice, then `queryClient.clear()`.
 
 ## session.ts
 - Bridge so `queryClient.ts` (outside React) can sign out once.
@@ -55,7 +55,10 @@ Sign-in and who is signed in: the auth state, the route guards, the auth screens
 - `verificationEmailErrorText(err)`: verification-email errors in simple words.
 
 ## permissions.ts
-- `Action`: the actions the UI checks (`property.create`, `entry.void`, ...).
-- `can(role, action)`: OWNER can do everything; PROPERTY_MANAGER can't create/edit/delete properties, assign managers, delete units or tenants, or void entries. Hide what's not allowed (never disable).
+- `Action`: the actions the UI checks (`property.create`, `entry.void`, `template.manage`, `vendor.manage`, `expense.record`, `expense.approve`, `access.manage`, ...).
+- `can(me, action)`: OWNER can do everything. PROPERTY_MANAGER only when the action's backend key (`ACTION_KEYS`, e.g. `unit.delete` → `units.delete`; `charge.create`, `payment.create` → `money.record`; `template.manage` → `templates.manage`, every lease template write, off by default for managers; `vendor.manage` → `vendors.manage`; `expense.record` → `expenses.record`, `ticket.manage` → `maintenance.manage` (only "Add Ticket"; ticket buttons use `allowedActions`), `ticket.cancel` → `maintenance.cancel` (off by default), only the Add Expense button (every expense button comes from its `allowedActions`); `expense.approve` → `expenses.approve`; `entry.void` (`money.void`) also voids expenses) is in `me.permissions` from GET /auth/me. `property.delete`, `manager.assign`, `access.manage` and `billing.manage` (Settings → Billing, Run billing now) are owner only. TENANT: nothing. Hide what's not allowed (never disable).
 - `toSidebarRole(role)`: OWNER → "admin", PROPERTY_MANAGER → "manager".
 - `roleLabel(role)`: "Owner", "Property Manager" (from `lib/labels.ts`).
+
+## Tests (`npm test`)
+- `permissions.test.ts`: `can()` for OWNER, TENANT and managers with and without keys (OWNER-only actions stay off; `leases.manage` alone doesn't grant `template.manage`, `expenses.record` doesn't grant `expense.approve`, `maintenance.manage` doesn't grant `ticket.cancel`), `toSidebarRole`, `roleLabel`.

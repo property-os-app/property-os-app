@@ -1,0 +1,136 @@
+import { useMemo, type ReactNode } from "react";
+import { Caption, Dash, Small } from "@/components/atoms";
+import { ListCard } from "@/components/molecules";
+import { CardList, DataTable, type Column, type DataTableProps } from "@/components/organisms";
+import { cn } from "@/lib/cn";
+import { formatCurrency, formatDate } from "@/lib/format";
+import { ExpenseAmount, ExpenseStatusBadges, ExpenseTicketLink } from "@/features/expenses/ExpenseParts";
+import { propertyLine, propertyText } from "@/features/expenses/expenseText";
+import type { Expense, ExpenseList } from "@/types/expense";
+
+type Props = Pick<DataTableProps<Expense>, "rows" | "state" | "sort" | "onSortChange" | "empty" | "error" | "footer"> & {
+  /** "cards": the list cards in a grid (desktop Cards view); phones always get cards. */
+  view: "table" | "cards";
+  isMobile: boolean;
+  categoryLabel: (key: string) => string;
+  /** Totals over every matching row (not just the page). */
+  totals?: ExpenseList["totals"];
+  /** True while the next page or filter loads (the old rows stay). */
+  updating?: boolean;
+  onOpen: (e: Expense) => void;
+};
+
+/** The description's second line: "EXP-2026-0001 · Repairs · Ace Plumbing" (no vendor: just the number and category). */
+function secondLine(e: Expense, categoryLabel: (key: string) => string): string {
+  return [e.expenseNumber, categoryLabel(e.category), e.vendor?.name].filter(Boolean).join(" · ");
+}
+
+/** "+ $1,840.00 pending (3)", or null with nothing pending. */
+function pendingText(totals: ExpenseList["totals"]): string | null {
+  return totals.pendingCount > 0 ? `+ ${formatCurrency(totals.pendingAmount)} pending (${totals.pendingCount})` : null;
+}
+
+/**
+ * The expenses list: a DataTable (Date and Amount sort on the server) with a "Total, filtered" row (approved, non-voided,
+ * every matching row) and the pending amount beside it; or ListCards (phones, Cards view) with the same totals in a summary
+ * card. Voided rows are muted and struck through. Expenses from a ticket link to it ("Ticket #1025"). A row or card opens the drawer.
+ */
+export function ExpensesTable({ view, isMobile, categoryLabel, totals, updating, onOpen, ...props }: Props) {
+  const columns = useMemo<Column<Expense>[]>(
+    () => [
+      { key: "date", header: "Date", sortable: true, cell: (e) => <span className={cn("whitespace-nowrap", e.voided && "text-text-muted")}>{formatDate(e.date)}</span> },
+      {
+        key: "description",
+        header: "Description",
+        cell: (e) => (
+          // Category and vendor live in the second line (their own columns made the table wider than its space).
+          <div className="min-w-0">
+            <div className={cn("max-w-56 truncate font-semibold", e.voided && "text-text-muted line-through")} title={e.description}>
+              {e.description}
+            </div>
+            <Caption className="flex max-w-56 items-center gap-1">
+              <span className="truncate" title={secondLine(e, categoryLabel)}>
+                {secondLine(e, categoryLabel)}
+              </span>
+              {e.maintenanceTicket && (
+                <>
+                  <span aria-hidden>·</span>
+                  <ExpenseTicketLink expense={e} className="shrink-0 text-caption" />
+                </>
+              )}
+            </Caption>
+          </div>
+        ),
+      },
+      {
+        key: "property",
+        header: "Property",
+        cell: (e) => (
+          <div className="min-w-0">
+            <div className={cn("max-w-36 truncate", !e.property && "text-text-secondary")} title={propertyText(e)}>
+              {propertyText(e)}
+            </div>
+            {e.unit && <Caption className="block">Unit {e.unit.unitNumber}</Caption>}
+          </div>
+        ),
+      },
+      { key: "amount", header: "Amount", align: "right", sortable: true, cell: (e) => <ExpenseAmount expense={e} className="font-semibold" /> },
+      { key: "status", header: "Status", cell: (e) => <ExpenseStatusBadges expense={e} /> },
+    ],
+    [categoryLabel],
+  );
+
+  const pending = totals ? pendingText(totals) : null;
+  const totalsRow: ReactNode[] | undefined = totals
+    ? ["Total, filtered", "", "", formatCurrency(totals.approvedAmount), pending ? <Small className="font-normal">{pending}</Small> : ""]
+    : undefined;
+
+  if (isMobile || view === "cards") {
+    const summary = totals ? (
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <Small className="font-semibold text-text-primary">Total, filtered</Small>
+        <span className="text-right">
+          <span className="font-bold tabular text-text-primary">{formatCurrency(totals.approvedAmount)}</span>
+          {pending && <Small className="block">{pending}</Small>}
+        </span>
+      </div>
+    ) : undefined;
+    return (
+      <CardList
+        rows={props.rows}
+        state={props.state}
+        empty={props.empty}
+        error={props.error}
+        footer={props.footer}
+        summary={props.state === "ideal" ? summary : undefined}
+        grid={!isMobile}
+        rowKey={(e) => e.id}
+        caption="Expenses"
+        className={cn(updating && "opacity-70")}
+        renderCard={(e) => (
+          <ListCard
+            onOpen={() => onOpen(e)}
+            openLabel={`Open ${e.expenseNumber}`}
+            title={e.description}
+            subtitle={`${formatDate(e.date)} · ${propertyLine(e)}`}
+            badge={<ExpenseStatusBadges expense={e} />}
+            amount={{ label: "Amount", value: <ExpenseAmount expense={e} /> }}
+            muted={e.voided}
+            note={e.maintenanceTicket ? <ExpenseTicketLink expense={e} /> : undefined}
+            facts={[
+              { label: "Category", value: categoryLabel(e.category) },
+              { label: "Vendor", value: e.vendor?.name ?? <Dash /> },
+            ]}
+          />
+        )}
+      />
+    );
+  }
+
+  return (
+    <div aria-busy={updating || undefined} className={cn("transition-opacity", updating && "opacity-70")}>
+      <DataTable {...props} columns={columns} rowKey={(e) => e.id} onRowClick={onOpen} totals={totalsRow} caption="Expenses" />
+    </div>
+  );
+}
+

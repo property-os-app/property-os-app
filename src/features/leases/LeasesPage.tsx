@@ -2,12 +2,13 @@ import { useMemo, useState, type ReactNode } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { Plus } from "lucide-react";
 import { Badge, Button, Dash, Select, Skeleton } from "@/components/atoms";
-import { KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
+import { FormField, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
 import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { centsToAmount, formatCompactCurrency } from "@/lib/format";
 import { plural, signatureStatusLabels } from "@/lib/labels";
 import { useClientTable, type SortColumn } from "@/lib/useClientTable";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { useActivateAction, useLeases } from "@/features/leases/hooks";
@@ -21,6 +22,9 @@ import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
 import { useProperties } from "@/features/properties/hooks";
 import { sumCents } from "@/features/properties/stats";
 import { useScope } from "@/features/scope/scopeContext";
+import { FilterGroup, MobileFilters, SortSelect, type SortOption } from "@/features/shared/MobileFilters";
+import { useListView } from "@/features/shared/listView";
+import { ViewToggle } from "@/features/shared/ViewToggle";
 import { NoProperties } from "@/features/shared/NoProperties";
 import type { Lease, SignatureStatus } from "@/types/lease";
 
@@ -57,6 +61,13 @@ const sorts: Record<string, SortColumn<Lease>> = {
   balance: { kind: "money", value: (l) => l.balance },
 };
 
+const sortOptions: SortOption[] = [
+  { key: "tenant", label: "Tenant", kind: "text" },
+  { key: "rent", label: "Rent", kind: "money" },
+  { key: "expires", label: "Expires", kind: "date" },
+  { key: "balance", label: "Balance", kind: "money" },
+];
+
 /** /leases: KPIs, toolbar (status segments, search, Property = sidebar scope, e-sign) and the leases table. Row click opens /leases/:id. */
 export function LeasesPage() {
   const [params] = useSearchParams();
@@ -68,10 +79,14 @@ export function LeasesPage() {
 
 function LeasesList() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  // Phones always get cards; the saved choice is for wider screens.
+  const [view, setView] = useListView("leases", "table");
+  const cards = view === "cards" && !isMobile;
   const { me } = useAuth();
-  const role = me!.role;
-  const canCreate = can(role, "lease.create");
-  const canEdit = can(role, "lease.edit");
+  const user = me!;
+  const canCreate = can(user, "lease.create");
+  const canEdit = can(user, "lease.edit");
   const { propertyId: scope, setPropertyId } = useScope();
 
   const properties = useProperties();
@@ -150,6 +165,43 @@ function LeasesList() {
     if (failure) void navigate(`/leases/${encodeURIComponent(l.id)}`, { state: { from: "leases", activateError: failure } satisfies LeasePageState });
   };
 
+  const statusControl = (
+    <SegmentedControl<StatusFilter>
+      aria-label="Lease status"
+      value={table.filters.status}
+      onChange={(v) => table.setFilter("status", v)}
+      className={isMobile ? "flex-wrap" : undefined}
+      segments={[
+        { value: "all", label: "All", count: counts.all },
+        { value: "active", label: "Active", count: counts.active },
+        { value: "expiring", label: "Expiring", count: counts.expiring },
+        { value: "draft", label: "Draft", count: counts.draft },
+        { value: "ended", label: "Ended", count: counts.ended },
+      ]}
+    />
+  );
+  const search = <SearchInput placeholder="Search tenant, unit or lease number" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />;
+  const propertySelect = (id?: string) => (
+    <Select id={id} aria-label={id ? undefined : "Property"} value={scope ?? "all"} onChange={(e) => setPropertyId(e.target.value === "all" ? null : e.target.value)}>
+      <option value="all">All properties</option>
+      {properties.data?.map((p) => (
+        <option key={p.id} value={p.id}>
+          {p.name}
+        </option>
+      ))}
+    </Select>
+  );
+  const esignSelect = (id?: string) => (
+    <Select id={id} aria-label={id ? undefined : "E-sign status"} value={table.filters.esign} onChange={(e) => table.setFilter("esign", e.target.value as Filters["esign"])}>
+      <option value="all">All e-sign statuses</option>
+      {(Object.keys(signatureStatusLabels) as SignatureStatus[]).map((s) => (
+        <option key={s} value={s}>
+          {signatureStatusLabels[s]}
+        </option>
+      ))}
+    </Select>
+  );
+
   if (properties.data?.length === 0) {
     return (
       <>
@@ -190,44 +242,39 @@ function LeasesList() {
         />
       </KpiRow>
 
-      <Toolbar>
-        <SegmentedControl<StatusFilter>
-          aria-label="Lease status"
-          value={table.filters.status}
-          onChange={(v) => table.setFilter("status", v)}
-          segments={[
-            { value: "all", label: "All", count: counts.all },
-            { value: "active", label: "Active", count: counts.active },
-            { value: "expiring", label: "Expiring", count: counts.expiring },
-            { value: "draft", label: "Draft", count: counts.draft },
-            { value: "ended", label: "Ended", count: counts.ended },
-          ]}
-        />
-        <SearchInput placeholder="Search tenant, unit or lease number" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />
-        <div className="w-52">
-          <Select aria-label="Property" value={scope ?? "all"} onChange={(e) => setPropertyId(e.target.value === "all" ? null : e.target.value)}>
-            <option value="all">All properties</option>
-            {properties.data?.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="w-44">
-          <Select aria-label="E-sign status" value={table.filters.esign} onChange={(e) => table.setFilter("esign", e.target.value as Filters["esign"])}>
-            <option value="all">All e-sign statuses</option>
-            {(Object.keys(signatureStatusLabels) as SignatureStatus[]).map((s) => (
-              <option key={s} value={s}>
-                {signatureStatusLabels[s]}
-              </option>
-            ))}
-          </Select>
-        </div>
-      </Toolbar>
+      {isMobile ? (
+        <Toolbar className="flex-nowrap">
+          {search}
+          <MobileFilters
+            count={table.activeFilterCount}
+            resultCount={ready ? table.total : undefined}
+            onClear={table.resetFilters}
+          >
+            <FilterGroup label="Status">{statusControl}</FilterGroup>
+            <FormField label="Property (all pages)" htmlFor="leases-property">
+              {propertySelect("leases-property")}
+            </FormField>
+            <FormField label="E-signature" htmlFor="leases-esign">
+              {esignSelect("leases-esign")}
+            </FormField>
+            <SortSelect id="leases-sort" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />
+          </MobileFilters>
+        </Toolbar>
+      ) : (
+        <Toolbar>
+          {statusControl}
+          {search}
+          <div className="w-52">{propertySelect()}</div>
+          <div className="w-44">{esignSelect()}</div>
+          <div className="flex-1" />
+          {cards && <SortSelect compact id="leases-sort-desktop" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />}
+          <ViewToggle value={view} onChange={setView} />
+        </Toolbar>
+      )}
 
       <div id={table.listId} className="scroll-mt-24">
         <LeasesTable
+          cards={cards}
           rows={table.pageRows}
           state={state}
           sort={table.sort}

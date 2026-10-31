@@ -39,6 +39,8 @@ export const schema = z
     endDate: date,
     rent: money("Monthly rent"),
     paymentFrequency: z.enum(FREQUENCIES),
+    /** A lease template id, or "" for none. */
+    templateId: z.string(),
     rentDueDay: z
       .string()
       .trim()
@@ -71,7 +73,7 @@ export type FieldName = keyof FormInput;
 /** The fields each step shows (Continue validates only these). */
 export const STEP_FIELDS: FieldName[][] = [
   ["propertyId", "unitId", "primaryTenantId", "coTenantIds"],
-  ["startDate", "endDate", "rent", "paymentFrequency", "rentDueDay", "lateFeeAmount", "lateFeeGraceDays", "autoRenew"],
+  ["templateId", "startDate", "endDate", "rent", "paymentFrequency", "rentDueDay", "lateFeeAmount", "lateFeeGraceDays", "autoRenew"],
   ["deposit", "tags", "signatureStatus", "notes"],
   [],
 ];
@@ -81,6 +83,7 @@ export const SERVER_FIELDS = [
   "unitId",
   "primaryTenantId",
   "coTenantIds",
+  "templateId",
   "startDate",
   "endDate",
   "rent",
@@ -129,6 +132,7 @@ export function defaults({ lease, unit, propertyId, tenantId }: WizardPresets): 
       unitId: lease.unitId,
       primaryTenantId: primaryTenant(lease)?.id ?? "",
       coTenantIds: coTenants(lease).map((t) => t.id),
+      templateId: lease.template?.id ?? "",
       startDate: lease.startDate ?? "",
       endDate: lease.endDate ?? "",
       rent: moneyValue(lease.rent),
@@ -148,10 +152,12 @@ export function defaults({ lease, unit, propertyId, tenantId }: WizardPresets): 
     unitId: unit?.id ?? "",
     primaryTenantId: tenantId ?? "",
     coTenantIds: [],
+    // The default template is preselected by the wizard once GET /lease-templates loads (the server never applies it).
+    templateId: "",
     startDate: "",
     endDate: "",
     rent: moneyValue(unit?.monthlyRent),
-    // Only MONTHLY for now (only MONTHLY leases get rent from "Generate rent").
+    // Only MONTHLY for now (only MONTHLY leases are billed automatically).
     paymentFrequency: "MONTHLY",
     // Filled from the start date's day (Terms step) until the user types a due day.
     rentDueDay: "",
@@ -196,13 +202,15 @@ export function createBody(v: FormOutput, activate: boolean): LeaseCreateBody {
     ...(v.deposit !== "" ? { deposit: v.deposit } : {}),
     ...(v.rentDueDay !== null ? { rentDueDay: v.rentDueDay } : {}),
     ...(v.notes ? { notes: v.notes } : {}),
+    ...(v.templateId ? { templateId: v.templateId } : {}),
   };
 }
 
 const sameIds = (a: string[], b: string[]) => a.length === b.length && a.every((id) => b.includes(id));
 
 /**
- * PATCH /leases/:id body with only the changed fields. Never status.
+ * PATCH /leases/:id body with only the changed fields. Never status. templateId only when it changed (the same id would keep
+ * the pinned version anyway); cleared = null. Never on ENDED / TERMINATED.
  * ENDED / TERMINATED: only tags and notes. ACTIVE: never unitId, never null for dates, rent, deposit, rentDueDay
  * or the primary tenant. DRAFT: everything, cleared fields become null. Tenants only when they changed.
  */
@@ -221,6 +229,7 @@ export function updateBody(v: FormOutput, lease: Lease): LeaseUpdateBody {
   };
 
   if (draft && v.unitId !== lease.unitId) body.unitId = v.unitId;
+  if (v.templateId !== (lease.template?.id ?? "")) body.templateId = v.templateId || null;
 
   clearable(v.primaryTenantId || null, primaryTenant(lease)?.id ?? null, (x) => (body.primaryTenantId = x));
   if (!sameIds(v.coTenantIds, coTenants(lease).map((t) => t.id))) body.coTenantIds = v.coTenantIds;
@@ -243,7 +252,7 @@ export function updateBody(v: FormOutput, lease: Lease): LeaseUpdateBody {
 }
 
 /**
- * The step to show after a server error: a field message jumps to its field's step, an overlap (409) to Terms,
+ * The step to show after a server error: a field message jumps to its field's step, an overlap (409) or a template message to Terms,
  * a missing-fields message to Review, "ACTIVE, so it needs" / ENDED "Not allowed" to the step of the first named field,
  * tenant / unit messages to Parties. Otherwise stay on `current`.
  */
@@ -253,6 +262,8 @@ export function serverErrorStep(err: unknown, current: number): number {
     const field = SERVER_FIELDS.find((f) => m === f || m.startsWith(`${f} `));
     if (field) return stepOf(field);
     if (m.includes("overlapping")) return 1;
+    // "Lease template … not found / is archived", "Lease … is signed; its template can't be changed": the picker is on Terms.
+    if (m.startsWith("Lease template") || m.includes("its template")) return 1;
     const fields = parseLeaseFieldsMessage(m);
     if (fields?.kind === "missing") return 3;
     if (fields && fields.fields.length > 0) return stepOf(fields.fields[0]);

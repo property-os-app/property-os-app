@@ -13,6 +13,7 @@ import { ScopeProvider } from "@/features/scope/ScopeProvider";
 import { useScope } from "@/features/scope/scopeContext";
 import { useTheme } from "@/features/settings/themeContext";
 import { changeThemeWithReveal } from "@/features/settings/themeReveal";
+import { useTicketSummary } from "@/features/maintenance/hooks";
 
 /** Put on each route as `handle`: the page title (Topbar + tab) and the Sidebar item to highlight. */
 export interface RouteHandle {
@@ -27,7 +28,8 @@ const pick = (keys: ModuleKey[]): NavItem[] => keys.flatMap((key) => navItems.ge
 const navGroups: NavGroup[] = [
   { label: "Overview", items: pick(["dashboard"]) },
   { label: "Leasing", items: pick(["properties", "units", "tenants", "leases"]) },
-  { label: "Money", items: pick(["rentroll"]) },
+  { label: "Money", items: pick(["rentroll", "expenses"]) },
+  { label: "Operations", items: pick(["maintenance", "vendors"]) },
   { label: "Admin", items: pick(["settings"]) },
 ];
 
@@ -78,6 +80,10 @@ function AppShell() {
   const navigation = useNavigation();
   const pageLoading = navigation.state === "loading" && navigation.location.pathname !== location.pathname;
 
+  // Maintenance badge: open emergencies over everything the user can see (not the sidebar property). Refetches on window
+  // focus (query default) and after every ticket write (refreshAfterTicketChange). Hidden at 0 and while loading.
+  const emergencies = useTicketSummary({}).data?.emergency.openCount ?? 0;
+
   // RequireAuth renders this layout only when status is "ready", so me is set.
   if (!me) return null;
 
@@ -93,6 +99,7 @@ function AppShell() {
         scope: label,
         onScopeClick: openPicker,
         groups: navGroups,
+        badges: emergencies > 0 ? { maintenance: { count: emergencies, tone: "danger" } } : undefined,
         brand: "PropertyOS",
         renderLink,
       }}

@@ -17,7 +17,7 @@ export interface Tenant {
   idNumber: string | null;
   address: string | null;
   tenantType: TenantType;
-  /** ISO timestamp ("YYYY-MM-DDT00:00:00.000Z"); read the first 10 characters for the date. */
+  /** "YYYY-MM-DD" (date only) or null. */
   moveInDate: string | null;
   preferredContactMethod: ContactMethod;
   notes: string | null;

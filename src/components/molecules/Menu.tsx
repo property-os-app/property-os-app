@@ -34,7 +34,7 @@ export function KebabMenu({ items, label = "More actions", className, trigger }:
           {trigger}
         </button>
       ) : (
-        <Button variant="ghost" size="sm" iconOnly aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} icon={<MoreVertical size={16} strokeWidth={1.5} />} />
+        <Button variant="ghost" size="sm" iconOnly aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} icon={<MoreVertical size={16} strokeWidth={1.5} />} className="max-md:size-11" />
       )}
       {open && (
         <div role="menu" className="absolute right-0 z-30 mt-1 flex min-w-[200px] flex-col rounded-card border border-border-subtle bg-overlay p-1.5 shadow-overlay">
@@ -45,7 +45,7 @@ export function KebabMenu({ items, label = "More actions", className, trigger }:
               type="button"
               disabled={it.disabled}
               onClick={() => { setOpen(false); it.onSelect(); }}
-              className={cn("flex items-center gap-2.5 rounded-badge px-2.5 py-2 text-left text-body hover:bg-surface-3 disabled:opacity-50 [&>svg]:size-4", it.destructive ? "text-danger" : "text-text-primary")}
+              className={cn("flex items-center gap-2.5 rounded-badge px-2.5 py-2 text-left text-body max-md:min-h-11 hover:bg-surface-3 disabled:opacity-50 [&>svg]:size-4", it.destructive ? "text-danger" : "text-text-primary")}
             >
               {it.icon}
               {it.label}

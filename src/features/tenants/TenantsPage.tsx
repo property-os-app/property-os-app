@@ -1,18 +1,21 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { LayoutGrid, List, Plus, SearchX, Users } from "lucide-react";
+import { Plus, SearchX, Users } from "lucide-react";
 import { Button, Dash, Select, Skeleton } from "@/components/atoms";
-import { Card, EmptyState, FilterChip, InlineError, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
-import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
+import { Card, EmptyState, FilterChip, FormField, InlineError, KpiCard, SearchInput } from "@/components/molecules";
+import { CardGrid, KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { centsToAmount, formatCompactCurrency, formatPercent } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import { useClientTable, type SortColumn } from "@/lib/useClientTable";
-import { useStoredView } from "@/lib/useStoredView";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { useLeases } from "@/features/leases/hooks";
 import { useProperties } from "@/features/properties/hooks";
 import { useScope } from "@/features/scope/scopeContext";
+import { FilterGroup, MobileFilters, SortSelect, type SortOption } from "@/features/shared/MobileFilters";
+import { useListView } from "@/features/shared/listView";
+import { ViewToggle } from "@/features/shared/ViewToggle";
 import { useTenants } from "@/features/tenants/hooks";
 import { TenantCard, TenantCardSkeleton } from "@/features/tenants/TenantCard";
 import { TenantDeleteDialog } from "@/features/tenants/TenantDeleteDialog";
@@ -32,11 +35,8 @@ import {
   type TenantRow,
 } from "@/features/tenants/stats";
 
-type View = "cards" | "table";
 type Filters = { lease: LeaseFilter; balance: "any" | "owed" };
 
-const VIEW_KEY = "propertyos.tenants.view";
-const VIEWS = ["cards", "table"] as const;
 const initialFilters: Filters = { lease: "all", balance: "any" };
 
 const leaseFilterOptions: { value: LeaseFilter; label: string }[] = [
@@ -55,21 +55,28 @@ const sorts: Record<string, SortColumn<TenantRow>> = {
   balance: { kind: "money", value: (r) => r.current?.balance },
 };
 
+const sortOptions: SortOption[] = [
+  { key: "tenant", label: "Tenant", kind: "text" },
+  { key: "balance", label: "Balance", kind: "money" },
+];
+
 /**
  * /tenants: one directory of every tenant (GET /tenants is not scoped), with lease data from GET /leases (scoped:
  * a manager sees "No lease" for tenants without a lease on an assigned property). The Property select is the sidebar scope.
  */
 export function TenantsPage() {
   const { me } = useAuth();
-  const role = me!.role;
-  const canCreate = can(role, "tenant.create");
+  const user = me!;
+  const canCreate = can(user, "tenant.create");
   const { propertyId: scope, setPropertyId } = useScope();
 
   const tenants = useTenants();
   const leases = useLeases();
   const properties = useProperties();
 
-  const [view, setView] = useStoredView<View>(VIEW_KEY, VIEWS, "cards");
+  const [view, setView] = useListView("tenants", "cards");
+  // Phones always get the list cards; the saved Cards / Table choice is kept for wider screens.
+  const isMobile = useIsMobile();
   const [openId, setOpenId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -141,10 +148,44 @@ export function TenantsPage() {
   ) : undefined;
 
   const onOpen = (r: TenantRow) => setOpenId(r.tenant.id);
-  const onEdit = can(role, "tenant.edit") ? (r: TenantRow) => setEditId(r.tenant.id) : undefined;
-  const onDelete = can(role, "tenant.delete") ? (r: TenantRow) => setDeleteRow(r) : undefined;
+  const onEdit = can(user, "tenant.edit") ? (r: TenantRow) => setEditId(r.tenant.id) : undefined;
+  const onDelete = can(user, "tenant.delete") ? (r: TenantRow) => setDeleteRow(r) : undefined;
   const openRow = allRows?.find((r) => r.tenant.id === openId);
   const balanceOn = table.filters.balance === "owed";
+
+  const search = <SearchInput placeholder="Search name, unit, phone, email" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />;
+  const propertySelect = (id?: string) => (
+    <Select id={id} aria-label={id ? undefined : "Property"} value={scope ?? "all"} onChange={(e) => setPropertyId(e.target.value === "all" ? null : e.target.value)}>
+      <option value="all">All properties</option>
+      {properties.data?.map((p) => (
+        <option key={p.id} value={p.id}>
+          {p.name}
+        </option>
+      ))}
+    </Select>
+  );
+  const leaseSelect = (id?: string) => (
+    <Select id={id} aria-label={id ? undefined : "Lease status"} value={table.filters.lease} onChange={(e) => table.setFilter("lease", e.target.value as LeaseFilter)}>
+      {leaseFilterOptions.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </Select>
+  );
+  const balanceChip = (
+    <FilterChip
+      active={balanceOn}
+      aria-pressed={balanceOn}
+      count={ready ? balanceCount : undefined}
+      countTone={balanceCount > 0 ? "danger" : "neutral"}
+      onClick={() => table.setFilter("balance", balanceOn ? "any" : "owed")}
+      onRemove={() => table.setFilter("balance", "any")}
+      className={isMobile ? "min-h-11 px-4" : undefined}
+    >
+      Has balance
+    </FilterChip>
+  );
 
   return (
     <>
@@ -177,51 +218,40 @@ export function TenantsPage() {
         <KpiCard label="Recent move-outs" value={kpi(movedOut)} note={ready ? "last 30 days" : undefined} />
       </KpiRow>
 
-      <Toolbar>
-        <SearchInput placeholder="Search name, unit, phone, email" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />
-        <div className="w-52">
-          <Select aria-label="Property" value={scope ?? "all"} onChange={(e) => setPropertyId(e.target.value === "all" ? null : e.target.value)}>
-            <option value="all">All properties</option>
-            {properties.data?.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="w-44">
-          <Select aria-label="Lease status" value={table.filters.lease} onChange={(e) => table.setFilter("lease", e.target.value as LeaseFilter)}>
-            {leaseFilterOptions.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <FilterChip
-          active={balanceOn}
-          aria-pressed={balanceOn}
-          count={ready ? balanceCount : undefined}
-          countTone={balanceCount > 0 ? "danger" : "neutral"}
-          onClick={() => table.setFilter("balance", balanceOn ? "any" : "owed")}
-          onRemove={() => table.setFilter("balance", "any")}
-        >
-          Has balance
-        </FilterChip>
-        <div className="flex-1" />
-        <SegmentedControl<View>
-          aria-label="View"
-          value={view}
-          onChange={setView}
-          segments={[
-            { value: "cards", label: "Cards", icon: <LayoutGrid size={16} strokeWidth={1.5} /> },
-            { value: "table", label: "Table", icon: <List size={16} strokeWidth={1.5} /> },
-          ]}
-        />
-      </Toolbar>
+      {isMobile ? (
+        <Toolbar className="flex-nowrap">
+          {search}
+          <MobileFilters
+            count={table.activeFilterCount}
+            resultCount={ready ? table.total : undefined}
+            onClear={table.resetFilters}
+          >
+            <FormField label="Property (all pages)" htmlFor="tenants-property">
+              {propertySelect("tenants-property")}
+            </FormField>
+            <FormField label="Lease status" htmlFor="tenants-lease">
+              {leaseSelect("tenants-lease")}
+            </FormField>
+            <FilterGroup label="Balance">
+              <div>{balanceChip}</div>
+            </FilterGroup>
+            <SortSelect id="tenants-sort" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />
+          </MobileFilters>
+        </Toolbar>
+      ) : (
+        <Toolbar>
+          {search}
+          <div className="w-52">{propertySelect()}</div>
+          <div className="w-44">{leaseSelect()}</div>
+          {balanceChip}
+          <div className="flex-1" />
+          {view === "cards" && <SortSelect compact id="tenants-sort-desktop" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />}
+          <ViewToggle value={view} onChange={setView} />
+        </Toolbar>
+      )}
 
       <div id={table.listId} className="flex scroll-mt-24 flex-col gap-6">
-        {view === "table" ? (
+        {view === "table" || isMobile ? (
           <TenantsTable
             rows={table.pageRows}
             state={state}
@@ -242,13 +272,13 @@ export function TenantsPage() {
           </Card>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <CardGrid>
               {state === "loading"
                 ? Array.from({ length: 6 }).map((_, i) => <TenantCardSkeleton key={i} />)
                 : table.pageRows.map((row) => (
                     <TenantCard key={row.tenant.id} row={row} onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} />
                   ))}
-            </div>
+            </CardGrid>
             {pagination && <div className="flex items-center justify-between text-small text-text-secondary">{pagination}</div>}
           </>
         )}

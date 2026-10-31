@@ -1,4 +1,4 @@
-/** Types for the rent roll endpoints. Source: ../property-os-api/docs/frontend-handoff/API.md sections 2, 4 ("Rent roll", "GenerateRentResponse") and 5. */
+/** Types for the rent roll endpoints. Source: ../property-os-api/docs/frontend-handoff/API.md sections 2, 4 ("Rent roll") and 5. */
 import type { LeaseStatus } from "@/types/lease";
 
 /** Row status (not a DB enum). */
@@ -50,13 +50,4 @@ export interface RentRollResponse {
     securityDepositsHeld: string;
     activeDepositCount: number;
   };
-}
-
-/** POST /rent-roll/generate answer. */
-export interface GenerateRentResponse {
-  month: string;
-  created: number;
-  skippedExisting: number;
-  skippedNonMonthly: number;
-  skippedOutsideTerm: number;
 }

@@ -50,24 +50,25 @@ export interface KpiCardProps {
   className?: string;
 }
 
-/** Overline label, Display value, optional delta chip and note. */
+/**
+ * Overline label, Display value, then the delta chip on its own line, then the note (each block inside it on its own line).
+ * Inside a KpiRow the card is a 4-row subgrid, so labels, values, chips and notes start at the same height in every card
+ * of a row (a card without a chip leaves that line empty). Elsewhere it is a plain stack.
+ */
 export function KpiCard({ label, value, tone = "default", delta, note, href, onClick, renderLink, className }: KpiCardProps) {
   const interactive = Boolean(href || onClick);
   const classes = cn(
-    "flex flex-col gap-2 rounded-card border border-border-subtle bg-surface-1 p-5 text-left no-underline text-text-primary",
+    // Spacing is margin on the chip and note, not row gap, so an empty line takes no space.
+    "row-span-4 grid min-w-0 grid-rows-subgrid content-start gap-y-0 rounded-card border border-border-subtle bg-surface-1 p-4 text-left no-underline text-text-primary md:p-5",
     interactive && "cursor-pointer transition-colors duration-fast hover:bg-surface-3 focus-visible:focus-ring",
     className,
   );
   const content = (
     <>
       <Overline>{label}</Overline>
-      <Display className={cn(tone === "success" && "text-success", tone === "danger" && "text-danger", tone === "warning" && "text-warning")}>{value}</Display>
-      {(delta || note) && (
-        <div className="flex items-center gap-2">
-          {delta && <Delta direction={delta.direction}>{delta.label}</Delta>}
-          {note && <Caption>{note}</Caption>}
-        </div>
-      )}
+      <Display className={cn("mt-2", tone === "success" && "text-success", tone === "danger" && "text-danger", tone === "warning" && "text-warning")}>{value}</Display>
+      <div className={cn(delta && "mt-2")}>{delta && <Delta direction={delta.direction}>{delta.label}</Delta>}</div>
+      <div className={cn(note && "mt-2")}>{note && <Caption className="block">{note}</Caption>}</div>
     </>
   );
   if (href && renderLink) return renderLink(href, { className: classes, children: content });
@@ -92,7 +93,7 @@ export function HeroStatCard({ label, value, note, tone = "neutral", className }
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 rounded-card border border-border-subtle border-t-[3px] bg-surface-1 p-6",
+        "@container flex min-w-0 flex-col gap-2 rounded-card border border-border-subtle border-t-[3px] bg-surface-1 p-6",
         tone === "neutral" && "border-t-border-strong",
         tone === "success" && "border-t-success",
         tone === "danger" && "border-t-danger",
@@ -100,7 +101,8 @@ export function HeroStatCard({ label, value, note, tone = "neutral", className }
       )}
     >
       <Overline>{label}</Overline>
-      <HeroStat className={cn(tone === "success" && "text-success", tone === "danger" && "text-danger")}>{value}</HeroStat>
+      {/* Sized by the card's own width (container query): 24px in a narrow card, 32px, then 48px when "$42,500.00" fits. */}
+      <HeroStat className={cn("text-h1 font-extrabold tracking-[-0.02em] @[14rem]:text-display @[18rem]:text-hero", tone === "success" && "text-success", tone === "danger" && "text-danger")}>{value}</HeroStat>
       {note && <Small>{note}</Small>}
     </div>
   );

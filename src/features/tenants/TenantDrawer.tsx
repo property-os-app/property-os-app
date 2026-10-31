@@ -1,17 +1,20 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Plus, UserX } from "lucide-react";
 import { Button, Caption, Dash, H3, Num, Skeleton } from "@/components/atoms";
-import { Card, EmptyState, InlineError, KeyValueList, Tabs } from "@/components/molecules";
-import { DataTable, Drawer, type Column } from "@/components/organisms";
+import { Card, EmptyState, InlineError, KeyValueList, ListCard, Tabs } from "@/components/molecules";
+import { CardList, DataTable, Drawer, type Column } from "@/components/organisms";
 import { ApiError, errorText } from "@/lib/api";
 import { formatCurrency, formatDate, formatTimestampDate, parseDateOnly } from "@/lib/format";
 import { contactMethodLabels, paymentFrequencyLabels, tenantTypeLabels } from "@/lib/labels";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
 import { can, roleLabel } from "@/features/auth/permissions";
+import type { LeasePageState } from "@/features/leases/LeasePage";
 import { LeaseBadge, StatCard } from "@/features/leases/LeaseParts";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
 import { dueNote, dueState, leaseEndsNote, leasePeriod } from "@/features/leases/stats";
+import { ContactLink } from "@/features/shared/ContactLink";
 import { useTenant } from "@/features/tenants/hooks";
 import { TenantDeleteDialog } from "@/features/tenants/TenantDeleteDialog";
 import { TenantFormModal } from "@/features/tenants/TenantFormModal";
@@ -23,6 +26,8 @@ import type { TenantDetail } from "@/types/tenant";
 type Tab = "overview" | "leases";
 
 const leasePath = (l: Lease) => `/leases/${encodeURIComponent(l.id)}`;
+/** The drawer lives on the Tenants page: the lease page goes back there. */
+const fromTenants: LeasePageState = { from: "tenants" };
 
 const orDash = (value: string | null | undefined) => (value ? value : <Dash />);
 
@@ -39,7 +44,7 @@ export interface TenantDrawerProps {
  */
 export function TenantDrawer({ row, onClose }: TenantDrawerProps) {
   const { me } = useAuth();
-  const role = me!.role;
+  const user = me!;
   const detail = useTenant(row.tenant.id);
   const [tab, setTab] = useState<Tab>("overview");
   const [editing, setEditing] = useState(false);
@@ -49,8 +54,8 @@ export function TenantDrawer({ row, onClose }: TenantDrawerProps) {
   const notFound = detail.error instanceof ApiError && detail.error.status === 404;
   const tenant = detail.data ?? row.tenant;
   const { current, leases } = row;
-  const canEdit = can(role, "tenant.edit") && !notFound;
-  const canDelete = can(role, "tenant.delete") && !notFound;
+  const canEdit = can(user, "tenant.edit") && !notFound;
+  const canDelete = can(user, "tenant.delete") && !notFound;
 
   return (
     <>
@@ -114,7 +119,7 @@ export function TenantDrawer({ row, onClose }: TenantDrawerProps) {
             </div>
           </>
         ) : (
-          <LeasesTab tenantId={row.tenant.id} leases={leases} onAddLease={can(role, "lease.create") ? () => setAddingLease(true) : undefined} />
+          <LeasesTab tenantId={row.tenant.id} leases={leases} onAddLease={can(user, "lease.create") ? () => setAddingLease(true) : undefined} />
         )}
       </Drawer>
 
@@ -138,7 +143,7 @@ function ActiveLease({ lease }: { lease: Lease }) {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <LeaseBadge lease={lease} />
-          <Button size="sm" variant="ghost" onClick={() => void navigate(leasePath(lease))}>
+          <Button size="sm" variant="ghost" onClick={() => void navigate(leasePath(lease), { state: fromTenants })}>
             Open lease
           </Button>
         </div>
@@ -164,8 +169,8 @@ function Details({ tenant }: { tenant: TenantDetail }) {
       labelWidth={160}
       items={[
         { label: "Full name", value: tenant.fullName },
-        { label: "Email", value: <span className="break-all">{tenant.email}</span> },
-        { label: "Phone", value: tenant.phone },
+        { label: "Email", value: <ContactLink kind="email" value={tenant.email} wrap /> },
+        { label: "Phone", value: <ContactLink kind="phone" value={tenant.phone} /> },
         { label: "ID / passport number", value: orDash(tenant.idNumber) },
         { label: "Address", value: orDash(tenant.address) },
         { label: "Tenant type", value: tenantTypeLabels[tenant.tenantType] },
@@ -182,6 +187,8 @@ function Details({ tenant }: { tenant: TenantDetail }) {
 /** Every visible lease that includes the tenant, with their role on it. "Add lease" (primary tenant preset) when allowed. */
 function LeasesTab({ tenantId, leases, onAddLease }: { tenantId: string; leases: Lease[]; onAddLease?: () => void }) {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const role = (l: Lease) => (l.tenants.find((t) => t.id === tenantId)?.isPrimary ? "Primary" : "Co-tenant");
   const columns: Column<Lease>[] = [
     { key: "number", header: "Lease", cell: (l) => <span className="font-semibold">{l.leaseNumber}</span> },
     {
@@ -197,7 +204,7 @@ function LeasesTab({ tenantId, leases, onAddLease }: { tenantId: string; leases:
     { key: "period", header: "Period", cell: (l) => leasePeriod(l) ?? <Dash /> },
     { key: "rent", header: "Rent", align: "right", cell: (l) => <Num>{formatCurrency(l.rent)}</Num> },
     { key: "status", header: "Status", cell: (l) => <LeaseBadge lease={l} /> },
-    { key: "role", header: "Role", cell: (l) => (l.tenants.find((t) => t.id === tenantId)?.isPrimary ? "Primary" : "Co-tenant") },
+    { key: "role", header: "Role", cell: role },
   ];
   return (
     <div className="flex flex-col gap-3">
@@ -206,16 +213,41 @@ function LeasesTab({ tenantId, leases, onAddLease }: { tenantId: string; leases:
           Add lease
         </Button>
       )}
-      <DataTable
-        columns={columns}
-        rows={leases}
-        rowKey={(l) => l.id}
-        onRowClick={(l) => void navigate(leasePath(l))}
-        density="compact"
-        caption="Leases"
-        state={leases.length === 0 ? "empty" : "ideal"}
-        empty={{ title: "No leases", description: "Not on any lease yet." }}
-      />
+      {isMobile ? (
+        <CardList
+          rows={leases}
+          rowKey={(l) => l.id}
+          caption="Leases"
+          state={leases.length === 0 ? "empty" : "ideal"}
+          empty={{ title: "No leases", description: "Not on any lease yet." }}
+          renderCard={(l) => (
+            <ListCard
+              href={leasePath(l)}
+              openLabel={`Open lease ${l.leaseNumber}`}
+              renderLink={(href, p) => <Link to={href} state={fromTenants} {...p} />}
+              title={l.leaseNumber}
+              subtitle={`Unit ${l.unit.unitNumber} · ${l.unit.property.name}`}
+              badge={<LeaseBadge lease={l} />}
+              amount={{ label: "Rent", value: l.rent === null ? <Dash /> : <Num>{formatCurrency(l.rent)}</Num> }}
+              facts={[
+                { label: "Period", value: leasePeriod(l) ?? <Dash /> },
+                { label: "Role", value: role(l) },
+              ]}
+            />
+          )}
+        />
+      ) : (
+        <DataTable
+          columns={columns}
+          rows={leases}
+          rowKey={(l) => l.id}
+          onRowClick={(l) => void navigate(leasePath(l), { state: fromTenants })}
+          density="compact"
+          caption="Leases"
+          state={leases.length === 0 ? "empty" : "ideal"}
+          empty={{ title: "No leases", description: "Not on any lease yet." }}
+        />
+      )}
     </div>
   );
 }

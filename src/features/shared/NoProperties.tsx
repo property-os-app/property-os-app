@@ -5,22 +5,26 @@ import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 
 /**
- * The page body when the user has no properties (GET /properties returned []). A manager is told to ask the owner;
- * an owner gets the welcome with "Add property" (`onAdd`, shown only with property.create).
+ * The page body when the user has no properties (GET /properties returned []). With property.create (the owner, or a
+ * manager the owner allowed) it shows "Add property" (`onAdd`); otherwise a manager is told to ask the owner.
  */
 export function NoProperties({ onAdd }: { onAdd?: () => void }) {
   const { me } = useAuth();
-  const role = me!.role;
-  const isOwner = role === "OWNER";
+  const user = me!;
+  const canCreate = can(user, "property.create");
   return (
     <Card padding="none">
-      {isOwner ? (
+      {canCreate ? (
         <EmptyState
           icon={<Building2 strokeWidth={1.5} />}
-          title="Add your first property"
-          description="Start with a property, then add its units, tenants and leases."
+          title={user.role === "OWNER" ? "Add your first property" : "No properties assigned to you yet"}
+          description={
+            user.role === "OWNER"
+              ? "Start with a property, then add its units, tenants and leases."
+              : "Add a property (you'll manage it), or ask the owner to assign you one."
+          }
           action={
-            onAdd && can(role, "property.create") ? (
+            onAdd ? (
               <Button variant="primary" icon={<Plus size={16} strokeWidth={1.5} />} onClick={onAdd}>
                 Add property
               </Button>

@@ -1,6 +1,7 @@
 export * from "./Sidebar";
 export * from "./Topbar";
 export * from "./DataTable";
+export * from "./CardList";
 export * from "./Overlays";
 export * from "./Kanban";
 export * from "./Charts";

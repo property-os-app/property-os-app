@@ -1,5 +1,5 @@
 import { Controller, type UseFormReturn } from "react-hook-form";
-import { Plus } from "lucide-react";
+import { FilePlus2, Plus } from "lucide-react";
 import { Body, Button, Caption, CurrencyInput, Dash, Input, Num, Select, Textarea, Toggle } from "@/components/atoms";
 import { Card, FormField, KeyValueList, SegmentedControl } from "@/components/molecules";
 import { centsToAmount, formatCurrency, formatDate, ordinal, parseDateOnly, todayISO, toCents } from "@/lib/format";
@@ -8,6 +8,7 @@ import { compareNatural } from "@/lib/sort";
 import { formMissing, type FormInput, type FormOutput } from "@/features/leases/form";
 import { firstRentDate, termEndDate, termMonthsOf } from "@/features/leases/stats";
 import { TagEditor } from "@/features/leases/TagEditor";
+import type { TemplateOption } from "@/features/leases/templateOptions";
 import { CoTenantPicker, TenantPicker, type PickedTenant } from "@/features/leases/TenantPicker";
 import type { Property } from "@/types/property";
 import type { Unit } from "@/types/unit";
@@ -34,6 +35,20 @@ export interface StepContext {
   /** The user typed a due day (or edits a lease that has one): the start date no longer sets it. */
   dueDayManual: boolean;
   onDueDayEdited: () => void;
+  /** Template select options (GET /lease-templates plus the lease's own and new ones). */
+  templates: TemplateOption[];
+  templatesPending: boolean;
+  templatesError: boolean;
+  /** Why the template can't change (signed lease), or null. */
+  templateLocked: string | null;
+  /** templates.manage: show "+ New template". */
+  canCreateTemplate: boolean;
+  /** Opens the template editor over the wizard; the new template gets selected. */
+  onNewTemplate: () => void;
+  /** After the template select changed (end-date prefill). */
+  onTemplateChange: (templateId: string) => void;
+  /** After the start date changed (end-date prefill). */
+  onStartChange: (start: string) => void;
 }
 
 /** The due day as a number, or null when the field isn't a whole number from 1 to 31. */
@@ -180,7 +195,53 @@ export function PartiesStep(ctx: StepContext) {
 
 /* ---------- Step 2: Terms ---------- */
 
-export function TermsStep({ form, closed, units, dueDayManual, onDueDayEdited }: StepContext) {
+/** "Lease template": optional select, "+ New template" with templates.manage, disabled with a note on a signed lease. */
+function TemplateField({ form, templates, templatesPending, templatesError, templateLocked, canCreateTemplate, onNewTemplate, onTemplateChange }: StepContext) {
+  const { register, watch, formState: { errors } } = form;
+  const chosen = templates.find((o) => o.value === watch("templateId"));
+  // Unregistered while locked (ReadOnly): the value stays in the form state from the defaults.
+  const help =
+    templateLocked ??
+    (templatesError
+      ? "Couldn't load the templates. Close and reopen to try again."
+      : chosen?.months
+        ? `Its PDF is made from this template. Sets the end date to ${plural(chosen.months, "month")} from the start, unless you set it yourself.`
+        : "The lease PDF is made from this template. Optional.");
+
+  return (
+    <FormField
+      label="Lease template"
+      htmlFor="lw-template"
+      error={errors.templateId?.message}
+      help={help}
+      action={
+        canCreateTemplate && !templateLocked ? (
+          <Button size="sm" variant="ghost" icon={<FilePlus2 size={14} strokeWidth={1.5} />} onClick={onNewTemplate}>
+            New template
+          </Button>
+        ) : undefined
+      }
+      className="md:col-span-2"
+    >
+      {templateLocked !== null ? (
+        // Not a disabled Select: react-hook-form reads a disabled field as undefined.
+        <ReadOnly id="lw-template" value={chosen?.label ?? "No template"} />
+      ) : (
+        <Select id="lw-template" {...register("templateId", { onChange: (e: { target: { value: string } }) => onTemplateChange(e.target.value) })}>
+          <option value="">{templatesPending ? "Loading templates..." : "No template"}</option>
+          {templates.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
+      )}
+    </FormField>
+  );
+}
+
+export function TermsStep(ctx: StepContext) {
+  const { form, closed, units, dueDayManual, onDueDayEdited, onStartChange } = ctx;
   const { register, control, watch, setValue, getValues, formState: { errors } } = form;
   const start = watch("startDate");
   const end = watch("endDate");
@@ -214,6 +275,9 @@ export function TermsStep({ form, closed, units, dueDayManual, onDueDayEdited }:
     const v = form.getValues();
     return (
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <FormField label="Lease template" htmlFor="lw-template" className="md:col-span-2">
+          <ReadOnly id="lw-template" value={ctx.templates.find((o) => o.value === v.templateId)?.label ?? "No template"} />
+        </FormField>
         <FormField label="Start date" htmlFor="lw-start"><ReadOnly id="lw-start" value={formatDate(v.startDate)} /></FormField>
         <FormField label="End date" htmlFor="lw-end"><ReadOnly id="lw-end" value={formatDate(v.endDate)} /></FormField>
         <FormField label="Monthly rent" htmlFor="lw-rent"><ReadOnly id="lw-rent" value={moneyText(v.rent)} /></FormField>
@@ -228,8 +292,20 @@ export function TermsStep({ form, closed, units, dueDayManual, onDueDayEdited }:
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <TemplateField {...ctx} />
+
       <FormField label="Start date" htmlFor="lw-start" required error={errors.startDate?.message}>
-        <Input id="lw-start" type="date" {...register("startDate", { deps: ["endDate"], onChange: (e) => followStart(e.target.value) })} />
+        <Input
+          id="lw-start"
+          type="date"
+          {...register("startDate", {
+            deps: ["endDate"],
+            onChange: (e: { target: { value: string } }) => {
+              followStart(e.target.value);
+              onStartChange(e.target.value);
+            },
+          })}
+        />
       </FormField>
       <FormField label="End date" htmlFor="lw-end" required error={errors.endDate?.message}>
         <Input id="lw-end" type="date" {...register("endDate")} />
@@ -362,7 +438,7 @@ export function DepositStep({ form, closed }: StepContext) {
 
 /* ---------- Step 4: Review ---------- */
 
-export function ReviewStep({ form, closed, units, unitLine, lookupTenant, isCreate, leaseStatus }: StepContext & { isCreate: boolean; leaseStatus?: string }) {
+export function ReviewStep({ form, closed, units, unitLine, lookupTenant, templates, isCreate, leaseStatus }: StepContext & { isCreate: boolean; leaseStatus?: string }) {
   const v = form.watch();
   const unit = units?.find((u) => u.id === v.unitId);
   const months = termMonthsOf(v.startDate, v.endDate);
@@ -431,6 +507,7 @@ export function ReviewStep({ form, closed, units, unitLine, lookupTenant, isCrea
           { label: "Auto-renew", value: v.autoRenew ? "On" : "Off" },
           { label: "Tags", value: v.tags.length > 0 ? v.tags.join(", ") : <Dash /> },
           { label: "E-signature", value: signatureStatusLabels[v.signatureStatus] },
+          { label: "Template", value: v.templateId ? (templates.find((o) => o.value === v.templateId)?.label ?? <Dash />) : "No template" },
           { label: "Notes", value: v.notes.trim() ? <Body as="span" className="whitespace-pre-line">{v.notes.trim()}</Body> : <Dash /> },
         ]}
       />

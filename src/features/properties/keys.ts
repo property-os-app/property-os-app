@@ -7,5 +7,7 @@ export const propertyKeys = {
 };
 
 export const managerKeys = {
+  /** GET /managers; also the prefix of every manager query below. */
   all: ["managers"] as const,
+  access: (userId: string) => ["managers", userId, "access"] as const,
 };

@@ -44,7 +44,7 @@ export function useUpdateTenant() {
   });
 }
 
-/** DELETE /tenants/:id (OWNER). 409 while the tenant is on any lease. */
+/** DELETE /tenants/:id (OWNER, or a manager with tenants.delete). 409 while the tenant is on any lease. */
 export function useDeleteTenant() {
   const qc = useQueryClient();
   return useMutation({

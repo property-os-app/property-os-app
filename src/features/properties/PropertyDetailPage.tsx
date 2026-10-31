@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { useMemo, useState, type ReactNode } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { Building2, Pencil, Plus, Trash2 } from "lucide-react";
 import { Avatar, Button, Caption, Dash, H1, Num, Skeleton, Small } from "@/components/atoms";
 import { Card, CardHeader, EmptyState, InlineError, KebabMenu, KeyValueList, Tabs, toast } from "@/components/molecules";
@@ -17,7 +17,7 @@ import { PropertyFormModal } from "@/features/properties/PropertyFormModal";
 import { PropertyManagersCard } from "@/features/properties/PropertyManagersCard";
 import { PropertyUnitsTable } from "@/features/properties/PropertyUnitsTable";
 import { activeRentCentsByProperty, buildUnitRows, countUnits, formatAddress, needsAttention, occupancy } from "@/features/properties/stats";
-import { Breadcrumb, Tile } from "@/features/shared/DetailParts";
+import { BackBreadcrumb, Tile } from "@/features/shared/DetailParts";
 import { textLink } from "@/features/shared/linkClass";
 import { useUnits } from "@/features/units/hooks";
 import { UnitDrawer } from "@/features/units/UnitDrawer";
@@ -26,7 +26,19 @@ import type { Property } from "@/types/property";
 
 type Tab = "overview" | "units";
 
-const propertiesCrumb = [{ label: "Properties", to: "/properties" }];
+/** Router state from the Properties list (cards and table): back goes back in history, so its filters and search stay. */
+export interface PropertyPageState {
+  from?: "properties";
+}
+
+const propertiesCrumb = { label: "Properties", to: "/properties" };
+
+/** [←] Properties › Current. Opened directly (no `from`), the arrow opens /properties. */
+function PageTop({ current }: { current: ReactNode }) {
+  const location = useLocation();
+  const from = (location.state as PropertyPageState | null)?.from;
+  return <BackBreadcrumb parent={propertiesCrumb} current={current} backInHistory={from === "properties"} />;
+}
 
 /** /properties/:id: header card with KPIs and managers (embedded in the property; the Managers card fetches emails), Overview and Units tabs, edit and delete (OWNER). */
 export function PropertyDetailPage() {
@@ -38,7 +50,7 @@ export function PropertyDetailPage() {
   if (property.error instanceof ApiError && property.error.status === 404) {
     return (
       <>
-        <Breadcrumb links={propertiesCrumb} current="Not found" />
+        <PageTop current="Not found" />
         <Card padding="none">
           <EmptyState
             icon={<Building2 strokeWidth={1.5} />}
@@ -57,7 +69,7 @@ export function PropertyDetailPage() {
   if (property.isError) {
     return (
       <>
-        <Breadcrumb links={propertiesCrumb} current="Property" />
+        <PageTop current="Property" />
         <InlineError title="Couldn't load this property" description={errorText(property.error)} onRetry={() => void property.refetch()} />
       </>
     );
@@ -65,7 +77,7 @@ export function PropertyDetailPage() {
   if (property.isPending) {
     return (
       <>
-        <Breadcrumb links={propertiesCrumb} current={<Skeleton className="inline-block h-3 w-24" />} />
+        <PageTop current={<Skeleton className="inline-block h-3 w-24" />} />
         <Card>
           <div className="flex flex-col gap-6 md:flex-row">
             <Skeleton className="h-[180px] w-full shrink-0 md:w-[280px]" />
@@ -85,7 +97,7 @@ export function PropertyDetailPage() {
 function PropertyDetail({ property }: { property: Property }) {
   const navigate = useNavigate();
   const { me } = useAuth();
-  const role = me!.role;
+  const user = me!;
   const units = useUnits({ propertyId: property.id });
   const leases = useLeases({ propertyId: property.id });
   const del = useDeleteProperty();
@@ -96,7 +108,7 @@ function PropertyDetail({ property }: { property: Property }) {
   const [addingUnit, setAddingUnit] = useState(false);
   const [openUnitId, setOpenUnitId] = useState<string | null>(null);
   const openUnit = units.data?.find((u) => u.id === openUnitId);
-  const canAddUnit = can(role, "unit.create");
+  const canAddUnit = can(user, "unit.create");
 
   const rows = useMemo(() => buildUnitRows(units.data ?? [], leases.data ?? []), [units.data, leases.data]);
   const attention = useMemo(() => rows.filter(needsAttention), [rows]);
@@ -131,32 +143,33 @@ function PropertyDetail({ property }: { property: Property }) {
 
   return (
     <>
-      <Breadcrumb links={propertiesCrumb} current={property.name} />
+      <PageTop current={property.name} />
 
       <Card padding="none">
         <div className="flex flex-col gap-6 p-6 md:flex-row">
           <PropertyImage type={property.propertyType} className="h-[180px] w-full shrink-0 rounded-control md:w-[280px]" />
           <div className="flex min-w-0 flex-1 flex-col gap-5">
-            <div className="flex items-start justify-between gap-4">
+            {/* Phones: the actions go under the name and fill the width (44px). */}
+            <div className="flex items-start justify-between gap-4 max-md:flex-col">
               <div className="min-w-0">
                 <H1>{property.name}</H1>
                 <Small className="mt-1 block">
                   {formatAddress(property)} · Acquired {acquired} · {plural(property.unitCount, "unit")}
                 </Small>
               </div>
-              {(can(role, "property.edit") || canAddUnit) && (
-                <div className="flex shrink-0 items-center gap-2">
-                  {can(role, "property.edit") && (
-                    <Button icon={<Pencil size={16} strokeWidth={1.5} />} onClick={() => setEditing(true)}>
+              {(can(user, "property.edit") || canAddUnit) && (
+                <div className="flex shrink-0 items-center gap-2 max-md:w-full">
+                  {can(user, "property.edit") && (
+                    <Button className="max-md:h-11 max-md:flex-1" icon={<Pencil size={16} strokeWidth={1.5} />} onClick={() => setEditing(true)}>
                       Edit
                     </Button>
                   )}
                   {canAddUnit && (
-                    <Button variant="primary" icon={<Plus size={16} strokeWidth={1.5} />} onClick={() => setAddingUnit(true)}>
+                    <Button variant="primary" className="max-md:h-11 max-md:flex-1" icon={<Plus size={16} strokeWidth={1.5} />} onClick={() => setAddingUnit(true)}>
                       Add unit
                     </Button>
                   )}
-                  {can(role, "property.delete") && (
+                  {can(user, "property.delete") && (
                     <KebabMenu
                       label="Property actions"
                       items={[
@@ -258,7 +271,7 @@ function PropertyDetail({ property }: { property: Property }) {
                 ]}
               />
             </Card>
-            <PropertyManagersCard property={property} canAssign={can(role, "manager.assign")} />
+            <PropertyManagersCard property={property} canAssign={can(user, "manager.assign")} />
           </div>
         </div>
       ) : (
@@ -276,7 +289,14 @@ function PropertyDetail({ property }: { property: Property }) {
 
       {editing && <PropertyFormModal property={property} onClose={() => setEditing(false)} />}
       {addingUnit && <UnitFormModal defaultPropertyId={property.id} onClose={() => setAddingUnit(false)} />}
-      {openUnit && <UnitDrawer unit={openUnit} propertyName={property.name} onClose={() => setOpenUnitId(null)} />}
+      {openUnit && (
+        <UnitDrawer
+          unit={openUnit}
+          propertyName={property.name}
+          leaseFrom={{ from: "property", property: { id: property.id, name: property.name } }}
+          onClose={() => setOpenUnitId(null)}
+        />
+      )}
 
       <ConfirmDialog
         open={deleting}

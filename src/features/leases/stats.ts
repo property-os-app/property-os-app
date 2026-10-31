@@ -1,5 +1,5 @@
 /** Lease money and date helpers shared by the leases page, the unit drawer and the tenants page. Money math in integer cents. */
-import { addDaysISO, addMonthsISO, addMonthsYM, currentMonth, dayInMonth, daysUntil, formatDate, parseDateOnly, todayUTC, toCents } from "@/lib/format";
+import { addDaysISO, addMonthsISO, addMonthsYM, currentMonth, dayInMonth, daysUntil, formatDate, formatShortDate, parseDateOnly, todayUTC, toCents } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import type { Lease, LeaseStatus, LeaseTenant } from "@/types/lease";
 
@@ -43,6 +43,16 @@ export function dueNote(state: DueState): string {
     case "future":
       return `Next due ${formatDate(state.next)}`;
   }
+}
+
+/**
+ * Caption under a list balance when nothing of it is late yet: "Due Nov 1" (oldest unpaid charge due later, e.g. rent
+ * billed early) or "Due today". null when overdue, credit or nothing owed (the list can't split a mixed balance).
+ */
+export function notDueCaption(lease: Lease, today = todayUTC()): string | null {
+  const due = dueState(lease, today);
+  if (due.kind === "today") return "Due today";
+  return due.kind === "future" ? `Due ${formatShortDate(due.next)}` : null;
 }
 
 /** "Lease ends" card note: "Ending soon", "12 days left" (local calendar days), or "Past the end date". */
@@ -175,7 +185,13 @@ export const leaseFieldLabels: Record<string, string> = {
   tags: "Tags",
   notes: "Notes",
   status: "Status",
+  templateId: "Template",
 };
+
+/** "Standard Lease – 12-month · v2": the lease's template and its pinned version; null without a template. */
+export function templateLine(lease: Pick<Lease, "template">): string | null {
+  return lease.template ? `${lease.template.name} · v${lease.template.version}` : null;
+}
 
 /** "rent" -> "Monthly rent"; an unknown name stays as it is. */
 export const leaseFieldLabel = (field: string) => leaseFieldLabels[field] ?? field;

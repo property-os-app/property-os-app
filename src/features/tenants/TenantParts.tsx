@@ -1,8 +1,9 @@
-import { Badge, Dash, Num } from "@/components/atoms";
+import { Badge, Caption, Dash, Num } from "@/components/atoms";
 import { StatusBadge } from "@/components/molecules";
 import { cn } from "@/lib/cn";
 import { centsToAmount, formatCurrency, toCents } from "@/lib/format";
 import { LeaseBadge } from "@/features/leases/LeaseParts";
+import { notDueCaption } from "@/features/leases/stats";
 import { rentStatus } from "@/features/tenants/stats";
 import type { Lease } from "@/types/lease";
 
@@ -20,12 +21,23 @@ export function RentStatusBadge({ lease }: { lease: Lease | undefined }) {
   return <Badge tone="success">Up to date</Badge>;
 }
 
-/** Balance of the lease: danger when owed, success "$0.00" when settled, "Credit $50.00" when negative; Dash without a lease. */
+/**
+ * Balance of the lease: bold when owed (danger only when overdue, with "Due Nov 1" under a balance not due yet), success
+ * "$0.00" when settled, "Credit $50.00" when negative; Dash without a lease. A balance above $0 isn't late by itself.
+ */
 export function BalanceValue({ lease, className }: { lease: Lease | undefined; className?: string }) {
   if (!lease) return <Dash />;
   const cents = toCents(lease.balance);
   if (cents < 0) return <Num className={className}>Credit {formatCurrency(centsToAmount(-cents))}</Num>;
+  const caption = notDueCaption(lease);
+  const amount = (
+    <Num className={cn("font-semibold", cents === 0 && "text-success", rentStatus(lease) === "overdue" && "text-danger", className)}>{formatCurrency(lease.balance)}</Num>
+  );
+  if (!caption) return amount;
   return (
-    <Num className={cn("font-semibold", cents > 0 ? "text-danger" : "text-success", className)}>{formatCurrency(lease.balance)}</Num>
+    <span className="inline-flex flex-col items-end">
+      {amount}
+      <Caption className="whitespace-nowrap">{caption}</Caption>
+    </span>
   );
 }

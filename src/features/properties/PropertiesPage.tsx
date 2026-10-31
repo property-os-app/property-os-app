@@ -1,13 +1,13 @@
 import { useMemo, type ReactNode } from "react";
-import { LayoutGrid, List, Plus, SearchX } from "lucide-react";
+import { Plus, SearchX } from "lucide-react";
 import { Button, Dash, Select, Skeleton } from "@/components/atoms";
-import { Card, EmptyState, InlineError, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
-import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
+import { Card, EmptyState, FormField, InlineError, KpiCard, SearchInput } from "@/components/molecules";
+import { CardGrid, KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { centsToAmount, formatCompactCurrency, formatPercent } from "@/lib/format";
 import { labelOptions, plural, propertyTypeLabels } from "@/lib/labels";
 import { useClientTable, type SortColumn } from "@/lib/useClientTable";
-import { useStoredView } from "@/lib/useStoredView";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { useLeases } from "@/features/leases/hooks";
@@ -25,14 +25,14 @@ import {
   unitCountsByProperty,
   unitStatusNote,
 } from "@/features/properties/stats";
+import { MobileFilters, SortSelect, type SortOption } from "@/features/shared/MobileFilters";
+import { useListView } from "@/features/shared/listView";
+import { ViewToggle } from "@/features/shared/ViewToggle";
 import { NoProperties } from "@/features/shared/NoProperties";
 import { useUnits } from "@/features/units/hooks";
 
-type View = "cards" | "table";
 type Filters = { type: string; manager: string };
 
-const VIEW_KEY = "propertyos.properties.view";
-const VIEWS = ["cards", "table"] as const;
 const initialFilters: Filters = { type: "all", manager: "all" };
 const propertyTypes = Object.keys(propertyTypeLabels);
 
@@ -49,22 +49,31 @@ const sorts: Record<string, SortColumn<PropertyRow>> = {
   value: { kind: "money", value: (r) => r.property.propertyValue },
 };
 
+const sortOptions: SortOption[] = [
+  { key: "name", label: "Name", kind: "text" },
+  { key: "units", label: "Units", kind: "number" },
+  { key: "occupancy", label: "Occupancy", kind: "number" },
+  { key: "value", label: "Value", kind: "money" },
+];
+
 /**
  * /properties: KPIs, toolbar and the Cards or Table view. Ignores the sidebar property scope on purpose.
  * Unit totals and managers come with each property; GET /units is only for the counts by status (occupancy, vacant).
  */
 export function PropertiesPage() {
   const { me } = useAuth();
-  const role = me!.role;
+  const user = me!;
+  const role = user.role;
   const isOwner = role === "OWNER";
-  const canCreate = can(role, "property.create");
+  const canCreate = can(user, "property.create");
 
   const properties = useProperties();
   const units = useUnits();
   const leases = useLeases({ status: "ACTIVE" });
   const managers = useManagers();
+  const isMobile = useIsMobile();
 
-  const [view, setView] = useStoredView<View>(VIEW_KEY, VIEWS, "cards");
+  const [view, setView] = useListView("properties", "cards");
   const addProperty = useAddPropertyFlow();
 
   const countsByProperty = useMemo(() => unitCountsByProperty(units.data ?? []), [units.data]);
@@ -133,6 +142,28 @@ export function PropertiesPage() {
     <Pagination page={table.page} pageCount={table.pageCount} onPageChange={table.setPage} summary={table.summary} />
   ) : undefined;
 
+  const search = <SearchInput placeholder="Search properties" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />;
+  const typeSelect = (id?: string) => (
+    <Select id={id} aria-label={id ? undefined : "Type"} value={table.filters.type} onChange={(e) => table.setFilter("type", e.target.value)}>
+      <option value="all">All types</option>
+      {labelOptions(propertyTypeLabels).map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </Select>
+  );
+  const managerSelect = (id?: string) => (
+    <Select id={id} aria-label={id ? undefined : "Manager"} value={table.filters.manager} onChange={(e) => table.setFilter("manager", e.target.value)}>
+      <option value="all">All managers</option>
+      {managers.data?.map((m) => (
+        <option key={m.id} value={m.id}>
+          {m.name}
+        </option>
+      ))}
+    </Select>
+  );
+
   if (properties.data?.length === 0) {
     return (
       <>
@@ -166,43 +197,35 @@ export function PropertiesPage() {
         />
       </KpiRow>
 
-      <Toolbar>
-        <SegmentedControl<View>
-          aria-label="View"
-          value={view}
-          onChange={setView}
-          segments={[
-            { value: "cards", label: "Cards", icon: <LayoutGrid size={16} strokeWidth={1.5} /> },
-            { value: "table", label: "Table", icon: <List size={16} strokeWidth={1.5} /> },
-          ]}
-        />
-        <SearchInput placeholder="Search properties" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />
-        <div className="w-44">
-          <Select aria-label="Type" value={table.filters.type} onChange={(e) => table.setFilter("type", e.target.value)}>
-            <option value="all">All types</option>
-            {labelOptions(propertyTypeLabels).map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
-        </div>
-        {isOwner && (
-          <div className="w-52">
-            <Select aria-label="Manager" value={table.filters.manager} onChange={(e) => table.setFilter("manager", e.target.value)}>
-              <option value="all">All managers</option>
-              {managers.data?.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-        )}
-      </Toolbar>
+      {isMobile ? (
+        <Toolbar className="flex-nowrap">
+          {search}
+          <MobileFilters count={table.activeFilterCount} resultCount={ready ? table.total : undefined} onClear={table.resetFilters}>
+            <FormField label="Type" htmlFor="properties-type">
+              {typeSelect("properties-type")}
+            </FormField>
+            {isOwner && (
+              <FormField label="Manager" htmlFor="properties-manager">
+                {managerSelect("properties-manager")}
+              </FormField>
+            )}
+            <SortSelect id="properties-sort" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />
+          </MobileFilters>
+        </Toolbar>
+      ) : (
+        <Toolbar>
+          {search}
+          <div className="w-44">{typeSelect()}</div>
+          {isOwner && <div className="w-52">{managerSelect()}</div>}
+          <div className="flex-1" />
+          {view === "cards" && <SortSelect compact id="properties-sort-desktop" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />}
+          <ViewToggle value={view} onChange={setView} />
+        </Toolbar>
+      )}
 
       <div id={table.listId} className="flex scroll-mt-24 flex-col gap-6">
-        {view === "table" ? (
+        {/* Phones always get the list cards (the Cards / Table toggle is hidden there; the saved choice is kept). */}
+        {view === "table" || isMobile ? (
           <PropertiesTable
             rows={table.pageRows}
             state={state}
@@ -220,11 +243,11 @@ export function PropertiesPage() {
           </Card>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <CardGrid max={2}>
               {state === "loading"
                 ? Array.from({ length: 4 }).map((_, i) => <PropertyCardSkeleton key={i} />)
                 : table.pageRows.map((row) => <PropertyCard key={row.property.id} row={row} />)}
-            </div>
+            </CardGrid>
             {pagination && <div className="flex items-center justify-between text-small text-text-secondary">{pagination}</div>}
           </>
         )}

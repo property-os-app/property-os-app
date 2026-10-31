@@ -48,16 +48,23 @@ export function formatCurrency(value: MoneyInput): string {
   return cents < 0 ? `-${text}` : text;
 }
 
-/** $128.4K / $24.6M in KPI cards and charts (display only). Empty or invalid -> "-". */
+/**
+ * $128.4K / $24.6M in KPI cards and charts (display only). Empty or invalid -> "-".
+ * Rounds half up in integer cents first, then picks the unit, so $999.50 is "$1.0K" and $999,950 is "$1.0M" (not "$1000").
+ */
 export function formatCompactCurrency(value: MoneyInput): string {
   if (isEmpty(value)) return EMPTY;
   const cents = toCents(value);
   if (Number.isNaN(cents)) return EMPTY;
-  const abs = Math.abs(centsToAmount(cents));
+  const abs = Math.abs(cents);
   const sign = cents < 0 ? "-" : "";
-  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1)}K`;
-  return `${sign}$${abs.toFixed(0)}`;
+  const tenths = (n: number) => `${Math.floor(n / 10)}.${n % 10}`;
+  const tenthsOfK = Math.round(abs / 10_000); // $0.1K = 10,000 cents
+  if (tenthsOfK >= 10_000) return `${sign}$${tenths(Math.round(abs / 10_000_000))}M`;
+  const dollars = Math.round(abs / 100);
+  if (dollars >= 1_000) return `${sign}$${tenths(tenthsOfK)}K`;
+  // No minus on a value that rounds to $0 ("-0.40" -> "$0", not "-$0").
+  return dollars === 0 ? "$0" : `${sign}$${dollars}`;
 }
 
 /** 94.2% with one decimal in KPIs; pass digits=0 for badges. Accepts "94.2" too. Empty or invalid -> "-". */
@@ -174,6 +181,14 @@ export function daysUntil(date: string | null | undefined, now = new Date()): nu
   return target && today ? dayNumber(target) - dayNumber(today) : null;
 }
 
+/**
+ * Local calendar days since a past "YYYY-MM-DD" date, at least 1 ("44 days overdue", "ended 3 days ago").
+ * Callers decide past or not themselves (overdue uses UTC today), so a date that is today locally still counts as 1.
+ */
+export function daysSince(date: string | null | undefined, now = new Date()): number {
+  return Math.max(1, -(daysUntil(date, now) ?? 1));
+}
+
 /** Days in a month (m is 1-12). Date.UTC is used only as a calendar, no time zone is involved. */
 function daysInMonth(y: number, m: number): number {
   return new Date(Date.UTC(y, m, 0)).getUTCDate();
@@ -216,7 +231,7 @@ export function isMonth(value: string | null | undefined): value is string {
   return typeof value === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
 }
 
-/** This month as UTC "YYYY-MM": the backend's default month (rent roll, generate rent). */
+/** This month as UTC "YYYY-MM": the backend's default month (rent roll, billing). */
 export function currentMonthUTC(now = new Date()): string {
   return todayUTC(now).slice(0, 7);
 }

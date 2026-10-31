@@ -12,12 +12,24 @@ export function applyServerError<T extends FieldValues>(
   error: unknown,
   fieldNames: readonly Path<T>[],
 ): string[] {
+  return applyServerErrorBy(setError, error, (message) => fieldNames.find((name) => message === name || message.startsWith(`${name} `)) ?? null);
+}
+
+/**
+ * Like applyServerError, but `fieldOf(message)` picks the field (null = top of the form), for messages that don't start
+ * with a field name (e.g. a 409 "A vendor named ... already exists." under Name).
+ */
+export function applyServerErrorBy<T extends FieldValues>(
+  setError: UseFormSetError<T>,
+  error: unknown,
+  fieldOf: (message: string) => Path<T> | null,
+): string[] {
   if (!(error instanceof ApiError) || error.messages.length === 0) return [errorText(error)];
 
   const byField = new Map<Path<T>, string[]>();
   const general: string[] = [];
   for (const message of error.messages) {
-    const field = fieldNames.find((name) => message === name || message.startsWith(`${name} `));
+    const field = fieldOf(message);
     if (field) byField.set(field, [...(byField.get(field) ?? []), message]);
     else general.push(message);
   }

@@ -6,11 +6,14 @@
 import { statusLabel } from "@/components/molecules/StatusBadge";
 import type { UserRole } from "@/types/auth";
 import type { LeaseStatus, PaymentFrequency, SignatureStatus } from "@/types/lease";
+import type { MaintenancePriority, MaintenanceStatus } from "@/types/maintenance";
+import type { ExpenseStatus, ExpenseType } from "@/types/expense";
 import type { ChargeType, LedgerEntryKind, PaymentMethod } from "@/types/ledger";
 import type { PropertyType } from "@/types/property";
 import type { RentRollStatus } from "@/types/rentRoll";
 import type { ContactMethod, TenantType } from "@/types/tenant";
 import type { UnitStatus, UnitType } from "@/types/unit";
+import type { VendorInsuranceStatus, VendorRateUnit } from "@/types/vendor";
 
 export const userRoleLabels: Record<UserRole, string> = {
   OWNER: "Owner",
@@ -95,6 +98,35 @@ export const rentStatusLabels: Record<RentRollStatus, string> = statusLabel.rent
 export const ledgerKindLabels: Record<LedgerEntryKind, string> = {
   CHARGE: "Charge",
   PAYMENT: "Payment",
+};
+
+export const expenseTypeLabels: Record<ExpenseType, string> = {
+  OPERATING: "Operating",
+  CAPITAL: "Capital",
+};
+
+export const expenseStatusLabels: Record<ExpenseStatus, string> = statusLabel.approval;
+
+/** Rate unit in a sentence: "$110.00 / hour". */
+export const rateUnitLabels: Record<VendorRateUnit, string> = {
+  HOUR: "hour",
+  VISIT: "visit",
+  MONTH: "month",
+  JOB: "job",
+};
+
+export const insuranceStatusLabels: Record<VendorInsuranceStatus, string> = statusLabel.insurance;
+
+/** EMERGENCY first (the API's priority order). */
+export const priorityLabels: Record<MaintenancePriority, string> = statusLabel.priority;
+
+/** Ticket statuses in flow order (OPEN → … → CANCELLED). */
+export const ticketStatusLabels: Record<MaintenanceStatus, string> = {
+  OPEN: statusLabel.ticket.OPEN,
+  ASSIGNED: statusLabel.ticket.ASSIGNED,
+  IN_PROGRESS: statusLabel.ticket.IN_PROGRESS,
+  RESOLVED: statusLabel.ticket.RESOLVED,
+  CANCELLED: statusLabel.ticket.CANCELLED,
 };
 
 /** Options for a Select, in the order of the map: [{ value, label }]. */

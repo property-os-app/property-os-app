@@ -1,9 +1,11 @@
-/** Dashboard numbers, computed from GET /rent-roll, /units, /leases and /properties. Pure functions; only hooks.ts calls them. */
+/** Dashboard numbers, computed from GET /rent-roll, /units, /leases, /properties and /maintenance-tickets/summary. Pure functions; only hooks.ts calls them. */
 import { addMonthsYM, daysUntil, formatCurrency, formatMonth, formatPercent, toCents } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import { expiresWithin, isPastEnd } from "@/features/leases/stats";
-import { canGenerateRent, collectionBreakdown, collectionNote, statusDate, upcomingRows } from "@/features/rent-roll/stats";
+import { emergencyNote } from "@/features/maintenance/ticketText";
+import { collectionBreakdown, collectionNote, statusDate } from "@/features/rent-roll/stats";
 import type { Lease } from "@/types/lease";
+import type { TicketSummary } from "@/types/maintenance";
 import type { RentRollResponse, RentRollRow } from "@/types/rentRoll";
 import type { Unit, UnitStatus } from "@/types/unit";
 
@@ -147,7 +149,10 @@ export function billedPoint(month: string, roll: RentRollResponse): BilledPoint 
 
 /* ---------- Needs attention ---------- */
 
-export type AttentionAction = { label: string; to: string } | { label: string; generate: true };
+export interface AttentionAction {
+  label: string;
+  to: string;
+}
 
 export interface AttentionItem {
   key: string;
@@ -156,25 +161,12 @@ export interface AttentionItem {
   action: AttentionAction;
 }
 
-/** One item per rule that applies, in a fixed order: not billed, overdue, past end, expiring within 30 days, drafts. */
-export function attentionItems(p: { month: string; roll: RentRollResponse; leases: Lease[]; canCharge: boolean }): AttentionItem[] {
+/** One item per rule that applies, in a fixed order: overdue, past end, expiring within 30 days, drafts. Rent bills automatically, so "not billed" is no item. */
+export function attentionItems(p: { roll: RentRollResponse; leases: Lease[] }): AttentionItem[] {
   const items: AttentionItem[] = [];
-  const month = formatMonth(p.month);
-  const rows = p.roll.rows;
-  // Only rows Generate rent would bill (not the ones it skips: outside the term, not monthly), like the Rent Roll banner.
-  const notBilledRows = rows.filter((r) => r.status === "NOT_BILLED");
-  const notBilled = notBilledRows.length - upcomingRows(rows, p.leases, p.month).size;
-  if (p.canCharge && canGenerateRent(p.month) && notBilled > 0) {
-    items.push({
-      key: "not-billed",
-      title: notBilledRows.length === rows.length ? `Rent for ${month} isn't billed yet` : `${plural(notBilled, "lease")} can be billed for ${month}`,
-      text: "Generate it so balances are up to date.",
-      action: { label: "Generate rent", generate: true },
-    });
-  }
   const overdue = p.roll.summary.overdueCount;
   if (overdue > 0) {
-    items.push({ key: "overdue", title: `${plural(overdue, "tenant")} overdue`, text: `${formatCurrency(p.roll.summary.overdueTotal)} past due in total.`, action: { label: "Open Rent Roll", to: "/rent-roll" } });
+    items.push({ key: "overdue", title: `${plural(overdue, "tenant")} overdue`, text: `${formatCurrency(p.roll.summary.overdueTotal)} owed by overdue leases.`, action: { label: "Open Rent Roll", to: "/rent-roll" } });
   }
   const pastEnd = p.leases.filter((l) => isPastEnd(l)).length;
   if (pastEnd > 0) {
@@ -192,6 +184,32 @@ export function attentionItems(p: { month: string; roll: RentRollResponse; lease
   const drafts = p.leases.filter((l) => l.status === "DRAFT").length;
   if (drafts > 0) {
     items.push({ key: "drafts", title: `${plural(drafts, "draft lease")} not active yet`, text: "Activate them to start billing.", action: { label: "View leases", to: "/leases" } });
+  }
+  return items;
+}
+
+/**
+ * Maintenance items for Needs attention, from GET /maintenance-tickets/summary (same scope): open emergencies first, then
+ * tickets past their SLA. Each links to the Maintenance page filtered to them. Shown before the rent and lease items.
+ */
+export function maintenanceAttention(summary: Pick<TicketSummary, "emergency" | "pastSlaCount">, now = new Date()): AttentionItem[] {
+  const items: AttentionItem[] = [];
+  const e = summary.emergency;
+  if (e.openCount > 0) {
+    items.push({
+      key: "emergencies",
+      title: `${plural(e.openCount, "open emergency", "open emergencies")}`,
+      text: `${emergencyNote(e, now)}. Emergencies have a 4-hour SLA.`,
+      action: { label: "View tickets", to: "/maintenance?priority=EMERGENCY" },
+    });
+  }
+  if (summary.pastSlaCount > 0) {
+    items.push({
+      key: "past-sla",
+      title: `${plural(summary.pastSlaCount, "ticket")} past SLA`,
+      text: "Open past the response time (emergency 4h, urgent 24h).",
+      action: { label: "View tickets", to: "/maintenance?pastSla=1" },
+    });
   }
   return items;
 }
