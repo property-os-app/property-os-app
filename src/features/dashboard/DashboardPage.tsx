@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { Dash, Skeleton } from "@/components/atoms";
 import { InlineError, KpiCard, type KpiCardProps } from "@/components/molecules";
@@ -7,7 +7,6 @@ import { errorText } from "@/lib/api";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
-import { can } from "@/features/auth/permissions";
 import { BilledCollectedChart, ExpirationsChart, UnitsByStatusChart } from "@/features/dashboard/DashboardCharts";
 import { AtRiskLeasesTable, OverdueRentTable } from "@/features/dashboard/DashboardTables";
 import { useDashboardStats } from "@/features/dashboard/hooks";
@@ -15,8 +14,6 @@ import { NeedsAttention } from "@/features/dashboard/NeedsAttention";
 import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
 import { RentCollectionCard } from "@/features/dashboard/RentCollectionCard";
 import { greeting, vacantNote } from "@/features/dashboard/stats";
-import { GenerateRentModal } from "@/features/rent-roll/GenerateRentModal";
-import { canGenerateRent } from "@/features/rent-roll/stats";
 import { useScope } from "@/features/scope/scopeContext";
 import { NoProperties } from "@/features/shared/NoProperties";
 
@@ -31,14 +28,11 @@ const renderLink: KpiCardProps["renderLink"] = (href, props) => <Link to={href} 
  */
 export function DashboardPage() {
   const { me } = useAuth();
-  const user = me!;
   const { propertyId: scope } = useScope();
   const stats = useDashboardStats(scope);
   const { month, header, rent, kpis } = stats;
 
-  const [generating, setGenerating] = useState(false);
   const addProperty = useAddPropertyFlow();
-  const canGenerate = can(user, "rent.generate") && canGenerateRent(month);
 
   const title = greeting(me!.name);
 
@@ -78,7 +72,7 @@ export function DashboardPage() {
         description={header.data?.description ?? (header.isPending ? <Skeleton className="inline-block h-4 w-80 max-w-full" /> : undefined)}
       />
 
-      <RentCollectionCard month={month} rent={rent} onGenerate={canGenerate ? () => setGenerating(true) : undefined} />
+      <RentCollectionCard month={month} rent={rent} />
 
       {kpis.error ? (
         <InlineError title="Couldn't load the key numbers" description={errorText(kpis.error)} onRetry={kpis.retry} />
@@ -107,7 +101,7 @@ export function DashboardPage() {
             href="/rent-roll"
             renderLink={renderLink}
             value={kpi(k?.overdueCount)}
-            note={k ? (k.overdueCount === 0 ? "Nobody is overdue" : `${formatCurrency(k.overdueTotal)} overdue`) : undefined}
+            note={k ? (k.overdueCount === 0 ? "Nobody is overdue" : `${formatCurrency(k.overdueTotal)} owed by overdue leases`) : undefined}
           />
         </KpiRow>
       )}
@@ -122,12 +116,11 @@ export function DashboardPage() {
           <ExpirationsChart expirations={stats.expirations} />
         </div>
         <div className="flex min-w-0 flex-col gap-6 lg:col-span-4">
-          <NeedsAttention attention={stats.attention} onGenerate={() => setGenerating(true)} />
+          <NeedsAttention attention={stats.attention} />
           <UnitsByStatusChart unitStatus={stats.unitStatus} />
         </div>
       </div>
 
-      {generating && <GenerateRentModal month={month} onClose={() => setGenerating(false)} />}
     </>
   );
 }

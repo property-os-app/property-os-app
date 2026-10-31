@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { ChevronRight } from "lucide-react";
-import { Button, buttonVariants, Caption, CollectionProgress, Skeleton } from "@/components/atoms";
+import { buttonVariants, Caption, CollectionProgress, Skeleton } from "@/components/atoms";
 import { Card, CardHeader, HeroStatCard, InlineError } from "@/components/molecules";
 import { errorText } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -12,12 +12,10 @@ import type { RentCollection } from "@/features/dashboard/stats";
 export interface RentCollectionCardProps {
   month: string;
   rent: Section<RentCollection>;
-  /** Shown when nothing is billed (charge.create and the month can be generated). */
-  onGenerate?: () => void;
 }
 
 /** The design's rent collection hero: Total due, Collected, Outstanding, then the collection bar. */
-export function RentCollectionCard({ month, rent, onGenerate }: RentCollectionCardProps) {
+export function RentCollectionCard({ month, rent }: RentCollectionCardProps) {
   const r = rent.data;
   const monthLabel = formatMonth(month);
 
@@ -62,16 +60,8 @@ export function RentCollectionCard({ month, rent, onGenerate }: RentCollectionCa
             <HeroStatCard label="Outstanding" tone="danger" value={formatCurrency(r.outstandingBalance)} note={`${r.overdueCount} overdue`} />
           </div>
           <CollectionProgress value={r.rate} className="mt-5" />
-          {r.rate === null && (
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <Caption>Rent for {monthLabel} hasn't been generated yet.</Caption>
-              {onGenerate && (
-                <Button size="sm" onClick={onGenerate}>
-                  Generate rent
-                </Button>
-              )}
-            </div>
-          )}
+          {/* Rent is billed automatically before each due date (Settings → Billing), so there is nothing to press here. */}
+          {r.rate === null && <Caption className="mt-3 block">Nothing billed for {monthLabel} yet. Rent bills automatically before each due date.</Caption>}
         </>
       )}
     </Card>

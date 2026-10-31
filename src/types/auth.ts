@@ -36,4 +36,7 @@ export type AuthErrorCode =
   | "EMAIL_NOT_VERIFIED"
   | "USER_NOT_REGISTERED"
   | "FORBIDDEN_ROLE"
-  | "FORBIDDEN_PERMISSION";
+  | "FORBIDDEN_PERMISSION"
+  // POST /auth/register only. The admin portal never calls it (rules.md, Auth); listed so the union matches API.md.
+  | "REGISTRATION_NOT_ALLOWED"
+  | "OWNER_ALREADY_EXISTS";

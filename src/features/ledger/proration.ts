@@ -11,7 +11,7 @@ export interface RentProration {
   fullCents: number;
   /** fullCents x days / daysInMonth, rounded to the nearest cent (half up), integer math only. */
   proratedCents: number;
-  /** The month's due date (rentDueDay, clamped) is outside the term, so Generate rent skips this lease. */
+  /** The month's due date (rentDueDay, clamped) is outside the term, so the automatic billing skips this lease. */
   dueOutsideTerm: boolean;
 }
 

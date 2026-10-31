@@ -18,7 +18,6 @@ export type Action =
   | "lease.edit"
   | "charge.create"
   | "payment.create"
-  | "rent.generate"
   | "entry.void"
   | "template.manage"
   | "vendor.manage"
@@ -26,7 +25,8 @@ export type Action =
   | "expense.approve"
   | "ticket.manage"
   | "ticket.cancel"
-  | "access.manage";
+  | "access.manage"
+  | "billing.manage";
 
 /**
  * The backend permission key each action needs (API.md, Permissions). null = OWNER only, never a switch.
@@ -51,7 +51,6 @@ const ACTION_KEYS: Record<Action, string | null> = {
   "lease.edit": "leases.manage",
   "charge.create": "money.record",
   "payment.create": "money.record",
-  "rent.generate": "money.record",
   "entry.void": "money.void",
   "template.manage": "templates.manage",
   "vendor.manage": "vendors.manage",
@@ -60,6 +59,7 @@ const ACTION_KEYS: Record<Action, string | null> = {
   "ticket.manage": "maintenance.manage",
   "ticket.cancel": "maintenance.cancel",
   "access.manage": null,
+  "billing.manage": null,
 };
 
 /** True when the user may do the action. OWNER: everything. PROPERTY_MANAGER: only actions whose key is in `permissions` (GET /auth/me). TENANT: nothing. */

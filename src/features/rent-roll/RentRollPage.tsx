@@ -1,35 +1,35 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router";
 import { Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { Button, Caption, Dash, Select, Skeleton } from "@/components/atoms";
-import { Card, FormField, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
+import { Button, Dash, Select, Skeleton } from "@/components/atoms";
+import { FormField, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
 import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { cn } from "@/lib/cn";
-import { addMonthsYM, currentMonthUTC, formatCompactCurrency, formatPercent, formatMonth } from "@/lib/format";
+import { addMonthsYM, centsToAmount, currentMonthUTC, formatCompactCurrency, formatPercent, formatMonth } from "@/lib/format";
 import { plural, rentStatusLabels } from "@/lib/labels";
 import { useClientTable, type SortColumn } from "@/lib/useClientTable";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { AddChargeModal } from "@/features/ledger/AddChargeModal";
+import { ledgerQuery } from "@/features/ledger/hooks";
+import { balanceSplit } from "@/features/ledger/overdue";
 import { RecordPaymentModal } from "@/features/ledger/RecordPaymentModal";
 import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
 import { useProperties } from "@/features/properties/hooks";
-import { GenerateRentModal } from "@/features/rent-roll/GenerateRentModal";
 import { useRentRoll } from "@/features/rent-roll/hooks";
 import { useLeases } from "@/features/leases/hooks";
 import { coTenants } from "@/features/leases/stats";
-import { rentReminderLinks, type RentReminderLinks } from "@/features/shared/rentReminder";
+import { rentReminderLinks } from "@/features/shared/rentReminder";
 import { useTenants } from "@/features/tenants/hooks";
-import { RentRollTable } from "@/features/rent-roll/RentRollTable";
+import { RentRollTable, type RowReminder } from "@/features/rent-roll/RentRollTable";
 import type { LeasePageState } from "@/features/leases/LeasePage";
 import {
-  canGenerateRent,
   collectionBreakdown,
   collectionNote,
   isPastMonth,
-  lastGeneratableMonth,
   monthFromParam,
   owingCount,
   paymentTargets,
@@ -41,7 +41,7 @@ import {
   upcomingRows,
 } from "@/features/rent-roll/stats";
 import { useScope } from "@/features/scope/scopeContext";
-import { linkFocus } from "@/features/shared/linkClass";
+import { useBillingSettings } from "@/features/settings/hooks";
 import { FilterGroup, MobileFilters, SortSelect, type SortOption } from "@/features/shared/MobileFilters";
 import { useListView } from "@/features/shared/listView";
 import { ViewToggle } from "@/features/shared/ViewToggle";
@@ -73,15 +73,18 @@ type PaymentOpen = { leaseId?: string };
 
 /**
  * /rent-roll: month switcher (?month=YYYY-MM), KPIs from the summary, status segments + search (client-side) + Property scope,
- * the table with totals, Generate rent, Add charge and Record Payment. A row (or "Open ledger") opens the lease page, Ledger tab.
+ * the table with totals, Add charge and Record Payment. Rent is billed automatically (Settings → Billing), so there is no generate button. A row (or "Open ledger") opens the lease page, Ledger tab.
  */
 export function RentRollPage() {
   const { me } = useAuth();
   const user = me!;
   const canCharge = can(user, "charge.create");
   const canPay = can(user, "payment.create");
-  const canGenerate = can(user, "rent.generate");
+  // Lead days for "Bills automatically on Nov 11": Owner only (managers get 403, so they see the due date instead).
+  const billing = useBillingSettings(can(user, "billing.manage"));
+  const billingLeadDays = billing.data?.billingLeadDays ?? null;
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   // Phones always get cards; the saved choice is for wider screens.
   const [view, setView] = useListView("rent-roll", "table");
@@ -107,7 +110,7 @@ export function RentRollPage() {
   const rentRoll = useRentRoll(month, scope);
   const allRows = useMemo(() => rentRoll.data?.rows ?? [], [rentRoll.data]);
   const summary = rentRoll.data?.summary;
-  // Leases tell which NOT_BILLED rows Generate rent skips ("Upcoming"). null while they load (no banner, no Upcoming yet);
+  // Leases tell which NOT_BILLED rows the automatic billing skips ("Upcoming"). null while they load (no banner, no Upcoming yet);
   // if they fail, every NOT_BILLED row counts as billable, as before.
   const leases = useLeases({ propertyId: scope ?? undefined });
   const upcoming = useMemo(
@@ -116,29 +119,46 @@ export function RentRollPage() {
   );
   // Call / Email reminder on OVERDUE rows, current month only (a past month's balance may be paid by now).
   // Phone and email come from the cached tenants list; the items hide while it loads or fails. CC: co-tenants, once the leases load.
+  // The email quotes the overdue amount, not the row balance (it can include rent not due yet): Email reminder fetches the
+  // lease's ledger first (cached) and leaves the amount out if that fails.
   const tenants = useTenants();
   const senderName = me?.name ?? "";
   const reminderFor = useMemo(() => {
     if (month !== currentMonthUTC() || !tenants.isSuccess) return undefined;
     const byId = new Map(tenants.data.map((t) => [t.id, t]));
     const leaseById = new Map((leases.data ?? []).map((l) => [l.id, l]));
-    return (r: RentRollRow): RentReminderLinks | null => {
+    return (r: RentRollRow): RowReminder | null => {
       const tenant = r.primaryTenant ? byId.get(r.primaryTenant.id) : undefined;
-      if (r.status !== "OVERDUE" || !tenant || !r.oldestUnpaidDueDate) return null;
+      const dueDate = r.oldestUnpaidDueDate;
+      if (r.status !== "OVERDUE" || !tenant || !dueDate) return null;
       const lease = leaseById.get(r.leaseId);
-      return rentReminderLinks({
-        tenantName: tenant.fullName,
-        email: tenant.email,
-        cc: lease ? coTenants(lease).map((t) => t.email).filter(Boolean) : [],
-        phone: tenant.phone,
-        propertyName: r.unit.property.name,
-        unitNumber: r.unit.unitNumber,
-        balance: r.balance,
-        dueDate: r.oldestUnpaidDueDate,
-        senderName,
-      });
+      const links = (overdue: number | null) =>
+        rentReminderLinks({
+          tenantName: tenant.fullName,
+          email: tenant.email,
+          cc: lease ? coTenants(lease).map((t) => t.email).filter(Boolean) : [],
+          phone: tenant.phone,
+          propertyName: r.unit.property.name,
+          unitNumber: r.unit.unitNumber,
+          overdue,
+          dueDate,
+          senderName,
+        });
+      const base = links(null);
+      const email = async () => {
+        let overdue: number | null = null;
+        try {
+          const ledger = await queryClient.fetchQuery(ledgerQuery(r.leaseId));
+          overdue = centsToAmount(balanceSplit(ledger.entries, ledger.summary.balance).overdueCents);
+        } catch {
+          // Leave the amount out rather than quote the whole balance.
+        }
+        const href = links(overdue).mailto;
+        if (href) window.location.href = href;
+      };
+      return { tel: base.tel, email: base.mailto ? () => void email() : null };
     };
-  }, [month, tenants.isSuccess, tenants.data, leases.data, senderName]);
+  }, [month, tenants.isSuccess, tenants.data, leases.data, senderName, queryClient]);
   const matchFilters = useCallback((r: RentRollRow, f: Filters) => f.status === "all" || rowFilterStatus(r, upcoming) === f.status, [upcoming]);
   // API order (property, unit, lease number) is the default; status and search are filtered here.
   const table = useClientTable<RentRollRow, Filters>({
@@ -154,7 +174,6 @@ export function RentRollPage() {
   const targets = useMemo(() => paymentTargets(allRows), [allRows]);
   const collectedNote = useMemo(() => collectionNote(collectionBreakdown(allRows)), [allRows]);
 
-  const [generating, setGenerating] = useState(false);
   const [chargeFor, setChargeFor] = useState<string | null>(null);
   const [payment, setPayment] = useState<PaymentOpen | null>(null);
   const addProperty = useAddPropertyFlow();
@@ -167,10 +186,6 @@ export function RentRollPage() {
   const ready = rentRoll.isSuccess;
   const kpi = (value: ReactNode) => (ready ? value : rentRoll.isError ? <Dash /> : <Skeleton className="h-10 w-24" />);
   const state: "loading" | "error" | "empty" | "ideal" = rentRoll.isError ? "error" : rentRoll.isPending ? "loading" : table.total === 0 ? "empty" : "ideal";
-  // Banner only when Generate rent would bill something: nothing billed yet -> "not generated", else "{n} leases can be billed".
-  const billable = counts.NOT_BILLED;
-  const nothingBilled = counts.NOT_BILLED + counts.UPCOMING === allRows.length;
-  const showBanner = ready && upcoming !== null && billable > 0;
   const pastMonth = isPastMonth(month);
 
   const empty =
@@ -187,24 +202,6 @@ export function RentRollPage() {
         };
   const error = { title: "Couldn't load the rent roll", description: rentRoll.isError ? errorText(rentRoll.error) : undefined, onRetry: () => void rentRoll.refetch() };
 
-  // The backend only bills up to next month (UTC); later months keep the button disabled with a note.
-  const generateAllowed = canGenerateRent(month);
-  const generateLimitNote = `You can generate rent up to ${formatMonth(lastGeneratableMonth())}.`;
-  // Nothing left: every row of the month (in the scope) is billed or skipped by generate. Unknown while leases load.
-  const nothingLeft = ready && upcoming !== null && billable === 0;
-  const scopeName = scope ? properties.data?.find((p) => p.id === scope)?.name : undefined;
-  const nothingLeftNote = scopeName ? `Nothing left to bill for ${scopeName} in ${monthLabel}` : `Nothing left to bill for ${monthLabel}`;
-  const generateButton = (className?: string) =>
-    canGenerate ? (
-      <Button
-        className={className}
-        disabled={!generateAllowed || nothingLeft}
-        title={!generateAllowed ? generateLimitNote : nothingLeft ? nothingLeftNote : undefined}
-        onClick={() => setGenerating(true)}
-      >
-        Generate rent
-      </Button>
-    ) : null;
   const paymentButton = (className?: string) =>
     canPay ? (
       <Button variant="primary" className={className} icon={<Plus size={16} strokeWidth={1.5} />} disabled={allRows.length === 0} onClick={() => setPayment({})}>
@@ -280,26 +277,16 @@ export function RentRollPage() {
     <>
       <PageHeader
         title="Rent Roll"
-        description={
-          canGenerate && !generateAllowed
-            ? `Unit-by-unit payment ledger for the ${monthLabel} collection period. ${generateLimitNote}`
-            : `Unit-by-unit payment ledger for the ${monthLabel} collection period.`
-        }
+        description={`Unit-by-unit payment ledger for the ${monthLabel} collection period. Rent is billed automatically before each due date.`}
         actions={
           isMobile ? (
             <div className="flex w-full flex-col gap-3">
               {monthSwitcher}
-              {(canGenerate || canPay) && (
-                <div className="flex gap-3">
-                  {generateButton("h-11 flex-1")}
-                  {paymentButton("h-11 flex-1")}
-                </div>
-              )}
+              {paymentButton("h-11 w-full")}
             </div>
           ) : (
             <>
               {monthSwitcher}
-              {generateButton()}
               {paymentButton()}
             </>
           )
@@ -329,7 +316,8 @@ export function RentRollPage() {
           note={ready ? `${summary?.overdueCount ?? 0} overdue` : undefined}
         />
         <KpiCard
-          label="Overdue"
+          // overdueTotal adds up the whole balances of OVERDUE rows (they can include charges due later this month).
+          label="Owed by overdue leases"
           tone="danger"
           value={kpi(formatCompactCurrency(summary?.overdueTotal))}
           note={ready ? `${plural(summary?.overdueCount ?? 0, "lease")} past their due date` : undefined}
@@ -363,36 +351,12 @@ export function RentRollPage() {
         </Toolbar>
       )}
 
-      {showBanner && (
-        <Card padding="compact" className="flex flex-wrap items-center justify-between gap-3 border-warning/40 bg-warning-soft">
-          <div className="flex flex-col">
-            <span className="font-semibold text-warning">
-              {nothingBilled ? (
-                `Rent for ${monthLabel} hasn't been generated yet.`
-              ) : (
-                <>
-                  <button type="button" className={cn("cursor-pointer underline underline-offset-2", linkFocus)} onClick={() => table.setFilter("status", "NOT_BILLED")}>
-                    {plural(billable, "lease")}
-                  </button>{" "}
-                  can be billed for {monthLabel}.
-                </>
-              )}
-            </span>
-            {canGenerate && (
-              <Caption className="text-text-primary">
-                {generateAllowed ? "Generating bills every property you can see, not only the one selected." : generateLimitNote}
-              </Caption>
-            )}
-          </div>
-          {generateButton(isMobile ? "h-11 w-full" : undefined)}
-        </Card>
-      )}
-
       <div id={table.listId} className="scroll-mt-24">
         <RentRollTable
           cards={cards}
           showProperty={!scope}
           pastMonth={pastMonth}
+          billingLeadDays={billingLeadDays}
           upcoming={upcoming}
           rows={table.pageRows}
           totalRows={table.filteredRows}
@@ -414,7 +378,6 @@ export function RentRollPage() {
         />
       </div>
 
-      {generating && <GenerateRentModal month={month} onClose={() => setGenerating(false)} />}
       {chargeFor && <AddChargeModal leaseId={chargeFor} month={month} onClose={() => setChargeFor(null)} />}
       {payment && <RecordPaymentModal targets={targets} presetLeaseId={payment.leaseId} onClose={() => setPayment(null)} />}
     </>

@@ -11,7 +11,6 @@ import { BalanceText } from "@/features/ledger/LedgerParts";
 import { balanceText } from "@/features/ledger/balance";
 import { paidCaption, rowTotals, statusDate, type UpcomingRow } from "@/features/rent-roll/stats";
 import { MergedSortHeader } from "@/features/shared/MergedSortHeader";
-import type { RentReminderLinks } from "@/features/shared/rentReminder";
 import type { RentRollRow } from "@/types/rentRoll";
 
 type Props = Pick<DataTableProps<RentRollRow>, "rows" | "state" | "sort" | "onSortChange" | "empty" | "error" | "footer" | "caption"> & {
@@ -21,7 +20,9 @@ type Props = Pick<DataTableProps<RentRollRow>, "rows" | "state" | "sort" | "onSo
   showProperty: boolean;
   /** A month before the current UTC month: OVERDUE rows say "Unpaid at month end". */
   pastMonth: boolean;
-  /** NOT_BILLED rows Generate rent skips, by leaseId: "Upcoming" badge and caption. null while the leases load. */
+  /** Settings → Billing lead days, for "Bills automatically on Nov 11" under Not billed. null for managers (Owner-only setting). */
+  billingLeadDays: number | null;
+  /** NOT_BILLED rows the automatic billing skips, by leaseId: "Upcoming" badge and caption. null while the leases load. */
   upcoming: Map<string, UpcomingRow> | null;
   onOpen: (row: RentRollRow) => void;
   /** Desktop Cards view: the phone cards in a grid. Phones always get cards. */
@@ -29,9 +30,15 @@ type Props = Pick<DataTableProps<RentRollRow>, "rows" | "state" | "sort" | "onSo
   /** Omit to hide the item (role can't do it). */
   onRecordPayment?: (row: RentRollRow) => void;
   onAddCharge?: (row: RentRollRow) => void;
-  /** Call / Email reminder links for a row (null: none). Omit to hide both items (not the current month, tenants not loaded). */
-  reminderFor?: (row: RentRollRow) => RentReminderLinks | null;
+  /** Call / Email reminder for a row (null: none). Omit to hide both items (not the current month, tenants not loaded). */
+  reminderFor?: (row: RentRollRow) => RowReminder | null;
 };
+
+/** `tel`: the Call link (null: no phone). `email`: opens the reminder email (null: no email); it looks up the overdue amount first. */
+export interface RowReminder {
+  tel: string | null;
+  email: (() => void) | null;
+}
 
 /** tel: and mailto: leave the app, so a plain navigation is enough. */
 const openLink = (href: string) => {
@@ -74,7 +81,7 @@ function WithCaption({ children, caption, wrap }: { children: ReactNode; caption
  * The Rent Roll table: tenant, unit (property name under it), previous balance, rent due, paid, balance,
  * status (status date under it), kebab, and the totals row over all filtered rows. Cards (phones, or `cards`): the Totals card on top.
  */
-export function RentRollTable({ cards, totalRows, showProperty, pastMonth, upcoming, onOpen, onRecordPayment, onAddCharge, reminderFor, ...props }: Props) {
+export function RentRollTable({ cards, totalRows, showProperty, pastMonth, billingLeadDays, upcoming, onOpen, onRecordPayment, onAddCharge, reminderFor, ...props }: Props) {
   const isMobile = useIsMobile();
   const { sort, onSortChange } = props;
   const menu = useMemo(
@@ -90,7 +97,7 @@ export function RentRollTable({ cards, totalRows, showProperty, pastMonth, upcom
       }
       const reminder = reminderFor?.(r);
       if (reminder?.tel) items.push({ label: "Call tenant", icon: <Phone strokeWidth={1.5} />, onSelect: () => openLink(reminder.tel!) });
-      if (reminder?.mailto) items.push({ label: "Email reminder", icon: <Mail strokeWidth={1.5} />, onSelect: () => openLink(reminder.mailto!) });
+      if (reminder?.email) items.push({ label: "Email reminder", icon: <Mail strokeWidth={1.5} />, onSelect: reminder.email });
       return <KebabMenu label={`Actions for lease ${r.leaseNumber}`} items={items} />;
     },
     [upcoming, onOpen, onRecordPayment, onAddCharge, reminderFor],
@@ -143,7 +150,7 @@ export function RentRollTable({ cards, totalRows, showProperty, pastMonth, upcom
           </WithCaption>
         ),
       },
-      { key: "balance", header: "Balance", align: "right", sortable: true, cell: (r) => <BalanceText value={r.balance} /> },
+      { key: "balance", header: "Balance", align: "right", sortable: true, cell: (r) => <BalanceText value={r.balance} overdue={r.status === "OVERDUE"} /> },
       {
         key: "status",
         header: "Status",
@@ -157,7 +164,7 @@ export function RentRollTable({ cards, totalRows, showProperty, pastMonth, upcom
               </span>
             );
           }
-          const d = statusDate(r, pastMonth);
+          const d = statusDate(r, pastMonth, billingLeadDays);
           return (
             <span className="flex flex-col items-start gap-0.5">
               <StatusBadge domain="rent" status={r.status} />
@@ -173,7 +180,7 @@ export function RentRollTable({ cards, totalRows, showProperty, pastMonth, upcom
         cell: menu,
       },
     ],
-    [showProperty, pastMonth, upcoming, menu, sort, onSortChange],
+    [showProperty, pastMonth, billingLeadDays, upcoming, menu, sort, onSortChange],
   );
 
   const t = rowTotals(totalRows);
@@ -204,7 +211,7 @@ export function RentRollTable({ cards, totalRows, showProperty, pastMonth, upcom
         }
         renderCard={(r) => {
           const next = upcoming?.get(r.leaseId);
-          const d = statusDate(r, pastMonth);
+          const d = statusDate(r, pastMonth, billingLeadDays);
           const paid = paidCaption(r);
           const name = r.primaryTenant?.fullName;
           return (
@@ -223,7 +230,7 @@ export function RentRollTable({ cards, totalRows, showProperty, pastMonth, upcom
               }
               amount={{
                 label: "Balance",
-                value: <BalanceText value={r.balance} />,
+                value: <BalanceText value={r.balance} overdue={r.status === "OVERDUE"} />,
                 caption: !next && d.text ? <span className={cn(d.tone === "danger" && "font-semibold text-danger")}>{d.text}</span> : undefined,
               }}
               // The strip means one thing only: behind on rent.

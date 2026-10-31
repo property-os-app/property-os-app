@@ -101,7 +101,7 @@ export function AddChargeModal({ leaseId, month, reentry, onClose }: AddChargeMo
 function ChargeForm({ lease, month, reentry, onClose }: { lease: Lease; month: string; reentry?: AddChargeModalProps["reentry"]; onClose: () => void }) {
   const add = useAddCharge();
   const [formErrors, setFormErrors] = useState<string[]>([]);
-  // Lease starts or ends inside the month: offer prorated or full rent. Prorated by default when Generate rent skips the month.
+  // Lease starts or ends inside the month: offer prorated or full rent. Prorated by default when the automatic billing skips the month.
   const proration = useMemo(() => (reentry ? null : rentProration(lease, month)), [reentry, lease, month]);
   const [rentMode, setRentMode] = useState<RentMode>(proration?.dueOutsideTerm ? "prorated" : "full");
 

@@ -12,7 +12,8 @@ export interface RentReminderInput {
   phone: string | null | undefined;
   propertyName: string;
   unitNumber: string;
-  balance: MoneyInput;
+  /** The overdue part of the balance (not the whole balance: it can include rent billed early). null = unknown: the text leaves the amount out. */
+  overdue: MoneyInput | null;
   /** oldestUnpaidDueDate: the due date in the text and the start of the day count. */
   dueDate: string;
   /** The signed-in user's name, for the signature. */
@@ -35,7 +36,7 @@ export function rentReminderLinks(p: RentReminderInput): RentReminderLinks {
   const body = [
     `Hi ${name},`,
     "",
-    `This is a friendly reminder that your rent balance of ${formatCurrency(p.balance)} for ${place} is ${plural(daysSince(p.dueDate), "day")} overdue (due ${formatDate(p.dueDate)}).`,
+    `This is a friendly reminder that your ${p.overdue === null ? "rent" : `rent of ${formatCurrency(p.overdue)}`} for ${place} is ${plural(daysSince(p.dueDate), "day")} overdue (due ${formatDate(p.dueDate)}).`,
     "",
     "Please pay as soon as you can, or reply to this email if you have any questions.",
     "",

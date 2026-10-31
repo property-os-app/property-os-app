@@ -48,7 +48,7 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - `formatShortDate(date)`: "Oct 14" (no year) for captions.
 - `ordinal(n)`: "1st", "2nd", "3rd", "31st".
 - `isMonth(value)`: true for a valid "YYYY-MM".
-- `currentMonthUTC()`: UTC "YYYY-MM", the backend's default month (Rent Roll, generate rent).
+- `currentMonthUTC()`: UTC "YYYY-MM", the backend's default month (Rent Roll, billing).
 - `formatMonth(month)`: "2026-10" -> "October 2026".
 - `addMonthsYM(month, n)`: "YYYY-MM" + n months on numbers (no Date math).
 - `dayInMonth(month, day)`: day of a "YYYY-MM" month, clamped to its last day ("2026-02", 31 -> "2026-02-28").

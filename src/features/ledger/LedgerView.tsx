@@ -96,7 +96,7 @@ export function LedgerView({ lease, canVoid, canCharge, canPay }: LedgerViewProp
 
   const state = ledger.isError ? "error" : ledger.isPending ? "loading" : rows.length === 0 ? "empty" : "ideal";
   const balance = ledger.data?.summary.balance;
-  const empty = { title: "No charges or payments yet", description: "Generate rent or add a charge to start the ledger." };
+  const empty = { title: "No charges or payments yet", description: "Rent is billed automatically before each due date. You can also add a charge." };
   const error = { title: "Couldn't load the ledger", description: ledger.isError ? errorText(ledger.error) : undefined, onRetry: () => void ledger.refetch() };
 
   return (

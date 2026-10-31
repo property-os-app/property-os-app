@@ -4,14 +4,16 @@ import { useAuth } from "@/features/auth/authContext";
 import { coTenants } from "@/features/leases/stats";
 import { rentReminderLinks } from "@/features/shared/rentReminder";
 import { useTenant } from "@/features/tenants/hooks";
+import type { MoneyInput } from "@/lib/format";
 import type { Lease, LeaseTenant } from "@/types/lease";
 
 /**
  * "Call {first name}" (number shown from md) and "Email reminder" in the red lease alert, opening the user's own
  * phone and email apps. The phone comes from the tenant record (the lease has none), so Call shows once it loads.
  * Each button is hidden without a phone / email. Plain `<a>` on purpose: tel: and mailto: leave the app.
+ * `overdue`: the overdue amount for the email (from the ledger); null leaves the amount out.
  */
-export function OverdueActions({ lease, primary, since }: { lease: Lease; primary: LeaseTenant; since: string }) {
+export function OverdueActions({ lease, primary, since, overdue }: { lease: Lease; primary: LeaseTenant; since: string; overdue: MoneyInput | null }) {
   const { me } = useAuth();
   const tenant = useTenant(primary.id);
   const phone = tenant.data?.phone;
@@ -22,7 +24,7 @@ export function OverdueActions({ lease, primary, since }: { lease: Lease; primar
     phone,
     propertyName: lease.unit.property.name,
     unitNumber: lease.unit.unitNumber,
-    balance: lease.balance,
+    overdue,
     dueDate: since,
     senderName: me?.name ?? "",
   });

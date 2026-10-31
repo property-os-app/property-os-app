@@ -3,7 +3,7 @@ import { addMonthsYM, daysUntil, formatCurrency, formatMonth, formatPercent, toC
 import { plural } from "@/lib/labels";
 import { expiresWithin, isPastEnd } from "@/features/leases/stats";
 import { emergencyNote } from "@/features/maintenance/ticketText";
-import { canGenerateRent, collectionBreakdown, collectionNote, statusDate, upcomingRows } from "@/features/rent-roll/stats";
+import { collectionBreakdown, collectionNote, statusDate } from "@/features/rent-roll/stats";
 import type { Lease } from "@/types/lease";
 import type { TicketSummary } from "@/types/maintenance";
 import type { RentRollResponse, RentRollRow } from "@/types/rentRoll";
@@ -149,7 +149,10 @@ export function billedPoint(month: string, roll: RentRollResponse): BilledPoint 
 
 /* ---------- Needs attention ---------- */
 
-export type AttentionAction = { label: string; to: string } | { label: string; generate: true };
+export interface AttentionAction {
+  label: string;
+  to: string;
+}
 
 export interface AttentionItem {
   key: string;
@@ -158,25 +161,12 @@ export interface AttentionItem {
   action: AttentionAction;
 }
 
-/** One item per rule that applies, in a fixed order: not billed, overdue, past end, expiring within 30 days, drafts. */
-export function attentionItems(p: { month: string; roll: RentRollResponse; leases: Lease[]; canGenerate: boolean }): AttentionItem[] {
+/** One item per rule that applies, in a fixed order: overdue, past end, expiring within 30 days, drafts. Rent bills automatically, so "not billed" is no item. */
+export function attentionItems(p: { roll: RentRollResponse; leases: Lease[] }): AttentionItem[] {
   const items: AttentionItem[] = [];
-  const month = formatMonth(p.month);
-  const rows = p.roll.rows;
-  // Only rows Generate rent would bill (not the ones it skips: outside the term, not monthly), like the Rent Roll banner.
-  const notBilledRows = rows.filter((r) => r.status === "NOT_BILLED");
-  const notBilled = notBilledRows.length - upcomingRows(rows, p.leases, p.month).size;
-  if (p.canGenerate && canGenerateRent(p.month) && notBilled > 0) {
-    items.push({
-      key: "not-billed",
-      title: notBilledRows.length === rows.length ? `Rent for ${month} isn't billed yet` : `${plural(notBilled, "lease")} can be billed for ${month}`,
-      text: "Generate it so balances are up to date.",
-      action: { label: "Generate rent", generate: true },
-    });
-  }
   const overdue = p.roll.summary.overdueCount;
   if (overdue > 0) {
-    items.push({ key: "overdue", title: `${plural(overdue, "tenant")} overdue`, text: `${formatCurrency(p.roll.summary.overdueTotal)} past due in total.`, action: { label: "Open Rent Roll", to: "/rent-roll" } });
+    items.push({ key: "overdue", title: `${plural(overdue, "tenant")} overdue`, text: `${formatCurrency(p.roll.summary.overdueTotal)} owed by overdue leases.`, action: { label: "Open Rent Roll", to: "/rent-roll" } });
   }
   const pastEnd = p.leases.filter((l) => isPastEnd(l)).length;
   if (pastEnd > 0) {

@@ -1,18 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   billingKind,
-  canGenerateRent,
   collectionBreakdown,
   collectionNote,
   isFutureMonth,
   isPastMonth,
-  lastGeneratableMonth,
   monthFromParam,
+  notBilledCaption,
   owingCount,
   paidCaption,
   rowFilterStatus,
   rowTotals,
-  skippedLeases,
   statusCounts,
   statusDate,
   upcomingCaption,
@@ -99,17 +97,17 @@ describe("billingKind", () => {
     expect(billingKind("2026-10-01", makeLease({ paymentFrequency: "WEEKLY", startDate: "2026-10-14" }))).toBe("not-monthly");
     expect(billingKind("2026-10-01", makeLease({ startDate: "2026-10-14" }))).toBe("starts-late");
     expect(billingKind("2026-10-25", makeLease({ endDate: "2026-10-20" }))).toBe("ends-early");
-    expect(billingKind("2026-10-01", makeLease())).toBe("generatable");
+    expect(billingKind("2026-10-01", makeLease())).toBe("billable");
   });
 
   it("the start and end days themselves are billable", () => {
-    expect(billingKind("2026-10-14", makeLease({ startDate: "2026-10-14" }))).toBe("generatable");
-    expect(billingKind("2026-10-20", makeLease({ endDate: "2026-10-20" }))).toBe("generatable");
+    expect(billingKind("2026-10-14", makeLease({ startDate: "2026-10-14" }))).toBe("billable");
+    expect(billingKind("2026-10-20", makeLease({ endDate: "2026-10-20" }))).toBe("billable");
   });
 
-  it("generatable without a lease or due date", () => {
-    expect(billingKind("2026-10-01", undefined)).toBe("generatable");
-    expect(billingKind(null, makeLease({ startDate: "2026-10-14" }))).toBe("generatable");
+  it("billable without a lease or due date", () => {
+    expect(billingKind("2026-10-01", undefined)).toBe("billable");
+    expect(billingKind(null, makeLease({ startDate: "2026-10-14" }))).toBe("billable");
   });
 });
 
@@ -141,7 +139,7 @@ describe("upcomingRows / rowFilterStatus / statusCounts (NOT_BILLED classificati
   ];
   const upcoming = upcomingRows(rows, [startsLate, billable], "2026-10");
 
-  it("only NOT_BILLED rows that Generate rent skips become Upcoming", () => {
+  it("only NOT_BILLED rows that the automatic billing skips become Upcoming", () => {
     expect([...upcoming.keys()]).toEqual([startsLate.id]);
     expect(upcoming.get(startsLate.id)).toEqual({ kind: "starts-late", caption: "Starts Oct 14 · first rent Nov 1" });
   });
@@ -162,30 +160,23 @@ describe("upcomingRows / rowFilterStatus / statusCounts (NOT_BILLED classificati
   });
 });
 
-describe("skippedLeases", () => {
-  it("names the ACTIVE leases Generate rent skips, A→Z", () => {
-    const leases = [
-      makeLease({ paymentFrequency: "WEEKLY", ...withTenant("Zoe Park") }),
-      makeLease({ startDate: "2026-10-14", ...withTenant("Sophia Nguyen") }),
-      makeLease({ endDate: "2026-10-20", rentDueDay: 25, ...withTenant("Ava Lee") }),
-      makeLease({ ...withTenant("Billable Person") }),
-      makeLease({ status: "DRAFT", startDate: null, endDate: null, ...withTenant("Draft Person") }),
-      makeLease({ startDate: "2026-11-14", endDate: "2027-11-13", ...withTenant("Next Month") }),
-    ];
-    expect(skippedLeases(leases, "2026-10", "2026-10-24")).toEqual([
-      { name: "Ava Lee", reason: "ended Oct 20, no October rent due" },
-      { name: "Sophia Nguyen", reason: "starts Oct 14, first rent Nov 1" },
-      { name: "Zoe Park", reason: "pays weekly" },
-    ]);
-  });
+/* ---------- Not billed: when the automatic billing bills it ---------- */
 
-  it("falls back to the lease number without a tenant", () => {
-    const l = makeLease({ leaseNumber: "LSE-2026-042", startDate: "2026-10-14" });
-    expect(skippedLeases([l], "2026-10", "2026-10-24")[0].name).toBe("LSE-2026-042");
+describe("notBilledCaption", () => {
+  const today = "2026-10-24";
+  it("the bill date (due date − lead days) while it is ahead", () => {
+    expect(notBilledCaption("2026-11-25", false, 14, today)).toBe("Bills automatically on Nov 11");
+    expect(notBilledCaption("2026-11-01", false, 1, today)).toBe("Bills automatically on Oct 31");
   });
-
-  it("empty for an invalid month", () => {
-    expect(skippedLeases([makeLease({ paymentFrequency: "WEEKLY" })], "bad")).toEqual([]);
+  it("the next daily run once the bill date is reached", () => {
+    expect(notBilledCaption("2026-11-07", false, 14, today)).toBe("Bills on the next daily run");
+    expect(notBilledCaption("2026-10-20", false, 14, today)).toBe("Bills on the next daily run");
+  });
+  it("managers (no lead days): the due date", () => {
+    expect(notBilledCaption("2026-11-25", false, null, today)).toBe("Due Nov 25 · bills automatically before then");
+  });
+  it("a past month is never billed automatically", () => {
+    expect(notBilledCaption("2026-09-01", true, 14, today)).toBe("Not billed · add rent by hand");
   });
 });
 
@@ -212,7 +203,7 @@ describe("statusDate", () => {
   it("Unpaid: the due date; Not billed: muted", () => {
     expect(statusDate(makeRow({ status: "UNPAID", dueDate: "2026-11-01" }))).toEqual({ text: "Due Nov 1, 2026", tone: "default" });
     expect(statusDate(makeRow({ status: "UNPAID", dueDate: null })).text).toBeNull();
-    expect(statusDate(makeRow({ status: "NOT_BILLED" }))).toEqual({ text: "Not billed yet", tone: "muted" });
+    expect(statusDate(makeRow({ status: "NOT_BILLED", dueDate: "2026-11-25" }), false, 14)).toEqual({ text: "Bills automatically on Nov 11", tone: "muted" });
   });
 
   describe("America/New_York, Oct 24 10 pm local", () => {
@@ -318,13 +309,6 @@ describe("months", () => {
       expect(monthFromParam(null)).toBe("2026-10");
       expect(monthFromParam("2026-13")).toBe("2026-10");
     });
-    it("rent can be generated up to next month", () => {
-      expect(lastGeneratableMonth()).toBe("2026-11");
-      expect(canGenerateRent("2025-01")).toBe(true);
-      expect(canGenerateRent("2026-11")).toBe(true);
-      expect(canGenerateRent("2026-12")).toBe(false);
-      expect(canGenerateRent("bad")).toBe(false);
-    });
     it("past and future months", () => {
       expect(isPastMonth("2026-09")).toBe(true);
       expect(isPastMonth("2026-10")).toBe(false);
@@ -339,7 +323,6 @@ describe("months", () => {
     it("follows the backend's UTC month, not the local one", () => {
       expect(monthFromParam(null)).toBe("2026-11");
       expect(isPastMonth("2026-10")).toBe(true);
-      expect(lastGeneratableMonth()).toBe("2026-12");
     });
   });
 });

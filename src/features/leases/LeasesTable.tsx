@@ -11,7 +11,7 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { BalanceText } from "@/features/ledger/LedgerParts";
 import type { LeasePageState } from "@/features/leases/LeasePage";
 import { LeaseBadge } from "@/features/leases/LeaseParts";
-import { coTenants, dueState, isPastEnd, primaryTenant } from "@/features/leases/stats";
+import { coTenants, dueState, isPastEnd, notDueCaption, primaryTenant } from "@/features/leases/stats";
 import type { Lease } from "@/types/lease";
 
 type Props = Pick<DataTableProps<Lease>, "rows" | "state" | "sort" | "onSortChange" | "empty" | "error" | "footer"> & {
@@ -134,7 +134,14 @@ export function LeasesTable({ cards, onOpen, onEdit, onActivate, onEnd, onDelete
           </div>
         ),
       },
-      { key: "balance", header: "Balance", align: "right", sortable: true, cell: (l) => <BalanceText value={l.balance} /> },
+      // Red only when overdue; "Due Nov 1" under a balance that isn't due yet (rent billed early).
+      {
+        key: "balance",
+        header: "Balance",
+        align: "right",
+        sortable: true,
+        cell: (l) => <BalanceText value={l.balance} overdue={dueState(l).kind === "overdue"} caption={notDueCaption(l)} />,
+      },
       {
         key: "actions",
         header: <span className="sr-only">Actions</span>,
@@ -174,7 +181,7 @@ export function LeasesTable({ cards, onOpen, onEdit, onActivate, onEnd, onDelete
                   {overdue && <StatusBadge domain="rent" status="OVERDUE" />}
                 </>
               }
-              amount={{ label: "Balance", value: <BalanceText value={l.balance} /> }}
+              amount={{ label: "Balance", value: <BalanceText value={l.balance} overdue={overdue} />, caption: notDueCaption(l) ?? undefined }}
               strip={overdue}
               facts={[
                 { label: "Rent", value: l.rent === null ? <Dash /> : <Num>{formatCurrency(l.rent)}</Num> },

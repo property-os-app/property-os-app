@@ -6,7 +6,7 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 - `UserRole`: `OWNER | PROPERTY_MANAGER | TENANT`.
 - `Me`: the AuthUser returned by GET /auth/me (`phone` can be null; `firebaseUid` is never returned; `permissions`: every key for OWNER, the granted keys for a manager, `[]` for TENANT).
 - `PermissionCatalogItem`: one GET /settings/permissions item (`key`, `label`, `group`, `default`).
-- `AuthErrorCode`: the 6 values of `ApiError.code`, `FORBIDDEN_PERMISSION` included. Only auth errors have a code.
+- `AuthErrorCode`: the values of `ApiError.code`: the 6 auth errors (`FORBIDDEN_PERMISSION` included) plus `REGISTRATION_NOT_ALLOWED` and `OWNER_ALREADY_EXISTS` (POST /auth/register only; the admin portal never calls it).
 
 ## property.ts
 - `PropertyType`: `RESIDENTIAL | COMMERCIAL | MIXED_USE`.
@@ -45,16 +45,19 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 - `MergeField`: one GET /lease-templates/merge-fields item (`key`, `group`, `label`, `sample`).
 - `LeaseTemplateCreateBody`: POST body. `LeaseTemplateUpdateBody`: PATCH body (details only; `description`, `defaultTermMonths` may be null).
 
+## billing.ts
+- `BillingSettings`: GET / PATCH /settings/billing (`billingLeadDays`, 1–28).
+- `BillingRunResponse`, `BilledCharge`: POST /settings/billing/run (run day, bill-through date, created count, skipped counts, the created charges).
+
 ## ledger.ts
 - `ChargeType`, `PaymentMethod`, `LedgerEntryKind`: money enums.
-- `Charge`, `Payment`: POST charge / payment answers (money strings, "YYYY-MM-DD" dates, void fields).
+- `Charge`, `Payment`: POST charge / payment answers (money strings, "YYYY-MM-DD" dates, void fields). `Charge.createdById` / `createdBy` are null on rent billed automatically (show "Auto-billed").
 - `LedgerEntry`, `LedgerResponse`: GET /leases/:id/ledger (entries oldest first; `runningBalance` may be negative; summary with balance, totals, monthly rent).
 - `ChargeCreateBody` (`periodMonth` only on RENT), `PaymentCreateBody`, `VoidBody` (`reason`): request bodies.
 
 ## rentRoll.ts
 - `RentRollStatus`: `PAID | PARTIAL | UNPAID | OVERDUE | NOT_BILLED`.
 - `RentRollRow`, `RentRollResponse`: GET /rent-roll (rows with `openingBalance`, `charged`, `paid`, `balance`, plus a summary that ignores status and search).
-- `GenerateRentResponse`: POST /rent-roll/generate counts.
 
 ## vendor.ts
 - `VendorRateUnit` (`HOUR | VISIT | MONTH | JOB`), `VendorInsuranceStatus` (`NONE | EXPIRED | EXPIRING | VALID`, computed by the server).

@@ -14,7 +14,7 @@ Pieces of the detail pages (`/properties/:id`, `/leases/:id`).
 - `NoProperties({ onAdd })`: the page body when the user has no properties. With `property.create`: owner "Add your first property", manager "No properties assigned to you yet" / "Add a property (you'll manage it), or ask the owner to assign you one.", both with an Add property button that calls `onAdd`. Without it: "Ask the owner to assign you a property." Used by Dashboard, Properties, Units, Leases and Rent Roll.
 
 ## rentReminder.ts
-- `rentReminderLinks(input)`: Call (tel:) and Email reminder (mailto:) links for an overdue lease: To the primary tenant, CC co-tenants, subject "Rent reminder – {property} {unit}", the reminder body (balance and due date via `format.ts`, days via `daysSince`, signed with the user's name). `tel` / `mailto` are null without a phone / email. Used by the lease page and the Rent Roll menu.
+- `rentReminderLinks(input)`: Call (tel:) and Email reminder (mailto:) links for an overdue lease: To the primary tenant, CC co-tenants, subject "Rent reminder – {property} {unit}", the reminder body (balance and due date via `format.ts`, days via `daysSince`, signed with the user's name). `tel` / `mailto` are null without a phone / email. Used by the lease page and the Rent Roll menu. The body quotes `overdue` ("your rent of $1,200.00 … is 12 days overdue"), never the whole balance (it can include rent billed early); `overdue: null` leaves the amount out.
 - `RentReminderInput`, `RentReminderLinks`: its types.
 
 ## ContactLink.tsx
@@ -46,3 +46,6 @@ Phone (under md) toolbar pieces; desktop toolbars use only the compact `SortSele
 
 ## MergedSortHeader.tsx
 - `MergedSortHeader({ sort, onSortChange, keys })`: the header of a DataTable column that merges sortable columns: one sort button per merged column ("Rating · Jobs", "Tenant · Unit"), same look and cycle as DataTable's own. Use it as the column `header`, without `sortable`. `MergedSortHeaderProps`.
+
+## Tests (`npm test`)
+- `rentReminder.test.ts`: the email quotes the overdue amount, leaves it out when unknown, no links without email or phone.

@@ -26,7 +26,7 @@ Tenants: one directory page (/tenants) with Cards / Table views, the tenant draw
 ## TenantParts.tsx
 - `TenantLeaseBadge`: current lease badge or neutral "No lease".
 - `RentStatusBadge`: "Overdue" / "Due today" / "Up to date", or Dash.
-- `BalanceValue`: owed in danger, "$0.00" in success, "Credit $X" when negative, Dash without a lease.
+- `BalanceValue`: bold when owed, danger only when overdue (`rentStatus`), "Due Nov 1" under a balance not due yet (`notDueCaption`); "$0.00" in success, "Credit $X" when negative, Dash without a lease.
 
 ## TenantsPage.tsx
 - `TenantsPage`: /tenants. PageHeader with "Add Tenant", 4 KPIs, toolbar (search, Property = scope, Lease status, "Has balance" chip, then at the right a compact "Sort: ..." select in Cards view and the Cards / Table `ViewToggle`, saved with `useListView("tenants", "cards")`), all states, drawer, modals and delete dialog. Search, filters, sort and page live in the URL (`useClientTable` `inUrl`): `?q=&lease=&balance=&sort=&page=`. Phones (under md): always the list cards (the Cards / Table toggle is hidden, the saved choice is kept), search plus a "Filters" sheet with Property (all pages), Lease status, Has balance and Sort by; the count and "Clear filters" leave the app-wide property alone. Tenants aren't tied to properties, so the page shows even with no properties. KPIs show a Dash when loading failed.

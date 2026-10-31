@@ -7,7 +7,7 @@ import type { ModuleKey } from "@/components/organisms";
 import { usePageNav, usePageTitle } from "@/app/pageTitle";
 import { ApiError, errorText } from "@/lib/api";
 import { cn } from "@/lib/cn";
-import { currentMonthUTC, daysUntil, formatCurrency, formatDate, formatMonth, isMonth, ordinal, toCents } from "@/lib/format";
+import { centsToAmount, currentMonthUTC, daysUntil, formatCurrency, formatDate, formatMonth, isMonth, ordinal, toCents } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
@@ -22,6 +22,7 @@ import { dueNote, dueState, primaryTenant } from "@/features/leases/stats";
 import { AddChargeModal } from "@/features/ledger/AddChargeModal";
 import { balanceText } from "@/features/ledger/balance";
 import { useLedger } from "@/features/ledger/hooks";
+import { balanceSplit, type BalanceSplit } from "@/features/ledger/overdue";
 import { LedgerView } from "@/features/ledger/LedgerView";
 import { RecordPaymentModal } from "@/features/ledger/RecordPaymentModal";
 import { leasePaymentTarget } from "@/features/ledger/targets";
@@ -74,6 +75,12 @@ function PageTop({ current }: { current: ReactNode }) {
   const { parent, nav, backInHistory } = useParent();
   usePageNav(nav);
   return <BackBreadcrumb parent={parent} current={current} backInHistory={backInHistory} />;
+}
+
+/** The balance tile note, plus "includes $1,200.00 not due yet" when only part of the balance is due. */
+function balanceNote(note: string, split: BalanceSplit | undefined, balanceCents: number): string {
+  if (!split || split.notDueCents === 0 || split.notDueCents >= balanceCents) return note;
+  return `${note} · includes ${formatCurrency(centsToAmount(split.notDueCents))} not due yet`;
 }
 
 /**
@@ -192,6 +199,8 @@ function LeaseDetail({ lease }: { lease: Lease }) {
   const primary = primaryTenant(lease);
   const summary = ledger.data?.summary;
   const balanceCents = summary ? toCents(summary.balance) : 0;
+  // Overdue vs not due yet (rent is billed up to 28 days early), from the ledger until the API sends it.
+  const split = ledger.data ? balanceSplit(ledger.data.entries, ledger.data.summary.balance) : undefined;
   const isDraft = lease.status === "DRAFT";
 
   const onActivate = async () => {
@@ -296,8 +305,9 @@ function LeaseDetail({ lease }: { lease: Lease }) {
               label="Current balance"
               loading={ledger.isPending}
               value={summary ? balanceText(summary.balance) : <Dash />}
-              note={ledger.isError ? ledgerRetry : dueNote(due)}
-              className={summary ? (balanceCents > 0 ? "text-danger" : "text-success") : undefined}
+              note={ledger.isError ? ledgerRetry : balanceNote(dueNote(due), split, balanceCents)}
+              // Red only when part of it is overdue: a balance above $0 can be rent billed early.
+              className={summary ? (due.kind === "overdue" ? "text-danger" : balanceCents > 0 ? undefined : "text-success") : undefined}
             />
             <Tile
               label="Monthly rent"
@@ -339,7 +349,7 @@ function LeaseDetail({ lease }: { lease: Lease }) {
           )}
         </div>
       )}
-      <LeaseAlert lease={lease} />
+      <LeaseAlert lease={lease} split={split} />
 
       {tab === "ledger" ? (
         isDraft ? (

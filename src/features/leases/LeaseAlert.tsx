@@ -3,10 +3,11 @@ import { AlertTriangle, Info } from "lucide-react";
 import { Caption } from "@/components/atoms";
 import { Card } from "@/components/molecules";
 import { cn } from "@/lib/cn";
-import { daysSince, daysUntil, formatCurrency, formatDate } from "@/lib/format";
+import { centsToAmount, daysSince, daysUntil, formatCurrency, formatDate } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import { OverdueActions } from "@/features/leases/OverdueActions";
 import { dueState, isPastEnd, leaseMissing, primaryTenant } from "@/features/leases/stats";
+import type { BalanceSplit } from "@/features/ledger/overdue";
 import type { Lease } from "@/types/lease";
 
 type AlertTone = "danger" | "warning" | "info";
@@ -31,14 +32,23 @@ function AlertCard({ tone, title, text, children }: { tone: AlertTone; title: st
   );
 }
 
+/** "$1,200.00 overdue · $1,200.00 more not due yet"; without the ledger, where to find the amounts. */
+function overdueText(split: BalanceSplit | undefined): string {
+  if (!split) return "The Ledger tab shows the amounts.";
+  const overdue = `${formatCurrency(centsToAmount(split.overdueCents))} overdue`;
+  return split.notDueCents > 0 ? `${overdue} · ${formatCurrency(centsToAmount(split.notDueCents))} more not due yet` : overdue;
+}
+
 /**
  * The first alert that applies: draft, past end date, overdue rent, expiring soon. Nothing otherwise.
  * Overdue (dueState) adds Call / Email reminder under whichever alert shows (past end date wins over overdue).
+ * `split`: the overdue / not-due-yet amounts from the ledger (balanceSplit); undefined while it loads or when it fails.
  */
-export function LeaseAlert({ lease }: { lease: Lease }) {
+export function LeaseAlert({ lease, split }: { lease: Lease; split?: BalanceSplit }) {
   const due = dueState(lease);
   const primary = primaryTenant(lease);
-  const actions = due.kind === "overdue" && primary ? <OverdueActions lease={lease} primary={primary} since={due.since} /> : undefined;
+  const overdue = split ? centsToAmount(split.overdueCents) : null;
+  const actions = due.kind === "overdue" && primary ? <OverdueActions lease={lease} primary={primary} since={due.since} overdue={overdue} /> : undefined;
   if (lease.status === "DRAFT") {
     const missing = leaseMissing(lease);
     return <AlertCard tone="info" title="Draft, not active yet" text={missing.length > 0 ? `Missing to activate: ${missing.join(", ")}.` : "Ready to activate."} />;
@@ -53,7 +63,7 @@ export function LeaseAlert({ lease }: { lease: Lease }) {
   }
   if (due.kind === "overdue") {
     return (
-      <AlertCard tone="danger" title={`Rent overdue since ${formatDate(due.since)}`} text={`Balance ${formatCurrency(lease.balance)}`}>
+      <AlertCard tone="danger" title={`Rent overdue since ${formatDate(due.since)}`} text={overdueText(split)}>
         {actions}
       </AlertCard>
     );

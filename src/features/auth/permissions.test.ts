@@ -17,7 +17,6 @@ const ACTIONS: Action[] = [
   "lease.edit",
   "charge.create",
   "payment.create",
-  "rent.generate",
   "entry.void",
   "template.manage",
   "vendor.manage",
@@ -26,6 +25,7 @@ const ACTIONS: Action[] = [
   "ticket.manage",
   "ticket.cancel",
   "access.manage",
+  "billing.manage",
 ];
 
 const ALL_KEYS = ["properties.create", "properties.edit", "units.create_edit", "units.delete", "tenants.create_edit", "tenants.delete", "leases.manage", "templates.manage", "money.record", "money.void", "vendors.manage", "expenses.record", "expenses.approve", "maintenance.manage", "maintenance.cancel"];
@@ -52,7 +52,6 @@ describe("can", () => {
     expect(can(m, "unit.delete")).toBe(false);
     expect(can(m, "charge.create")).toBe(true);
     expect(can(m, "payment.create")).toBe(true);
-    expect(can(m, "rent.generate")).toBe(true);
     expect(can(m, "entry.void")).toBe(false);
     expect(can(m, "tenant.edit")).toBe(false);
     // Off by default for managers: leases.manage alone doesn't grant template writes.
@@ -87,6 +86,8 @@ describe("can", () => {
     expect(can(m, "property.delete")).toBe(false);
     expect(can(m, "manager.assign")).toBe(false);
     expect(can(m, "access.manage")).toBe(false);
+    // Billing settings and "Run billing now" are Owner only, never a switch.
+    expect(can(user("PROPERTY_MANAGER", ALL_KEYS), "billing.manage")).toBe(false);
   });
 
   it("unknown keys grant nothing", () => {

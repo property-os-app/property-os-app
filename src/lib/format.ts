@@ -231,7 +231,7 @@ export function isMonth(value: string | null | undefined): value is string {
   return typeof value === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
 }
 
-/** This month as UTC "YYYY-MM": the backend's default month (rent roll, generate rent). */
+/** This month as UTC "YYYY-MM": the backend's default month (rent roll, billing). */
 export function currentMonthUTC(now = new Date()): string {
   return todayUTC(now).slice(0, 7);
 }

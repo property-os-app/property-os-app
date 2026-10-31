@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { leaseKeys, rentRollPrefix } from "@/features/leases/keys";
 import { tenantKeys } from "@/features/tenants/keys";
@@ -7,7 +7,7 @@ import type { Charge, ChargeCreateBody, LedgerResponse, Payment, PaymentCreateBo
 const leasePath = (id: string) => `/leases/${encodeURIComponent(id)}`;
 
 /**
- * After any charge, payment, void or rent generation: the rent roll, every lease query (lists, details, ledgers:
+ * After any charge, payment, void or billing run: the rent roll, every lease query (lists, details, ledgers:
  * balances change) and tenants (their lease cards show balances).
  */
 export function refreshAfterMoneyChange(qc: QueryClient) {
@@ -18,7 +18,12 @@ export function refreshAfterMoneyChange(qc: QueryClient) {
 
 /** GET /leases/:id/ledger: entries oldest first, voided ones included, plus the summary. Works for any lease status. */
 export function useLedger(leaseId: string) {
-  return useQuery({
+  return useQuery(ledgerQuery(leaseId));
+}
+
+/** The ledger query options, also for a one-off fetch (the Rent Roll's Email reminder needs the overdue amount). */
+export function ledgerQuery(leaseId: string) {
+  return queryOptions({
     queryKey: leaseKeys.ledger(leaseId),
     queryFn: ({ signal }) => apiFetch<LedgerResponse>(`${leasePath(leaseId)}/ledger`, { signal }),
   });

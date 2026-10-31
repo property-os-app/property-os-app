@@ -157,7 +157,7 @@ export function defaults({ lease, unit, propertyId, tenantId }: WizardPresets): 
     startDate: "",
     endDate: "",
     rent: moneyValue(unit?.monthlyRent),
-    // Only MONTHLY for now (only MONTHLY leases get rent from "Generate rent").
+    // Only MONTHLY for now (only MONTHLY leases are billed automatically).
     paymentFrequency: "MONTHLY",
     // Filled from the start date's day (Terms step) until the user types a due day.
     rentDueDay: "",

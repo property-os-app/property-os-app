@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
+import { refreshAfterMoneyChange } from "@/features/ledger/hooks";
 import { managerKeys, propertyKeys } from "@/features/properties/keys";
 import { settingsKeys } from "@/features/settings/keys";
 import type { PermissionCatalogItem } from "@/types/auth";
+import type { BillingRunResponse, BillingSettings } from "@/types/billing";
 import type { ManagerAccess, ManagerAccessBody } from "@/types/manager";
 
 /** GET /settings/permissions (OWNER): the permission catalog, in catalog order. It only changes with a backend release. */
@@ -36,5 +38,32 @@ export function useUpdateManagerAccess(userId: string) {
       void qc.invalidateQueries({ queryKey: managerKeys.all });
       void qc.invalidateQueries({ queryKey: propertyKeys.all });
     },
+  });
+}
+
+/** GET /settings/billing (OWNER): { billingLeadDays }. `enabled: false` for managers (403), who don't see the lead days. */
+export function useBillingSettings(enabled = true) {
+  return useQuery({
+    queryKey: settingsKeys.billing,
+    queryFn: ({ signal }) => apiFetch<BillingSettings>("/settings/billing", { signal }),
+    enabled,
+  });
+}
+
+/** PATCH /settings/billing (OWNER): a whole number 1–28 (else 400). Applies from the next run; billed charges don't move. */
+export function useUpdateBilling() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: BillingSettings) => apiFetch<BillingSettings>("/settings/billing", { method: "PATCH", body }),
+    onSuccess: (settings) => qc.setQueryData(settingsKeys.billing, settings),
+  });
+}
+
+/** POST /settings/billing/run (OWNER, no body): today's billing at once. Safe to repeat. Balances change, so money queries refresh. */
+export function useRunBilling() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch<BillingRunResponse>("/settings/billing/run", { method: "POST" }),
+    onSuccess: () => refreshAfterMoneyChange(qc),
   });
 }

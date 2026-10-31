@@ -1,7 +1,6 @@
 import { useQueries, type UseQueryResult } from "@tanstack/react-query";
 import { currentMonthUTC } from "@/lib/format";
 import { useAuth } from "@/features/auth/authContext";
-import { can } from "@/features/auth/permissions";
 import {
   atRiskLeases,
   attentionItems,
@@ -99,7 +98,7 @@ export function useDashboardStats(scope: string | null) {
 
   const attention = section([rentRoll, leases, tickets], () => [
     ...maintenanceAttention(tickets.data!),
-    ...attentionItems({ month, roll: rentRoll.data!, leases: leases.data!, canGenerate: can(user, "rent.generate") }),
+    ...attentionItems({ roll: rentRoll.data!, leases: leases.data! }),
   ]);
 
   return { month, header, rent, kpis, atRisk, overdue, billed, expirations, unitStatus, attention };
