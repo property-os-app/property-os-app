@@ -13,6 +13,8 @@ if (missingEnv.length > 0) {
     </StrictMode>,
   );
 } else {
+  // Wake a sleeping API server (free hosting) while the user signs in; the result is ignored.
+  void import("@/lib/serverWake").then(({ pingHealth }) => pingHealth());
   // Loaded only when env is complete, so Firebase never starts with an empty config.
   void import("@/app/providers").then(({ Providers }) => {
     root.render(

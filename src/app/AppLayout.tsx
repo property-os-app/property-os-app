@@ -7,6 +7,7 @@ import { WorkspaceShell } from "@/components/templates";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { PageNavContext, PageTitleContext } from "@/app/pageTitle";
 import { PageSkeleton } from "@/app/PageSkeleton";
+import { WakingNotice } from "@/features/shared/WakingNotice";
 import { useAuth } from "@/features/auth/authContext";
 import { roleLabel, toSidebarRole } from "@/features/auth/permissions";
 import { ScopeProvider } from "@/features/scope/ScopeProvider";
@@ -119,6 +120,8 @@ function AppShell() {
     >
       <PageTitleContext value={setPageTitle}>
         <PageNavContext value={setPageNav}>
+          {/* Above the page's own skeletons while the server wakes up; gone as soon as data arrives. */}
+          <WakingNotice className="mb-4" />
           {pageLoading ? <PageSkeleton /> : <Outlet />}
         </PageNavContext>
       </PageTitleContext>

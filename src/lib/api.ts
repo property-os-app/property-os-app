@@ -2,6 +2,7 @@ import { env } from "@/lib/env";
 import type { User } from "firebase/auth";
 import { auth, authReady } from "@/lib/firebase";
 import { filenameFromDisposition } from "@/lib/pdf";
+import { canRetryWaking, trackRequest, WAKE_LIMIT_MS, wakeDelay, wakingKind } from "@/lib/serverWake";
 
 type QueryValue = string | number | boolean | null | undefined;
 
@@ -83,8 +84,26 @@ function friendlyMessages(status: number, code: string | undefined, messages: st
   return messages;
 }
 
-/** Sends the request with the Firebase token when signed in. A network failure becomes the offline ApiError. */
-async function send(path: string, options: ApiFetchOptions, accept: string): Promise<Response> {
+const isAbort = (err: unknown) => err instanceof DOMException && err.name === "AbortError";
+
+/** Waits `ms`, or rejects with AbortError as soon as `signal` aborts. */
+function wait(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const abort = () => {
+      clearTimeout(timer);
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", abort);
+      resolve();
+    }, ms);
+    if (signal?.aborted) abort();
+    else signal?.addEventListener("abort", abort, { once: true });
+  });
+}
+
+/** Sends one attempt with the Firebase token when signed in. A network failure returns null. */
+async function attempt(path: string, options: ApiFetchOptions, accept: string): Promise<Response | null> {
   const { method = "GET", body, query, signal } = options;
 
   await authReady;
@@ -101,8 +120,44 @@ async function send(path: string, options: ApiFetchOptions, accept: string): Pro
       signal,
     });
   } catch (err) {
-    if (err instanceof DOMException && err.name === "AbortError") throw err;
-    throw new ApiError(0, [OFFLINE_MESSAGE]);
+    if (isAbort(err)) throw err;
+    return null;
+  }
+}
+
+/**
+ * Sends the request. While the server wakes from sleep (502/503/504, the host's HTML page, or a network error) it retries
+ * with backoff for up to WAKE_LIMIT_MS (serverWake.ts says which methods may retry), then fails with the offline ApiError.
+ * Our own answers (2xx, 4xx and 500 JSON) return at once, so normal errors behave as before.
+ */
+async function send(path: string, options: ApiFetchOptions, accept: string): Promise<Response> {
+  const method = options.method ?? "GET";
+  const started = Date.now();
+  const tracker = trackRequest();
+  let answered = false;
+  try {
+    for (let i = 0; ; i++) {
+      const res = await attempt(path, options, accept);
+      const waking = res ? wakingKind(res.status, res.headers.get("Content-Type")) : "network";
+      if (res && waking === null) {
+        answered = true;
+        return res;
+      }
+      const kind = waking ?? "network";
+      const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+      const delay = wakeDelay(i);
+      const retryable = canRetryWaking(method, kind, res?.status);
+      if (offline || !retryable || Date.now() - started + delay > WAKE_LIMIT_MS) {
+        // A write that can't retry (504, network error) fails as before (5xx text / offline); a server still asleep: "Can't reach the server".
+        if (res && !retryable) return res;
+        throw new ApiError(0, [OFFLINE_MESSAGE]);
+      }
+      void res?.body?.cancel().catch(() => {});
+      tracker.waking();
+      await wait(delay, options.signal);
+    }
+  } finally {
+    tracker.done(answered);
   }
 }
 
