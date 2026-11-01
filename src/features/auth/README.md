@@ -44,7 +44,7 @@ Sign-in and who is signed in: the auth state, the route guards, the auth screens
 - `AuthErrorPage`: full-page InlineError with Retry when /auth/me fails (server down, 500).
 
 ## FullPageLoading.tsx
-- `FullPageLoading`: centered skeleton while the session restores or /auth/me loads.
+- `FullPageLoading`: centered skeleton while the session restores or /auth/me loads (also right after Sign in), with `WakingNotice` under it when the server is slow to wake.
 
 ## PasswordInput.tsx
 - `PasswordInput`: design system `Input` + ghost eye button ("Show password" / "Hide password"). Works inside `FormField`.

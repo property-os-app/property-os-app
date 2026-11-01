@@ -18,7 +18,17 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - `errorText(err)`: one display text for any error.
 - Friendly texts instead of the backend's: `OFFLINE_MESSAGE` (status 0: server unreachable, or Firebase `auth/network-request-failed` while getting the token), `SERVER_ERROR_MESSAGE` (any 5xx), `FORBIDDEN_MESSAGE` (403 `FORBIDDEN_ROLE`). Other errors keep the backend message, so 403 `FORBIDDEN_PERMISSION` says which switch to ask the owner for.
 - `ApiFetchOptions`: options type.
+- Waking server: a 502/503/504, an HTML page or a network error is retried with backoff for up to 90 seconds (GET always; writes only on 502, 503 or the HTML page, which never reached the API), then fails with status 0 `OFFLINE_MESSAGE`. Our own answers (2xx, 4xx, 500 JSON) return at once. A signal abort stops the wait.
 - `apiFetchBlob(path, options)`: same token and errors as `apiFetch`, for endpoints that answer with a file (lease and template PDFs). Checks `res.ok` first (errors are JSON and throw `ApiError`), then returns `{ blob, filename }` (filename from `Content-Disposition`, null when missing). `ApiBlob`: its type.
+
+## serverWake.ts
+Cold start on free hosting (the API server sleeps when idle and takes up to a minute to wake).
+- `wakingKind(status, contentType)`: "gateway" for 502/503/504, "html" for an HTML page (the host's waking page), null for our own answers. `WakingKind`: its type.
+- `canRetryWaking(method, failure, status)`: GET retries every waking failure and network errors; writes only 502, 503 and the HTML page.
+- `wakeDelay(attempt)`: 1s, 2s, 4s, then 5s between tries. `WAKE_LIMIT_MS` (90 s): when apiFetch gives up. `SLOW_AFTER_MS` (4 s).
+- `trackRequest()`: used by apiFetch; a request counts as "waking" after 4 s while no request has answered yet, or at once on a waking response. `WakeTracker`: its type.
+- `useServerWaking()`: true while any request waits on a sleeping server.
+- `pingHealth()`: fire-and-forget GET /health (no auth, result ignored); `main.tsx` calls it on load so the server wakes while the user signs in.
 
 ## pdf.ts
 - `filenameFromDisposition(header)`: the filename in a Content-Disposition header (`filename*=UTF-8''…` decoded first, then `filename="…"` or bare); null when missing.

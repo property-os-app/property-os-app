@@ -3,8 +3,11 @@ import { toast } from "@/components/molecules";
 import { ApiError } from "@/lib/api";
 import { beginSessionEnd, requestSignOut, SESSION_ENDED_MESSAGE } from "@/features/auth/session";
 
-/** Status codes that will not change on a retry (validation, auth, role, not found, conflict). */
-const NO_RETRY = [400, 401, 403, 404, 409];
+/**
+ * Status codes that will not change on a retry (validation, auth, role, not found, conflict), and 0 ("Can't reach the
+ * server"): apiFetch already retried that for up to 90 seconds while the server woke up (lib/serverWake.ts).
+ */
+const NO_RETRY = [0, 400, 401, 403, 404, 409];
 
 /**
  * Missing or invalid token: toast once (even when many requests fail together), then sign out. Never for USER_NOT_REGISTERED.

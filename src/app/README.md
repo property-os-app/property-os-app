@@ -13,11 +13,11 @@ App wiring: providers, router, query cache, the signed-in layout and app-level p
   - Each page route has a `handle` (`RouteHandle`) with its title and Sidebar item.
 
 ## AppLayout.tsx
-- `AppLayout`: `ScopeProvider` + `WorkspaceShell` + `<Outlet />` + `<ScrollRestoration />` (Back restores the window scroll, a new page starts at the top). Shows `PageSkeleton` while a page's code downloads. Owns the mobile menu open state (closes on any page change) so a later phone tab bar can open the same menu. Sidebar gets our Overview (Dashboard) / Leasing / Money (Rent Roll, Expenses) / Operations (Maintenance, Vendors) / Admin (Settings) groups (icons reused from `defaultNavGroups`), the role, name and role label from GET /auth/me, the scope label, React Router links, and a red badge on Maintenance with the open emergencies over everything the user can see (`useTicketSummary({})`, not the sidebar property; hidden at 0; refetched on window focus and after every ticket write). Topbar gets the page title, the scope chip, no AI, a `ThemeSwitch` left of the avatar (flips the theme showing now, also from "system", with a circular reveal via `changeThemeWithReveal`), and a profile menu (email, Settings, Sign out). Sets the tab title. Provides `PageTitleContext` and `PageNavContext`, so a page can replace the route title and the highlighted Sidebar item.
+- `AppLayout`: `ScopeProvider` + `WorkspaceShell` + `<Outlet />` + `<ScrollRestoration />` (Back restores the window scroll, a new page starts at the top). Shows `PageSkeleton` while a page's code downloads, and `WakingNotice` ("Waking up the server…") above the page while the API server wakes from sleep. Owns the mobile menu open state (closes on any page change) so a later phone tab bar can open the same menu. Sidebar gets our Overview (Dashboard) / Leasing / Money (Rent Roll, Expenses) / Operations (Maintenance, Vendors) / Admin (Settings) groups (icons reused from `defaultNavGroups`), the role, name and role label from GET /auth/me, the scope label, React Router links, and a red badge on Maintenance with the open emergencies over everything the user can see (`useTicketSummary({})`, not the sidebar property; hidden at 0; refetched on window focus and after every ticket write). Topbar gets the page title, the scope chip, no AI, a `ThemeSwitch` left of the avatar (flips the theme showing now, also from "system", with a circular reveal via `changeThemeWithReveal`), and a profile menu (email, Settings, Sign out). Sets the tab title. Provides `PageTitleContext` and `PageNavContext`, so a page can replace the route title and the highlighted Sidebar item.
 - `RouteHandle`: `{ title, nav? }`, put on a route as `handle`.
 
 ## queryClient.ts
-- `queryClient`: the shared TanStack Query cache. Queries don't retry on ApiError 400/401/403/404/409 and retry once otherwise; mutations never retry. On `MISSING_TOKEN` / `INVALID_TOKEN` (any query or mutation) it shows "Your session ended..." once and signs out. Never for `USER_NOT_REGISTERED`. On 403 `FORBIDDEN_PERMISSION` it reloads GET /auth/me (`["me"]`), so buttons the user lost hide right away; the form still shows the backend message.
+- `queryClient`: the shared TanStack Query cache. Queries don't retry on ApiError 0/400/401/403/404/409 (0 = "Can't reach the server", which `apiFetch` already retried for 90 seconds) and retry once otherwise; mutations never retry. On `MISSING_TOKEN` / `INVALID_TOKEN` (any query or mutation) it shows "Your session ended..." once and signs out. Never for `USER_NOT_REGISTERED`. On 403 `FORBIDDEN_PERMISSION` it reloads GET /auth/me (`["me"]`), so buttons the user lost hide right away; the form still shows the backend message.
 
 ## NotFoundPage.tsx
 - `NotFoundPage`: "Page not found" empty state with a button back to `/`. Renders inside the app layout.
@@ -29,7 +29,7 @@ App wiring: providers, router, query cache, the signed-in layout and app-level p
 - `PageSkeleton`: header, KPI row, toolbar and table-row skeletons, shown while a lazy page loads.
 
 ## EnvErrorPage.tsx
-- `EnvErrorPage`: rendered by `main.tsx` instead of the app when env variables are missing; lists them and says how to fix it.
+- `EnvErrorPage`: rendered by `main.tsx` instead of the app when env variables are missing; lists them and says how to fix it. With env complete, `main.tsx` first sends `pingHealth()` (lib/serverWake.ts) to wake the API server, then loads the app.
 
 ## pageTitle.ts
 - `usePageTitle(title)`: a page shows its own title (e.g. the property name) in the Topbar and tab instead of the route title.

@@ -10,6 +10,9 @@ Pieces of the detail pages (`/properties/:id`, `/leases/:id`).
 - `Crumb`: one breadcrumb link (`label`, `to`).
 - `Tile({ label, value, note, loading, className })`: KPI tile inside the header card; skeleton while `loading`.
 
+## WakingNotice.tsx
+- `WakingNotice({ className })`: "Waking up the server… this can take up to a minute." (polite live region) while `useServerWaking()` is true; empty otherwise. Used under `FullPageLoading` and above the page in `AppLayout`.
+
 ## NoProperties.tsx
 - `NoProperties({ onAdd })`: the page body when the user has no properties. With `property.create`: owner "Add your first property", manager "No properties assigned to you yet" / "Add a property (you'll manage it), or ask the owner to assign you one.", both with an Add property button that calls `onAdd`. Without it: "Ask the owner to assign you a property." Used by Dashboard, Properties, Units, Leases and Rent Roll.
 
