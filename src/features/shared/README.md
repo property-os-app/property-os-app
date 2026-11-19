@@ -37,6 +37,10 @@ Phone (under md) toolbar pieces; desktop toolbars use only the compact `SortSele
 - `SortSelect({ sort, onSortChange, options, id, compact })`: "Sort by" select for views without column headers (phones, desktop Cards view); writes the same `useClientTable` sort. `compact`: no visible label (aria-label "Sort by"), 224px wide, options read "Sort: Tenant, A to Z", for a desktop toolbar. `SortOption`: key, label, kind (labels "A to Z", "low to high", "soonest first").
 - `FilterGroup({ label, children })`: a labelled block in the sheet for a control that isn't one field (status segments, a chip).
 
+## columnVisibility.ts
+- `useColumnVisibility(page, known, defaults)`: a table's shown optional columns, saved in this browser (key `propertyos.{page}.columns`); returns `visible` (in `known` order), `toggle(key, shown)` and `reset()`. Storage errors fall back to the defaults. Used by the yearly Rent Roll.
+- `parseSavedColumns(saved, known)`: the saved JSON list, filtered to known keys (null when missing or broken). Tested in `columnVisibility.test.ts`.
+
 ## listView.ts
 - `ListView`: "cards" | "table", a main list's desktop view.
 - `useListView(page, fallback)`: the saved choice (`useStoredView`, key `propertyos.{page}.view`). Used by Properties and Tenants (default Cards) and Leases, Units, Rent Roll (default Table). Phones ignore it (always cards).

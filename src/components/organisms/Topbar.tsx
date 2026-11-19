@@ -103,7 +103,8 @@ export function PageHeader({ title, description, actions, breadcrumb, className 
           <h1 className="m-0 text-h1">{title}</h1>
           {description && <div className="mt-1 text-text-secondary">{description}</div>}
         </div>
-        {actions && <div className="flex flex-wrap items-center gap-3">{actions}</div>}
+        {/* Full width under md, so phone actions marked w-full (month / year switchers, primary button) really fill the row. */}
+        {actions && <div className="flex flex-wrap items-center gap-3 max-md:w-full">{actions}</div>}
       </div>
     </div>
   );

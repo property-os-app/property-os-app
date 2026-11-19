@@ -1,7 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { rentRollKeys } from "@/features/rent-roll/keys";
-import type { RentRollResponse } from "@/types/rentRoll";
+import type { RentRollResponse, RentRollYearResponse } from "@/types/rentRoll";
 
 /**
  * GET /rent-roll?month=&propertyId=. Status and search are filtered on the client, so the summary,
@@ -16,5 +16,14 @@ export function rentRollQuery(month: string, propertyId: string | null) {
   return queryOptions({
     queryKey: rentRollKeys.month(month, propertyId),
     queryFn: ({ signal }) => apiFetch<RentRollResponse>("/rent-roll", { query: { month, propertyId: propertyId ?? undefined }, signal }),
+  });
+}
+
+/** GET /rent-roll/year?year=&propertyId=: the 12 monthly rolls side by side, with property and grand totals. Search and chips are filtered on the client. */
+export function useRentRollYear(year: number, propertyId: string | null) {
+  return useQuery({
+    queryKey: rentRollKeys.year(year, propertyId),
+    queryFn: ({ signal }) =>
+      apiFetch<RentRollYearResponse>("/rent-roll/year", { query: { year: String(year), propertyId: propertyId ?? undefined }, signal }),
   });
 }

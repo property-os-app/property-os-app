@@ -45,18 +45,24 @@ export interface LeasePageState {
   activateError?: ActivateError;
 }
 
-/** Opened from the Rent Roll (?from=rent-roll&month=YYYY-MM): the Ledger tab is the default. */
+/**
+ * Opened from the Rent Roll: the month view (?from=rent-roll&month=YYYY-MM) or the year view (?from=rent-roll&view=year&year=YYYY).
+ * Either way the Ledger tab is the default. `month` is only set from the month view (Add charge uses it).
+ */
 function useOrigin() {
   const [params] = useSearchParams();
   const month = params.get("month");
-  const fromRentRoll = params.get("from") === "rent-roll" && isMonth(month);
-  return { fromRentRoll, month: fromRentRoll ? month : null };
+  const year = params.get("year");
+  const fromRentRoll = params.get("from") === "rent-roll";
+  const yearView = fromRentRoll && params.get("view") === "year" && /^\d{4}$/.test(year ?? "");
+  const monthView = fromRentRoll && !yearView && isMonth(month);
+  return { fromRentRoll: monthView || yearView, month: monthView ? month : null, year: yearView ? year : null };
 }
 
-/** The first crumb and the Sidebar item for where the page was opened from; the URL's Rent Roll month survives a pasted link. */
+/** The first crumb and the Sidebar item for where the page was opened from; the URL's Rent Roll month or year survives a pasted link. */
 function useParent(): { parent: Crumb; nav: ModuleKey; backInHistory: boolean } {
   const location = useLocation();
-  const { fromRentRoll, month } = useOrigin();
+  const { fromRentRoll, month, year } = useOrigin();
   const state = location.state as LeasePageState | null;
   const from = state?.from;
   const backInHistory = Boolean(from);
@@ -66,6 +72,7 @@ function useParent(): { parent: Crumb; nav: ModuleKey; backInHistory: boolean } 
   if (from === "property" && state?.property) {
     return { parent: { label: state.property.name, to: `/properties/${encodeURIComponent(state.property.id)}` }, nav: "properties", backInHistory };
   }
+  if (year) return { parent: { label: `Rent Roll · ${year}`, to: `/rent-roll?view=year&year=${year}` }, nav: "rentroll", backInHistory };
   if (fromRentRoll) return { parent: { label: `Rent Roll · ${formatMonth(month!)}`, to: `/rent-roll?month=${month}` }, nav: "rentroll", backInHistory };
   return { parent: { label: "Leases", to: "/leases" }, nav: "leases", backInHistory };
 }

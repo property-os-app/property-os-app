@@ -7,3 +7,4 @@ export * from "./Kanban";
 export * from "./Charts";
 export * from "./Panels";
 export * from "./PortalNav";
+export * from "./SpreadsheetTable";
