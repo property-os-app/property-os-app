@@ -15,7 +15,12 @@ export interface SheetColumn<Row> {
   align?: "left" | "right";
   /** Minimum width (px or CSS). */
   minWidth?: number | string;
+  /** Extra classes for the body cells of this column. */
   className?: string;
+  /** Extra classes for EVERY cell of the column: header, rows, subtotals and total (separators, a "current" outline). Theme tokens only. */
+  columnClassName?: string;
+  /** "right": pinned to the right edge while the columns before it scroll (e.g. a Total column). Give it a minWidth. */
+  sticky?: "right";
 }
 
 export interface SheetGroup<Row> {
@@ -52,13 +57,23 @@ export interface SpreadsheetTableProps<Row> {
 
 const cellBase = "whitespace-nowrap border-b border-border-subtle px-3 tabular";
 const alignClass = (c: { align?: "left" | "right" } | undefined) => (c?.align === "right" ? "text-right" : "text-left");
+/** A pinned-right cell: opaque (set by the caller), a left border, above the scrolling cells. */
+const stickyRight = (c: { sticky?: "right" } | undefined) => (c?.sticky === "right" ? "sticky right-0 border-l border-border-subtle" : undefined);
+/**
+ * Row hover: a light tint painted as a background IMAGE over the cell's own background colour, so status colours
+ * (and sticky cells' opaque backgrounds) stay visible under it. Built from --text-primary, so it works in both themes.
+ */
+const rowHover =
+  "group-hover:bg-[image:linear-gradient(color-mix(in_srgb,var(--text-primary)_6%,transparent),color-mix(in_srgb,var(--text-primary)_6%,transparent))]";
 
 /**
  * Spreadsheet-style table for wide finance grids (the yearly rent roll). A real `<table>`: caption, `th scope="col"`,
  * the first column as `th scope="row"`, group headers as `th scope="rowgroup"`.
- * It scrolls inside its own box (both ways), so the sticky header, the sticky first column and the sticky total row
- * all work and the page itself never scrolls sideways. Groups get a header row and an optional subtotal row.
- * Five states like DataTable. Cells can carry their own background (`cellClassName`).
+ * It scrolls inside its own box (both ways), so the sticky header, the sticky first column, an optional column pinned
+ * right (`sticky: "right"`) and the sticky total row all work and the page itself never scrolls sideways. Groups get a
+ * header row (a band) and an optional subtotal row. Five states like DataTable. Cells can carry their own background
+ * (`cellClassName`); `columnClassName` styles a whole column (separators, a "current" outline). Hovering a row tints it
+ * without hiding the cells' own colours.
  */
 export function SpreadsheetTable<Row>({
   columns, groups, rowKey, onRowClick, rowMuted, totals, state = "ideal", empty, error, caption, footer, className,
@@ -85,7 +100,8 @@ export function SpreadsheetTable<Row>({
                   className={cn(
                     "sticky top-0 whitespace-nowrap border-b border-border-subtle bg-surface-2 px-3 py-2.5 text-overline uppercase text-text-secondary",
                     alignClass(c),
-                    i === 0 ? "left-0 z-[3] border-r" : "z-[2]",
+                    i === 0 ? "left-0 z-[3] border-r" : c.sticky === "right" ? "right-0 z-[3] border-l" : "z-[2]",
+                    c.columnClassName,
                   )}
                 >
                   {c.headerLabel ? (
@@ -106,7 +122,7 @@ export function SpreadsheetTable<Row>({
               {Array.from({ length: 8 }).map((_, r) => (
                 <tr key={r} className="h-11">
                   {columns.map((c, i) => (
-                    <td key={c.key} className={cn(cellBase, i === 0 && cn(stickyFirst, "bg-surface-1"))}>
+                    <td key={c.key} className={cn(cellBase, i === 0 && cn(stickyFirst, "bg-surface-1"), c.sticky === "right" && cn(stickyRight(c), "z-[1] bg-surface-1"), c.columnClassName)}>
                       <Skeleton className={cn("h-3", i === 0 ? "w-36" : "ml-auto w-14")} />
                     </td>
                   ))}
@@ -144,9 +160,12 @@ export function SpreadsheetTable<Row>({
                               "font-normal",
                               alignClass(c),
                               muted ? "text-text-muted" : "text-text-primary",
-                              i === 0 && cn(stickyFirst, "bg-surface-1 group-hover:bg-surface-3"),
+                              i === 0 && cn(stickyFirst, "bg-surface-1"),
+                              c.sticky === "right" && cn(stickyRight(c), "z-[1] bg-surface-1"),
                               c.className,
+                              c.columnClassName,
                               own,
+                              rowHover,
                             )}
                           >
                             {c.cell(row)}
@@ -164,7 +183,14 @@ export function SpreadsheetTable<Row>({
                         <Cell
                           key={i}
                           scope={i === 0 ? "row" : undefined}
-                          className={cn(cellBase, "bg-surface-2 font-semibold text-text-primary", alignClass(columns[i]), i === 0 && stickyFirst)}
+                          className={cn(
+                            cellBase,
+                            "bg-surface-2 font-semibold text-text-primary",
+                            alignClass(columns[i]),
+                            i === 0 && stickyFirst,
+                            columns[i]?.sticky === "right" && cn(stickyRight(columns[i]), "z-[1]"),
+                            columns[i]?.columnClassName,
+                          )}
                         >
                           {node}
                         </Cell>
@@ -187,7 +213,8 @@ export function SpreadsheetTable<Row>({
                       className={cn(
                         "sticky bottom-0 whitespace-nowrap border-t border-border-strong bg-surface-2 px-3 font-bold tabular text-text-primary",
                         alignClass(columns[i]),
-                        i === 0 ? "left-0 z-[3] border-r border-r-border-subtle" : "z-[2]",
+                        i === 0 ? "left-0 z-[3] border-r border-r-border-subtle" : columns[i]?.sticky === "right" ? "right-0 z-[3] border-l border-l-border-subtle" : "z-[2]",
+                        columns[i]?.columnClassName,
                       )}
                     >
                       {node}

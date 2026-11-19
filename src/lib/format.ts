@@ -49,6 +49,15 @@ export function formatCurrency(value: MoneyInput): string {
 }
 
 /**
+ * Short money for dense grids: whole dollars without cents ("$2,000"), cents only when not .00 ("$2,150.50").
+ * Negative "-$150". Empty or invalid -> "-". Integer cents, no float math. Show the exact `formatCurrency` in a tooltip.
+ */
+export function formatCurrencyShort(value: MoneyInput): string {
+  const full = formatCurrency(value);
+  return full.endsWith(".00") ? full.slice(0, -3) : full;
+}
+
+/**
  * $128.4K / $24.6M in KPI cards and charts (display only). Empty or invalid -> "-".
  * Rounds half up in integer cents first, then picks the unit, so $999.50 is "$1.0K" and $999,950 is "$1.0M" (not "$1000").
  */

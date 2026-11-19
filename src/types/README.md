@@ -58,7 +58,7 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 ## rentRoll.ts
 - `RentRollStatus`: `PAID | PARTIAL | UNPAID | OVERDUE | NOT_BILLED`.
 - `RentRollRow`, `RentRollResponse`: GET /rent-roll (rows with `openingBalance`, `charged`, `paid`, `balance`, plus a summary that ignores status and search).
-- `RentRollYearResponse` (GET /rent-roll/year): `RentRollYearRow` (`kind` LEASE / VACANT_UNIT, `unit` with market `monthlyRent`, `lease` or null, 12 `RentRollYearCell`s, totals, `lateFees`, `vacantMonths`, `daysToLeaseEnd`, `renewalAlert`, `nextLease`), `RentRollYearTotals` (per property and grand), `availableYears`. Cell status `RentRollYearCellStatus` adds `FUTURE | VACANT | OUTSIDE_LEASE`; `RenewalAlert` is `ENDED | ENDS_SOON`.
+- `RentRollYearResponse` (GET /rent-roll/year?rows=unit, `rowsBy`): `RentRollYearRow`, one per unit (`kind` LEASE / VACANT_UNIT, `unit` with market `monthlyRent`, the current `lease` or null, `leases` = `RentRollYearUnitLease`s of the year with `monthsCovered`, 12 merged `RentRollYearCell`s with `leaseIds` / `leaseId`, totals, `lateFees`, `vacantMonths`, `daysToLeaseEnd`, `renewalAlert`, `nextLease`), `RentRollYearTotals` (per property and grand), `availableYears`. Cell status `RentRollYearCellStatus` adds `FUTURE | VACANT | OUTSIDE_LEASE`; `RenewalAlert` is `ENDED | ENDS_SOON`.
 
 ## vendor.ts
 - `VendorRateUnit` (`HOUR | VISIT | MONTH | JOB`), `VendorInsuranceStatus` (`NONE | EXPIRED | EXPIRING | VALID`, computed by the server).

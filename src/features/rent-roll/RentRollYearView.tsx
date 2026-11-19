@@ -14,6 +14,7 @@ import { RentRollViewSwitch } from "@/features/rent-roll/RentRollViewSwitch";
 import { downloadYearCsv, yearCsvFilename } from "@/features/rent-roll/yearCsv";
 import { YearCards } from "@/features/rent-roll/YearCards";
 import { YearLegend } from "@/features/rent-roll/YearLegend";
+import { YearSummary } from "@/features/rent-roll/YearSummary";
 import { YearTable } from "@/features/rent-roll/YearTable";
 import { YearUnitDrawer } from "@/features/rent-roll/YearUnitDrawer";
 import {
@@ -45,7 +46,8 @@ const FILTERED_TOTALS_NOTE = "Totals include all units in scope, not just the fi
  * /rent-roll?view=year&year=YYYY: the client's spreadsheet rent roll from GET /rent-roll/year. Header: Month | Year switch,
  * year picker (limited to `availableYears`), Export CSV (the whole year for the scope). Toolbar: search, Property (the app-wide
  * scope), chips Ends soon / Unpaid months / Vacant (?q= and ?chips= in the URL), Columns menu (saved per browser).
- * Desktop: YearTable; phones: YearCards. A lease row opens its lease page (back returns to this year); a vacant row the Unit drawer.
+ * Then the summary cards (YearSummary) and the colour key. Desktop: YearTable; phones: YearCards. One row per unit: it opens
+ * its current lease (back returns to this year), a month of an earlier lease opens that lease; a vacant / reserved unit the Unit drawer.
  */
 export function RentRollYearView() {
   const navigate = useNavigate();
@@ -83,6 +85,10 @@ export function RentRollYearView() {
   };
   const setChips = (next: YearChip[]) => writeParams((p) => (next.length ? p.set("chips", next.join(",")) : p.delete("chips")));
   const toggleChip = (chip: YearChip) => setChips(chips.includes(chip) ? chips.filter((c) => c !== chip) : YEAR_CHIPS.filter((c) => c === chip || chips.includes(c)));
+  // A summary card shows its rows: adds that chip (keeps the others).
+  const showChip = (chip: YearChip) => {
+    if (!chips.includes(chip)) toggleChip(chip);
+  };
   const clearFilters = () =>
     writeParams((p) => {
       p.delete("q");
@@ -110,8 +116,10 @@ export function RentRollYearView() {
   const isFiltered = search.trim() !== "" || chips.length > 0;
 
   const [openUnit, setOpenUnit] = useState<{ id: string; unitNumber: string; propertyName: string } | null>(null);
+  // A row opens its current lease on the Ledger tab (a month cell can open an earlier lease); vacant / reserved units the Unit drawer.
+  const openLease = (leaseId: string) => void navigate(yearLeasePath(leaseId, year, "ledger"), { state: { from: "rent-roll" } satisfies LeasePageState });
   const onOpen = (r: RentRollYearRow) => {
-    if (r.lease) void navigate(yearLeasePath(r.lease.id, year, "ledger"), { state: { from: "rent-roll" } satisfies LeasePageState });
+    if (r.lease) openLease(r.lease.id);
     else setOpenUnit({ id: r.unit.id, unitNumber: r.unit.unitNumber, propertyName: r.unit.property.name });
   };
 
@@ -123,7 +131,7 @@ export function RentRollYearView() {
           description: "Every unit in scope shows here, with or without a lease. Add units to see them.",
           action: <Button onClick={() => void navigate("/units")}>Go to Units</Button>,
         }
-      : { title: "No rows match your filters", description: "Try another search or chip.", action: <Button onClick={clearFilters}>Clear filters</Button> };
+      : { title: "No units match your filters", description: "Try another search or chip.", action: <Button onClick={clearFilters}>Clear filters</Button> };
   const error = { title: `Couldn't load the ${year} rent roll`, description: query.isError ? errorText(query.error) : undefined, onRetry: () => void query.refetch() };
 
   // The picker's range: the API's availableYears once loaded, else the API's own limits.
@@ -234,7 +242,7 @@ export function RentRollYearView() {
     <>
       <PageHeader
         title="Rent Roll"
-        description={`Every lease and unit in ${year}, month by month. Cells show the amount paid, coloured by rent status.`}
+        description={`Every unit in ${year}, month by month. Cells show the amount paid; colour marks what still needs attention.`}
         actions={
           isMobile ? (
             <div className="flex w-full flex-col gap-3">
@@ -272,12 +280,25 @@ export function RentRollYearView() {
         </Toolbar>
       )}
 
+      <YearSummary data={data} year={year} isError={query.isError} onShow={showChip} />
+
       <YearLegend />
 
       {isMobile ? (
         <YearCards data={data} groups={groups} year={year} state={state} empty={empty} error={error} note={note} onOpen={onOpen} />
       ) : (
-        <YearTable data={data} groups={groups} year={year} visible={columns.visible} state={state} empty={empty} error={error} footer={note} onOpen={onOpen} />
+        <YearTable
+          data={data}
+          groups={groups}
+          year={year}
+          visible={columns.visible}
+          state={state}
+          empty={empty}
+          error={error}
+          footer={note}
+          onOpen={onOpen}
+          onOpenLease={openLease}
+        />
       )}
 
       {openUnit && <YearUnitDrawer unitId={openUnit.id} unitNumber={openUnit.unitNumber} propertyName={openUnit.propertyName} onClose={() => setOpenUnit(null)} />}

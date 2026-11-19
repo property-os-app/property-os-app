@@ -19,11 +19,11 @@ export function rentRollQuery(month: string, propertyId: string | null) {
   });
 }
 
-/** GET /rent-roll/year?year=&propertyId=: the 12 monthly rolls side by side, with property and grand totals. Search and chips are filtered on the client. */
+/** GET /rent-roll/year?year=&propertyId=&rows=unit: one row per unit, the 12 months side by side, with property and grand totals. Search and chips are filtered on the client. */
 export function useRentRollYear(year: number, propertyId: string | null) {
   return useQuery({
     queryKey: rentRollKeys.year(year, propertyId),
     queryFn: ({ signal }) =>
-      apiFetch<RentRollYearResponse>("/rent-roll/year", { query: { year: String(year), propertyId: propertyId ?? undefined }, signal }),
+      apiFetch<RentRollYearResponse>("/rent-roll/year", { query: { year: String(year), propertyId: propertyId ?? undefined, rows: "unit" }, signal }),
   });
 }

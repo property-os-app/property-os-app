@@ -1,16 +1,25 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { Badge, Dash, Num } from "@/components/atoms";
+import { Badge, Bar, Dash, Num } from "@/components/atoms";
 import { SpreadsheetTable, type SheetColumn } from "@/components/organisms";
 import { cn } from "@/lib/cn";
-import { formatCurrency, formatDate, formatMonth, toCents } from "@/lib/format";
+import { formatCurrency, formatCurrencyShort, formatDate, formatMonth, toCents } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import { linkFocus } from "@/features/shared/linkClass";
 import { MonthCell } from "@/features/rent-roll/MonthCell";
 import {
+  cellLeaseTarget,
+  cellTenants,
+  collectedLabel,
+  collectedPercent,
+  collectedTone,
   daysToEndText,
+  isCurrentMonth,
+  isQuarterEnd,
   isReservedRow,
+  leaseTenantLabel,
   monthCellClass,
+  otherTenantsText,
   renewalAlertLabels,
   renewalAlertTone,
   renewalText,
@@ -34,12 +43,38 @@ type YearColumn = SheetColumn<RentRollYearRow> & {
 
 const money = (value: string | null | undefined) => (value ? <Num>{formatCurrency(value)}</Num> : <Dash />);
 
-/** Paid on top, "of $charged" under it (subtotal and total rows). */
+/** Paid on top, "of $charged" under it (subtotal and total rows), in short money with the exact amounts as a tooltip. */
 function paidOfCharged(paid: string, charged: string) {
   return (
-    <span className="inline-flex flex-col items-end py-1 leading-tight">
-      <Num>{formatCurrency(paid)}</Num>
-      <span className="text-caption font-normal text-text-secondary">of {formatCurrency(charged)}</span>
+    <span className="inline-flex flex-col items-end py-1 leading-tight" title={`Paid ${formatCurrency(paid)} of ${formatCurrency(charged)}`}>
+      <Num>{formatCurrencyShort(paid)}</Num>
+      <span className="text-caption font-normal text-text-secondary">of {formatCurrencyShort(charged)}</span>
+    </span>
+  );
+}
+
+/** "97%" with a tiny bar (tone by how much is missing); a Dash when nothing was charged. */
+function Collected({ paid, charged }: { paid: string; charged: string }) {
+  const pct = collectedPercent(paid, charged);
+  if (pct === null) return <Dash />;
+  return (
+    <span className="flex items-center justify-end gap-2" title={`Collected ${formatCurrency(paid)} of ${formatCurrency(charged)} (${pct}%)`}>
+      <Bar value={pct} tone={collectedTone(pct)} className="h-1.5 w-12" />
+      <Num className="w-10 text-right">{collectedLabel(pct)}</Num>
+    </span>
+  );
+}
+
+/** The property band: name, unit count, "Collected $X of $Y · Z%" from propertyTotals. */
+function propertyBand(g: PropertyGroup) {
+  const pct = collectedPercent(g.totals.totalPaid, g.totals.totalCharged);
+  return (
+    <span className="flex flex-wrap items-baseline gap-x-3">
+      <span>{g.property.name}</span>
+      <span className="font-normal text-text-secondary">
+        {plural(g.rows.length, "unit")} · Collected {formatCurrencyShort(g.totals.totalPaid)} of {formatCurrencyShort(g.totals.totalCharged)}
+        {pct !== null && ` · ${pct}%`}
+      </span>
     </span>
   );
 }
@@ -54,16 +89,20 @@ export interface YearTableProps {
   error: { title: string; description?: string; onRetry?: () => void };
   /** Under the table (the "totals include all units" note). */
   footer?: ReactNode;
-  /** A lease row opens the lease page; a vacant row the Unit drawer. */
+  /** A row opens its current lease; a vacant or reserved unit the Unit drawer. */
   onOpen: (row: RentRollYearRow) => void;
+  /** A month of another lease than the row's current one opens that lease. */
+  onOpenLease: (leaseId: string) => void;
 }
 
 /**
- * The yearly grid on desktop (SpreadsheetTable): unit / tenants (sticky), current rent, optional lease columns, Jan–Dec
- * (paid, coloured by status), Total, optional late fees / vacancy / days to end / renewal, and the renewal alert.
- * Rows grouped by property with the API's subtotals; the API's grand total sticks to the bottom.
+ * The yearly grid on desktop (SpreadsheetTable), one row per unit: unit / tenants (sticky left, with "Earlier: …" tenants),
+ * current rent, optional lease columns, Jan–Dec (short paid amounts; colour only on problems; vacant striped; the current
+ * month tagged "Now" and outlined; thin lines after Mar, Jun, Sep), Total paid (pinned right), optional late fees / vacancy,
+ * the renewal alert, optional days to end / renewal, and Collected % with a tiny bar. Property bands carry the API's
+ * collected totals; subtotal rows and the sticky grand total come from the API.
  */
-export function YearTable({ data, groups, year, visible, state, empty, error, footer, onOpen }: YearTableProps) {
+export function YearTable({ data, groups, year, visible, state, empty, error, footer, onOpen, onOpenLease }: YearTableProps) {
   const months = data?.months ?? Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, "0")}`);
   const shown = new Set(visible);
 
@@ -74,8 +113,8 @@ export function YearTable({ data, groups, year, visible, state, empty, error, fo
       minWidth: 220,
       cell: (r) => {
         const names = tenantNames(r);
-        const others = (r.lease?.tenants.length ?? 1) - 1;
         const reserved = isReservedRow(r);
+        const others = otherTenantsText(r);
         const label = r.lease ? `Open lease ${r.lease.leaseNumber}, ${names}` : `Open unit ${r.unit.unitNumber}, ${reserved ? "reserved" : "vacant"}`;
         return (
           <div className="flex min-w-0 flex-col py-1.5">
@@ -89,12 +128,17 @@ export function YearTable({ data, groups, year, visible, state, empty, error, fo
               }}
               className={cn("max-w-[260px] truncate text-left font-semibold", linkFocus, r.lease ? "text-text-primary" : "text-text-muted")}
             >
-              {r.lease ? `${r.lease.tenants[0]?.fullName ?? "No tenant"}${others > 0 ? ` +${others}` : ""}` : reserved ? <Badge tone="neutral">Reserved</Badge> : "Vacant"}
+              {r.lease ? leaseTenantLabel(r.lease, true) : reserved ? <Badge tone="neutral">Reserved</Badge> : "Vacant"}
             </button>
             <span className="text-small text-text-secondary">
               Unit {r.unit.unitNumber}
               {r.lease && ` · ${r.lease.leaseNumber}`}
             </span>
+            {others && (
+              <span className="max-w-[260px] truncate text-small text-text-muted" title={others}>
+                {others}
+              </span>
+            )}
           </div>
         );
       },
@@ -104,29 +148,52 @@ export function YearTable({ data, groups, year, visible, state, empty, error, fo
     { key: "start", optional: "start", header: "Lease start", cell: (r) => (r.lease?.startDate ? formatDate(r.lease.startDate) : <Dash />) },
     { key: "end", optional: "end", header: "Lease end", cell: (r) => (r.lease?.endDate ? formatDate(r.lease.endDate) : <Dash />) },
     { key: "deposit", optional: "deposit", header: "Deposit", align: "right", cell: (r) => money(r.lease?.deposit) },
-    ...months.map(
-      (m, i): YearColumn => ({
+    ...months.map((m, i): YearColumn => {
+      const now = isCurrentMonth(m);
+      return {
         key: m,
-        header: shortMonth(m),
-        headerLabel: formatMonth(m),
+        header: now ? (
+          <span className="inline-flex items-center gap-1.5">
+            {shortMonth(m)}
+            <span className="rounded-pill bg-info-soft px-1.5 py-px text-caption font-semibold normal-case tracking-normal text-info">Now</span>
+          </span>
+        ) : (
+          shortMonth(m)
+        ),
+        headerLabel: now ? `${formatMonth(m)}, this month` : formatMonth(m),
         align: "right",
-        minWidth: 104,
+        minWidth: now ? 112 : 92,
         className: "px-2",
-        cell: (r) => (r.months[i] ? <MonthCell cell={r.months[i]} reserved={isReservedRow(r)} /> : <Dash />),
-        cellClassName: (r) => monthCellClass(r.months[i]),
+        // Thin separators after Mar, Jun and Sep; the current month gets a soft outline down the whole column.
+        columnClassName: cn(isQuarterEnd(i) && "border-r border-r-border-strong", now && "border-x border-x-info/50"),
+        cell: (r) => {
+          const c = r.months[i];
+          if (!c) return <Dash />;
+          const target = cellLeaseTarget(r, c);
+          return (
+            <MonthCell
+              cell={c}
+              reserved={isReservedRow(r)}
+              tenants={cellTenants(r, c)}
+              openLease={target ? { leaseNumber: target.leaseNumber, onOpen: () => onOpenLease(target.id) } : undefined}
+            />
+          );
+        },
+        cellClassName: (r) => monthCellClass(r.months[i], isReservedRow(r)),
         total: (t) => (t.months[i] ? paidOfCharged(t.months[i].paid, t.months[i].charged) : null),
-      }),
-    ),
+      };
+    }),
     {
       key: "total",
-      header: "Total",
+      header: "Total paid",
       align: "right",
       minWidth: 120,
+      sticky: "right",
       className: "font-semibold",
       cell: (r) => (
         <>
           <Num aria-hidden title={`Paid ${formatCurrency(r.totalPaid)} of ${formatCurrency(r.totalCharged)} charged`}>
-            {formatCurrency(r.totalPaid)}
+            {formatCurrencyShort(r.totalPaid)}
           </Num>
           <span className="sr-only">
             Paid {formatCurrency(r.totalPaid)} of {formatCurrency(r.totalCharged)} charged in {year}
@@ -178,6 +245,14 @@ export function YearTable({ data, groups, year, visible, state, empty, error, fo
           <Dash />
         ),
     },
+    {
+      key: "collected",
+      header: "Collected",
+      align: "right",
+      minWidth: 120,
+      cell: (r) => <Collected paid={r.totalPaid} charged={r.totalCharged} />,
+      total: (t) => <Collected paid={t.totalPaid} charged={t.totalCharged} />,
+    },
   ];
   const columns = allColumns.filter((c) => !c.optional || shown.has(c.optional));
 
@@ -189,7 +264,7 @@ export function YearTable({ data, groups, year, visible, state, empty, error, fo
       columns={columns}
       groups={groups.map((g) => ({
         key: g.property.id,
-        label: `${g.property.name} · ${plural(g.rows.length, "row")}`,
+        label: propertyBand(g),
         rows: g.rows,
         subtotal: totalsRow(`${g.property.name} total`, g.totals),
       }))}

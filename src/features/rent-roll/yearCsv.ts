@@ -1,10 +1,10 @@
 /**
- * The yearly rent roll as an Excel-friendly CSV, built on the client from the same GET /rent-roll/year response.
+ * The yearly rent roll as an Excel-friendly CSV, built on the client from the same GET /rent-roll/year response (one line per unit).
  * Always the whole year for the selected property (search and chips are ignored), so the API's subtotals and total match.
  */
 import { toCents } from "@/lib/format";
 import { saveBlob } from "@/lib/pdf";
-import { isLeaseEnded, renewalAlertLabels, renewalText, rowTitle, shortMonth, shownVacantMonths } from "@/features/rent-roll/yearStats";
+import { isLeaseEnded, otherLeases, renewalAlertLabels, renewalText, rowTitle, shortMonth, shownVacantMonths, tenantsWithMonths } from "@/features/rent-roll/yearStats";
 import type { RentRollYearCell, RentRollYearResponse, RentRollYearRow, RentRollYearTotals } from "@/types/rentRoll";
 
 /** Money as a plain number with 2 decimals ("3400.00", "-150.00"): no $, no commas, no float math. Empty stays empty. */
@@ -32,7 +32,7 @@ function cellValue(cell: RentRollYearCell): string {
   return cell.status === "VACANT" || cell.status === "OUTSIDE_LEASE" ? "" : csvMoney(cell.paid);
 }
 
-const LEAD_COLUMNS = ["Property", "Unit", "Tenants", "Lease number", "Current rent", "Market rent", "Lease start", "Lease end", "Deposit"];
+const LEAD_COLUMNS = ["Property", "Unit", "Tenants", "Earlier tenants", "Lease number", "Current rent", "Market rent", "Lease start", "Lease end", "Deposit"];
 const TAIL_COLUMNS = ["Total paid", "Total charged", "Late fees", "Vacant months", "Renewal alert", "Days to lease end", "Next lease"];
 
 /** Column headers: the fixed columns, "Jan 2026 paid" … "Dec 2026 paid", then the totals and renewal columns. */
@@ -48,6 +48,8 @@ function rowCells(row: RentRollYearRow): string[] {
     csvText(row.unit.property.name),
     csvText(row.unit.unitNumber),
     csvText(lease ? lease.tenants.map((t) => t.fullName).join("; ") : rowTitle(row)),
+    // "John Smith (Jan–Apr), Sarah Lee (Apr–Jun)": the unit's leases before the current one that covered months this year.
+    csvText(tenantsWithMonths(otherLeases(row).earlier)),
     csvText(lease?.leaseNumber),
     csvMoney(lease?.rent),
     csvMoney(row.unit.monthlyRent),

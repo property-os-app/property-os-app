@@ -58,13 +58,16 @@ export interface RentRollResponse {
 /** A month cell's status: the monthly statuses plus FUTURE (NOT_BILLED after this month), VACANT and OUTSIDE_LEASE (both "0.00"). Never null. */
 export type RentRollYearCellStatus = RentRollStatus | "FUTURE" | "VACANT" | "OUTSIDE_LEASE";
 
-/** LEASE: one lease. VACANT_UNIT: a unit with no lease row in the year (lease is null). */
+/** LEASE: the unit had at least one lease in the year. VACANT_UNIT: none (lease is null, leases is empty). */
 export type RentRollYearRowKind = "LEASE" | "VACANT_UNIT";
 
 /** ENDED: lease ENDED / TERMINATED or past its endDate. ENDS_SOON: ACTIVE and 0-60 days before endDate. */
 export type RenewalAlert = "ENDED" | "ENDS_SOON";
 
-/** One month of a row. Money is exactly that month's GET /rent-roll values for the lease ("0.00" for VACANT / OUTSIDE_LEASE). */
+/**
+ * One merged month of a unit row (rows=unit). Money is summed over the leases counted that month; status is the worst of
+ * theirs (OVERDUE > UNPAID > PARTIAL > NOT_BILLED > PAID > FUTURE). `balance` is info only. Future months are never OVERDUE.
+ */
 export interface RentRollYearCell {
   /** "YYYY-MM". */
   month: string;
@@ -72,6 +75,10 @@ export interface RentRollYearCell {
   paid: string;
   balance: string;
   status: RentRollYearCellStatus;
+  /** The lease(s) counted in this month, oldest first ([] when none: VACANT / FUTURE / OUTSIDE_LEASE with "0.00"). */
+  leaseIds: string[];
+  /** The newest of leaseIds (open this lease from the cell), null when none. */
+  leaseId: string | null;
 }
 
 export interface RentRollYearLease {
@@ -88,6 +95,11 @@ export interface RentRollYearLease {
   tenants: { id: string; fullName: string; isPrimary: boolean }[];
 }
 
+/** A lease of a unit row's year, with the year's months its term overlaps (may be empty: only listed for a carried balance). */
+export interface RentRollYearUnitLease extends RentRollYearLease {
+  monthsCovered: string[];
+}
+
 /** The next lease on the same unit (DRAFT included). sharesTenant: at least one tenant in common. */
 export interface RentRollYearNextLease {
   id: string;
@@ -97,17 +109,22 @@ export interface RentRollYearNextLease {
   sharesTenant: boolean;
 }
 
+/** One unit (GET /rent-roll/year?rows=unit, the only mode we use), vacant and reserved units included. */
 export interface RentRollYearRow {
+  /** LEASE when `leases` is not empty. */
   kind: RentRollYearRowKind;
   /** status is the unit's status now; monthlyRent is the listed ("market") rent. */
   unit: { id: string; unitNumber: string; status: UnitStatus; monthlyRent: string; property: { id: string; name: string } };
+  /** The current lease: the ACTIVE one covering today, else the latest to start; null without leases. Rent, dates and renewal fields are its. */
   lease: RentRollYearLease | null;
+  /** Every lease of the unit that touched the year, startDate oldest first. */
+  leases: RentRollYearUnitLease[];
   /** Always 12, January first. */
   months: RentRollYearCell[];
   totalCharged: string;
   /** The spreadsheet's "Total" column. */
   totalPaid: string;
-  /** Non-voided LATE_FEE charges due in the year, already inside charged. */
+  /** Non-voided LATE_FEE charges due in the year (over the unit's leases), already inside charged. */
   lateFees: string;
   /** The unit's months with no lease term, up to the current UTC month only. Same on every row of the unit. */
   vacantMonths: string[];
@@ -128,11 +145,13 @@ export interface RentRollYearTotals {
 /** GET /rent-roll/year. Totals add up to the cent: use them, never recompute. */
 export interface RentRollYearResponse {
   year: number;
+  /** Echo of ?rows=; we always ask for "unit". */
+  rowsBy: "unit" | "lease";
   /** The 12 "YYYY-MM" months, January first (column headers). */
   months: string[];
   /** The year picker's range: earliest lease year (≤ current UTC year, ≥ 2000) to next UTC year. */
   availableYears: { from: number; to: number };
-  /** Property A→Z, unit number numeric-aware, lease start oldest first. */
+  /** One per unit: property A→Z, then unit number numeric-aware. */
   rows: RentRollYearRow[];
   /** One per property with at least one row, name A→Z. */
   propertyTotals: (RentRollYearTotals & { property: { id: string; name: string } })[];

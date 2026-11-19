@@ -4,8 +4,8 @@ import type { RentRollYearCell, RentRollYearResponse, RentRollYearRow, RentRollY
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => `2026-${String(i + 1).padStart(2, "0")}`);
 
-const cells = (status: RentRollYearCell["status"], paid: string): RentRollYearCell[] =>
-  MONTHS.map((month) => ({ month, status, paid, charged: paid, balance: "0.00" }));
+const cells = (status: RentRollYearCell["status"], paid: string, leaseIds: string[] = []): RentRollYearCell[] =>
+  MONTHS.map((month) => ({ month, status, paid, charged: paid, balance: "0.00", leaseIds, leaseId: leaseIds[leaseIds.length - 1] ?? null }));
 
 function totals(paid: string, year: string, lateFees = "0.00"): RentRollYearTotals {
   return { months: MONTHS.map((month) => ({ month, charged: paid, paid })), totalCharged: year, totalPaid: year, lateFees };
@@ -28,7 +28,8 @@ const leaseRow: RentRollYearRow = {
       { id: "t2", fullName: "=HYPERLINK(\"x\")", isPrimary: false },
     ],
   },
-  months: cells("PAID", "2850.00"),
+  leases: [],
+  months: cells("PAID", "2850.00", ["l1"]),
   totalCharged: "34200.00",
   totalPaid: "34200.00",
   lateFees: "75.00",
@@ -38,11 +39,18 @@ const leaseRow: RentRollYearRow = {
   nextLease: { id: "l2", leaseNumber: "LSE-2027-001", status: "DRAFT", startDate: "2027-01-01", sharesTenant: true },
 };
 
+// The unit's leases: an earlier tenant (Jan–Mar of 2026), and the current lease.
+leaseRow.leases = [
+  { ...leaseRow.lease!, id: "l0", leaseNumber: "LSE-2025-003", status: "ENDED", tenants: [{ id: "t0", fullName: "Jo Park", isPrimary: true }], monthsCovered: MONTHS.slice(0, 3) },
+  { ...leaseRow.lease!, monthsCovered: MONTHS },
+];
+
 const vacantRow: RentRollYearRow = {
   kind: "VACANT_UNIT",
   unit: { id: "u2", unitNumber: "5", status: "VACANT", monthlyRent: "2700.00", property: { id: "p2", name: "Birch" } },
   lease: null,
-  months: MONTHS.map((month) => ({ month, status: month <= "2026-11" ? "VACANT" : "FUTURE", paid: "0.00", charged: "0.00", balance: "0.00" })),
+  leases: [],
+  months: MONTHS.map((month) => ({ month, status: month <= "2026-11" ? "VACANT" : "FUTURE", paid: "0.00", charged: "0.00", balance: "0.00", leaseIds: [], leaseId: null })),
   totalCharged: "0.00",
   totalPaid: "0.00",
   lateFees: "0.00",
@@ -59,7 +67,9 @@ const reservedRow: RentRollYearRow = {
 
 const endedRow: RentRollYearRow = {
   ...leaseRow,
+  unit: { ...leaseRow.unit, id: "u4", unitNumber: "4C" },
   lease: { ...leaseRow.lease!, id: "l3", status: "ACTIVE", endDate: "2026-11-10", tenants: [{ id: "t3", fullName: "Cy", isPrimary: true }] },
+  leases: [],
   daysToLeaseEnd: -9,
   renewalAlert: "ENDED",
   nextLease: null,
@@ -67,6 +77,7 @@ const endedRow: RentRollYearRow = {
 
 const data: RentRollYearResponse = {
   year: 2026,
+  rowsBy: "unit",
   months: MONTHS,
   availableYears: { from: 2025, to: 2027 },
   rows: [vacantRow, reservedRow, leaseRow, endedRow],
@@ -151,15 +162,18 @@ describe("buildYearCsv", () => {
       ["Birch", "Office"],
       ["Birch", "Subtotal"],
       ["Oak, Main & Co", "4B"],
-      ["Oak, Main & Co", "4B"],
+      ["Oak, Main & Co", "4C"],
       ["Oak, Main & Co", "Subtotal"],
       ["Total", ""],
     ]);
   });
 
-  it("writes a lease row: tenants, money, dates, renewal", () => {
+  it("writes a unit row: current tenants, earlier tenants, money, dates, renewal", () => {
     const r = table[4]!;
     expect(r[col("Tenants")]).toBe(`Ana "AJ" Reyes; =HYPERLINK("x")`); // starts with "Ana": not a formula
+    expect(header.indexOf("Earlier tenants")).toBe(col("Tenants") + 1);
+    expect(r[col("Earlier tenants")]).toBe("Jo Park (Jan–Mar)");
+    expect(table[5]![col("Earlier tenants")]).toBe("");
     expect(r[col("Current rent")]).toBe("2850.00");
     expect(r[col("Market rent")]).toBe("2900.00");
     expect(r[col("Lease start")]).toBe("2026-01-01");

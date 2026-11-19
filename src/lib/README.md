@@ -40,6 +40,7 @@ Cold start on free hosting (the API server sleeps when idle and takes up to a mi
 
 ## format.ts (design system file, adapted to our API)
 - `formatCurrency(value)`: "1200.00" -> "$1,200.00", "-150.00" -> "-$150.00"; empty -> "-". Numbers still work.
+- `formatCurrencyShort(value)`: "$2,000" for dense grids; cents only when not .00 ("$2,150.50"); built on `formatCurrency` (integer cents).
 - `formatCompactCurrency(value)`: "$128.4K" / "$24.6M" for KPIs; rounds in cents before picking the unit ($999.50 -> "$1.0K"); no minus on a value that rounds to $0.
 - `formatPercent(value, digits)`: "94.2%", accepts strings.
 - `toCents(value)`: money string -> integer cents with no float math. Do all sums and comparisons in cents.
@@ -111,7 +112,7 @@ Links that open the user's own phone and email apps (no backend).
 - `SortKind`, `SortColumn`: sort column types.
 
 ## Tests (`npm test`)
-- `format.test.ts`: money (`toCents`, `centsToAmount`, `formatCurrency`, `formatCompactCurrency`, `formatPercent`) and dates (`parseDateOnly`, `formatDate`, `formatTimestampDate`, today / UTC today, `daysUntil`, `daysSince`, month helpers), in UTC and America/New_York with a fake "now".
+- `format.test.ts`: money (`toCents`, `centsToAmount`, `formatCurrency`, `formatCurrencyShort`, `formatCompactCurrency`, `formatPercent`) and dates (`parseDateOnly`, `formatDate`, `formatTimestampDate`, today / UTC today, `daysUntil`, `daysSince`, month helpers), in UTC and America/New_York with a fake "now".
 - `contact.test.ts`: `telHref`, `mailtoHref` (encoding, optional parts), `firstName`.
 - `clipboard.test.ts`: `copyText` on the Clipboard API path and that it never throws.
 - `tableParams.test.ts`: reading and writing list state in the URL, fallbacks and round trip.
