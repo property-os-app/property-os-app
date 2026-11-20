@@ -12,6 +12,14 @@ export function useUnits(params: { propertyId?: string } = {}) {
   });
 }
 
+/** GET /units/:id: one unit (the yearly Rent Roll opens the Unit drawer from a vacant row, which only has part of the unit). */
+export function useUnit(id: string) {
+  return useQuery({
+    queryKey: unitKeys.detail(id),
+    queryFn: ({ signal }) => apiFetch<Unit>(`/units/${encodeURIComponent(id)}`, { signal }),
+  });
+}
+
 /**
  * POST /units. Adds the new unit to the cached lists right away (so the next "Add unit" in a chain
  * already sees it for the duplicate check), then refreshes them.

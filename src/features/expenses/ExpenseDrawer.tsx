@@ -6,7 +6,7 @@ import { Drawer } from "@/components/organisms";
 import { ApiError, errorText } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { formatCurrency, formatDate, formatTimestampDate } from "@/lib/format";
-import { expenseTypeLabels, paymentMethodLabels } from "@/lib/labels";
+import { expenseTypeLabels, paymentMethodLabels, unitLabel } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
 import { ExpenseDeleteDialog } from "@/features/expenses/ExpenseDeleteDialog";
 import { ExpenseFormModal } from "@/features/expenses/ExpenseFormModal";
@@ -192,7 +192,7 @@ function Body({ expense: e, meId, categoryLabel }: { expense: Expense; meId?: st
             { label: "Category", value: categoryLabel },
             { label: "Type", value: expenseTypeLabels[e.type] },
             { label: "Property", value: propertyText(e) },
-            { label: "Unit", value: e.unit ? `Unit ${e.unit.unitNumber}` : <Dash /> },
+            { label: "Unit", value: e.unit ? `${unitLabel(e.unit.unitNumber)}` : <Dash /> },
             { label: "Vendor", value: orDash(e.vendor?.name) },
             ...(e.maintenanceTicket
               ? [

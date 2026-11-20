@@ -10,6 +10,7 @@ import {
   daysSince,
   daysUntil,
   formatCompactCurrency,
+  formatCurrencyShort,
   formatCurrency,
   formatDate,
   formatMonth,
@@ -124,6 +125,18 @@ describe("formatCurrency", () => {
 
   it("shows a dash for empty or invalid values", () => {
     for (const v of [null, undefined, "", "  ", "abc"]) expect(formatCurrency(v)).toBe("-");
+  });
+});
+
+describe("formatCurrencyShort", () => {
+  it("drops .00 and keeps real cents, with no float math", () => {
+    expect(formatCurrencyShort("2000.00")).toBe("$2,000");
+    expect(formatCurrencyShort("2150.50")).toBe("$2,150.50");
+    expect(formatCurrencyShort("0.10")).toBe("$0.10");
+    expect(formatCurrencyShort("0.00")).toBe("$0");
+    expect(formatCurrencyShort("-150.00")).toBe("-$150");
+    expect(formatCurrencyShort("1234567.89")).toBe("$1,234,567.89");
+    expect(formatCurrencyShort(null)).toBe("-");
   });
 });
 

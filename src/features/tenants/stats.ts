@@ -4,6 +4,7 @@ import { compareNatural } from "@/lib/sort";
 import { dueState } from "@/features/leases/stats";
 import type { Lease } from "@/types/lease";
 import type { TenantListItem } from "@/types/tenant";
+import { unitLabel } from "@/lib/labels";
 
 /** One tenant with every visible lease they are on and their current lease. */
 export interface TenantRow {
@@ -83,7 +84,7 @@ export function rentStatus(lease: Lease | undefined): RentStatus | null {
 
 /** "Unit 4B, Maple Court" for the current lease, or null. */
 export function unitLine(lease: Lease | undefined): string | null {
-  return lease ? `Unit ${lease.unit.unitNumber}, ${lease.unit.property.name}` : null;
+  return lease ? `${unitLabel(lease.unit.unitNumber)}, ${lease.unit.property.name}` : null;
 }
 
 /** Texts the search box looks in: name, email, phone, unit number and property of the current lease. */
@@ -93,7 +94,7 @@ export function tenantSearchText(row: TenantRow): string[] {
     tenant.fullName,
     tenant.email,
     tenant.phone,
-    ...(current ? [current.unit.unitNumber, `Unit ${current.unit.unitNumber}`, current.unit.property.name] : []),
+    ...(current ? [current.unit.unitNumber, `${unitLabel(current.unit.unitNumber)}`, current.unit.property.name] : []),
   ];
 }
 

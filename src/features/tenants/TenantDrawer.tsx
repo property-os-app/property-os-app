@@ -6,7 +6,7 @@ import { Card, EmptyState, InlineError, KeyValueList, ListCard, Tabs } from "@/c
 import { CardList, DataTable, Drawer, type Column } from "@/components/organisms";
 import { ApiError, errorText } from "@/lib/api";
 import { formatCurrency, formatDate, formatTimestampDate, parseDateOnly } from "@/lib/format";
-import { contactMethodLabels, paymentFrequencyLabels, tenantTypeLabels } from "@/lib/labels";
+import { contactMethodLabels, paymentFrequencyLabels, tenantTypeLabels, unitLabel } from "@/lib/labels";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
 import { can, roleLabel } from "@/features/auth/permissions";
@@ -196,7 +196,7 @@ function LeasesTab({ tenantId, leases, onAddLease }: { tenantId: string; leases:
       header: "Unit",
       cell: (l) => (
         <div className="min-w-0">
-          <div>Unit {l.unit.unitNumber}</div>
+          <div>{unitLabel(l.unit.unitNumber)}</div>
           <Caption className="block truncate">{l.unit.property.name}</Caption>
         </div>
       ),
@@ -226,7 +226,7 @@ function LeasesTab({ tenantId, leases, onAddLease }: { tenantId: string; leases:
               openLabel={`Open lease ${l.leaseNumber}`}
               renderLink={(href, p) => <Link to={href} state={fromTenants} {...p} />}
               title={l.leaseNumber}
-              subtitle={`Unit ${l.unit.unitNumber} · ${l.unit.property.name}`}
+              subtitle={`${unitLabel(l.unit.unitNumber)} · ${l.unit.property.name}`}
               badge={<LeaseBadge lease={l} />}
               amount={{ label: "Rent", value: l.rent === null ? <Dash /> : <Num>{formatCurrency(l.rent)}</Num> }}
               facts={[

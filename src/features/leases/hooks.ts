@@ -6,6 +6,7 @@ import { leaseKeys, rentRollPrefix, type LeaseListParams } from "@/features/leas
 import { tenantKeys } from "@/features/tenants/keys";
 import { unitKeys } from "@/features/units/keys";
 import type { Lease, LeaseCreateBody, LeaseEndBody, LeaseUpdateBody } from "@/types/lease";
+import { unitLabel } from "@/lib/labels";
 
 const leasePath = (id: string) => `/leases/${encodeURIComponent(id)}`;
 
@@ -137,7 +138,7 @@ export function useActivateAction() {
   const run = async (id: string): Promise<ActivateError | null> => {
     try {
       const saved = await activate.mutateAsync(id);
-      toast.success(`Lease ${saved.leaseNumber} activated. Unit ${saved.unit.unitNumber} is now occupied.`);
+      toast.success(`Lease ${saved.leaseNumber} activated. ${unitLabel(saved.unit.unitNumber)} is now occupied.`);
       return null;
     } catch (err) {
       return activateErrorOf(err);

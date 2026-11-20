@@ -8,7 +8,7 @@ import { Modal } from "@/components/organisms";
 import { ApiError, errorText } from "@/lib/api";
 import { applyServerError } from "@/lib/forms";
 import { centsToAmount, dayInMonth, formatCurrency, formatMonth, formatShortDate, todayISO, toCents } from "@/lib/format";
-import { chargeTypeLabels, labelOptions } from "@/lib/labels";
+import { chargeTypeLabels, labelOptions, unitLabel } from "@/lib/labels";
 import { useLease } from "@/features/leases/hooks";
 import { primaryTenant } from "@/features/leases/stats";
 import { useAddCharge } from "@/features/ledger/hooks";
@@ -165,7 +165,7 @@ function ChargeForm({ lease, month, reentry, onClose }: { lease: Lease; month: s
       onOpenChange={(open) => !open && onClose()}
       confirmClose={confirmClose}
       title={reentry ? `Re-enter charge ${reentry.from}` : "Add charge"}
-      description={`${tenant} · Unit ${lease.unit.unitNumber}, ${lease.unit.property.name}`}
+      description={`${tenant} · ${unitLabel(lease.unit.unitNumber)}, ${lease.unit.property.name}`}
       footer={
         <>
           <Button onClick={requestClose} disabled={isSubmitting}>

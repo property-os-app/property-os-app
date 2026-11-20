@@ -7,7 +7,7 @@ import { FormField, InlineError, toast } from "@/components/molecules";
 import { Modal } from "@/components/organisms";
 import { applyServerError } from "@/lib/forms";
 import { centsToAmount, formatCurrency, todayISO, toCents } from "@/lib/format";
-import { labelOptions, paymentMethodLabels } from "@/lib/labels";
+import { labelOptions, paymentMethodLabels, unitLabel } from "@/lib/labels";
 import { useRecordPayment } from "@/features/ledger/hooks";
 import { balanceText } from "@/features/ledger/balance";
 import type { PaymentPrefill } from "@/features/ledger/reenter";
@@ -124,7 +124,7 @@ export function RecordPaymentModal({ targets, presetLeaseId, reentry, onClose }:
     setFormErrors([]);
     try {
       const saved = await record.mutateAsync({ leaseId: v.leaseId, body: paymentBody(v) });
-      toast.success(reentry ? `Re-entered as ${saved.paymentNumber}` : `Payment ${saved.paymentNumber} recorded for Unit ${target?.unitNumber ?? ""}`.trim());
+      toast.success(reentry ? `Re-entered as ${saved.paymentNumber}` : `Payment ${saved.paymentNumber} recorded${target ? ` for ${unitLabel(target.unitNumber)}` : ""}`);
       onClose();
     } catch (err) {
       setFormErrors(applyServerError(setError, err, FIELDS));

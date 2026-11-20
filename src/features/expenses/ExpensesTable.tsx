@@ -7,6 +7,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { ExpenseAmount, ExpenseStatusBadges, ExpenseTicketLink } from "@/features/expenses/ExpenseParts";
 import { propertyLine, propertyText } from "@/features/expenses/expenseText";
 import type { Expense, ExpenseList } from "@/types/expense";
+import { unitLabel } from "@/lib/labels";
 
 type Props = Pick<DataTableProps<Expense>, "rows" | "state" | "sort" | "onSortChange" | "empty" | "error" | "footer"> & {
   /** "cards": the list cards in a grid (desktop Cards view); phones always get cards. */
@@ -70,7 +71,7 @@ export function ExpensesTable({ view, isMobile, categoryLabel, totals, updating,
             <div className={cn("max-w-36 truncate", !e.property && "text-text-secondary")} title={propertyText(e)}>
               {propertyText(e)}
             </div>
-            {e.unit && <Caption className="block">Unit {e.unit.unitNumber}</Caption>}
+            {e.unit && <Caption className="block">{unitLabel(e.unit.unitNumber)}</Caption>}
           </div>
         ),
       },

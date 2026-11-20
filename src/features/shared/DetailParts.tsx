@@ -1,8 +1,9 @@
 import type { MouseEvent, ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronRight, X } from "lucide-react";
 import { Button, Caption, Num, Overline, Skeleton } from "@/components/atoms";
 import { cn } from "@/lib/cn";
+import { useEscapeClose } from "@/features/shared/escapeClose";
 import { linkFocus } from "@/features/shared/linkClass";
 
 /** The page a detail page goes back to: `to` is a router path (may include a query, e.g. "/rent-roll?month=2026-10"). */
@@ -15,15 +16,17 @@ export interface Crumb {
 const hasAppHistory = () => ((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0;
 
 /**
- * One line on top of a detail page: [←] Parent › Current. The arrow and the Parent crumb go to the same place:
+ * One line on top of a detail page: [←] Parent › Current [✕]. The arrow, the Parent crumb, the ✕ and Esc go to the same place:
  * back in history when `backInHistory` (opened from `parent` in this tab, so its URL keeps the month, filters and search)
  * and there is an in-app entry, else `parent.to`. The crumb is a real link (open in a new tab works).
+ * Esc waits for open modals, drawers and menus and for text fields (see `useEscapeClose`).
  * Never wraps: the Parent crumb shortens with an ellipsis first; Current stays whole unless it alone is wider than the line.
  */
 export function BackBreadcrumb({ parent, current, backInHistory }: { parent: Crumb; current: ReactNode; backInHistory: boolean }) {
   const navigate = useNavigate();
   const canGoBack = () => backInHistory && hasAppHistory();
   const goBack = () => void (canGoBack() ? navigate(-1) : navigate(parent.to));
+  useEscapeClose(goBack);
   // A plain click on the crumb does what the arrow does; ctrl / cmd / middle click keep the link's default.
   const onCrumbClick = (e: MouseEvent<HTMLAnchorElement>) => {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !canGoBack()) return;
@@ -57,6 +60,16 @@ export function BackBreadcrumb({ parent, current, backInHistory }: { parent: Cru
           </li>
         </ol>
       </nav>
+      <Button
+        variant="ghost"
+        size="sm"
+        iconOnly
+        className="shrink-0 max-md:size-11"
+        aria-label="Close"
+        title="Close"
+        icon={<X size={16} strokeWidth={1.5} />}
+        onClick={goBack}
+      />
     </div>
   );
 }

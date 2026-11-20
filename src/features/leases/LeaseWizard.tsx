@@ -37,6 +37,7 @@ import { templateOptions } from "@/features/leases/templateOptions";
 import type { Lease } from "@/types/lease";
 import type { LeaseTemplateListItem } from "@/types/leaseTemplate";
 import type { Unit } from "@/types/unit";
+import { unitLabel } from "@/lib/labels";
 
 type SubmitKind = "draft" | "activate" | "save";
 
@@ -159,7 +160,7 @@ export function LeaseWizard({ lease, presetUnit, presetTenantId, onSaved, onClos
         toast.success(
           kind === "activate"
             ? `Lease ${saved.leaseNumber} created and activated`
-            : `Draft lease ${saved.leaseNumber} created for Unit ${saved.unit.unitNumber}`,
+            : `Draft lease ${saved.leaseNumber} created for ${unitLabel(saved.unit.unitNumber)}`,
         );
         onSaved?.(saved);
       } else {

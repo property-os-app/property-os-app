@@ -7,6 +7,7 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { ContactLink } from "@/features/shared/ContactLink";
 import { BalanceValue, RentStatusBadge, TenantLeaseBadge } from "@/features/tenants/TenantParts";
 import { rentStatus, unitLine, type TenantRow } from "@/features/tenants/stats";
+import { unitLabel } from "@/lib/labels";
 
 type Props = Pick<DataTableProps<TenantRow>, "rows" | "state" | "sort" | "onSortChange" | "empty" | "error" | "footer"> & {
   onOpen: (row: TenantRow) => void;
@@ -62,7 +63,7 @@ export function TenantsTable({ onOpen, onEdit, onDelete, ...props }: Props) {
         cell: ({ current }) =>
           current ? (
             <div className="min-w-0">
-              <div>Unit {current.unit.unitNumber}</div>
+              <div>{unitLabel(current.unit.unitNumber)}</div>
               <Caption className="block truncate">{current.unit.property.name}</Caption>
             </div>
           ) : (

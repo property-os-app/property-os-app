@@ -13,6 +13,7 @@ import { primaryTenant } from "@/features/leases/stats";
 import { textLink } from "@/features/shared/linkClass";
 import type { Lease } from "@/types/lease";
 import type { RentRollRow } from "@/types/rentRoll";
+import { unitLabel } from "@/lib/labels";
 
 /** Router state for rows opened here: the lease page shows "← Dashboard" and highlights Dashboard. */
 const fromDashboard: LeasePageState = { from: "dashboard" };
@@ -87,7 +88,7 @@ export function AtRiskLeasesTable({ atRisk }: { atRisk: Section<Lease[]> }) {
                 renderLink={dashboardLink}
                 leading={<Avatar name={name ?? "-"} size={32} />}
                 title={name ?? <span className="text-text-muted">No tenant</span>}
-                subtitle={`Unit ${l.unit.unitNumber} · ${l.unit.property.name}`}
+                subtitle={`${unitLabel(l.unit.unitNumber)} · ${l.unit.property.name}`}
                 badge={<Badge tone={b.tone}>{b.text}</Badge>}
               />
             );
@@ -98,7 +99,7 @@ export function AtRiskLeasesTable({ atRisk }: { atRisk: Section<Lease[]> }) {
   }
   const columns: Column<Lease>[] = [
     { key: "tenant", header: "Tenant", className: "max-w-40", cell: (l) => <TenantCell name={primaryTenant(l)?.fullName} /> },
-    { key: "unit", header: "Unit", className: "max-w-40", cell: (l) => <UnitCell unit={l.unit.unitNumber} property={l.unit.property.name} /> },
+    { key: "unit", header: "Unit", className: "max-w-40", cell: (l) => <UnitCell unit={unitLabel(l.unit.unitNumber)} property={l.unit.property.name} /> },
     {
       key: "expires",
       header: "Expires",
@@ -157,7 +158,7 @@ export function OverdueRentTable({ overdue }: { overdue: Section<{ row: RentRoll
                 renderLink={dashboardLink}
                 leading={<Avatar name={name ?? "-"} size={32} />}
                 title={name ?? <span className="text-text-muted">No tenant</span>}
-                subtitle={`Unit ${row.unit.unitNumber} · ${row.unit.property.name}`}
+                subtitle={`${unitLabel(row.unit.unitNumber)} · ${row.unit.property.name}`}
                 badge={<StatusBadge domain="rent" status="OVERDUE" />}
                 amount={{ label: "Balance", value: <Num className="text-danger">{formatCurrency(row.balance)}</Num>, caption: note ?? undefined }}
               />
@@ -169,7 +170,7 @@ export function OverdueRentTable({ overdue }: { overdue: Section<{ row: RentRoll
   }
   const columns: Column<{ row: RentRollRow; note: string | null }>[] = [
     { key: "tenant", header: "Tenant", className: "max-w-40", cell: ({ row }) => <TenantCell name={row.primaryTenant?.fullName} /> },
-    { key: "unit", header: "Unit", className: "max-w-40", cell: ({ row }) => <UnitCell unit={row.unit.unitNumber} property={row.unit.property.name} /> },
+    { key: "unit", header: "Unit", className: "max-w-40", cell: ({ row }) => <UnitCell unit={unitLabel(row.unit.unitNumber)} property={row.unit.property.name} /> },
     {
       key: "balance",
       header: "Balance",

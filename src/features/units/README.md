@@ -3,10 +3,11 @@
 Units: the /units list, the unit drawer (also opened from the property detail page), the add / edit modal and delete. The list follows the sidebar property scope.
 
 ## keys.ts
-- `unitKeys`: `all`, `lists` (prefix of every list), `list({ propertyId? })`.
+- `unitKeys`: `all`, `lists` (prefix of every list), `list({ propertyId? })`, `detail(id)`.
 
 ## hooks.ts
 - `useUnits({ propertyId? })`: GET /units (OWNER all, manager assigned). An unknown propertyId gives `[]`.
+- `useUnit(id)`: GET /units/:id (404 when not visible). Used by the yearly Rent Roll to open the Unit drawer from a vacant row.
 - `useCreateUnit()`: POST /units. Adds the new unit to the cached lists at once (the next step of an Add unit chain sees it for the duplicate check), then refreshes.
 - `useUpdateUnit()`: PATCH /units/:id. Refreshes units and leases (leases embed the unit number).
 - `useDeleteUnit()`: DELETE /units/:id (owner, or a manager with `units.delete`). 409 while the unit has any lease (even DRAFT) or maintenance tickets; the message says which.

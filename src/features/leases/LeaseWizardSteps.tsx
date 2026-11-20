@@ -3,7 +3,7 @@ import { FilePlus2, Plus } from "lucide-react";
 import { Body, Button, Caption, CurrencyInput, Dash, Input, Num, Select, Textarea, Toggle } from "@/components/atoms";
 import { Card, FormField, KeyValueList, SegmentedControl } from "@/components/molecules";
 import { centsToAmount, formatCurrency, formatDate, ordinal, parseDateOnly, todayISO, toCents } from "@/lib/format";
-import { paymentFrequencyLabels, plural, signatureStatusLabels, labelOptions, unitStatusLabels } from "@/lib/labels";
+import { paymentFrequencyLabels, plural, signatureStatusLabels, labelOptions, unitStatusLabels, unitLabel } from "@/lib/labels";
 import { compareNatural } from "@/lib/sort";
 import { formMissing, type FormInput, type FormOutput } from "@/features/leases/form";
 import { firstRentDate, termEndDate, termMonthsOf } from "@/features/leases/stats";
@@ -146,7 +146,7 @@ export function PartiesStep(ctx: StepContext) {
               <option value="">{ctx.unitsPending ? "Loading units..." : sortedUnits.length === 0 ? "No units" : "Choose a unit"}</option>
               {sortedUnits.map((u) => (
                 <option key={u.id} value={u.id}>
-                  {propertyId ? "" : `${names.get(u.propertyId) ?? ""}: `}Unit {u.unitNumber} · {unitStatusLabels[u.status]}
+                  {propertyId ? "" : `${names.get(u.propertyId) ?? ""}: `}{unitLabel(u.unitNumber)} · {unitStatusLabels[u.status]}
                   {u.status === "OCCUPIED" ? " (has an active lease)" : ""}
                 </option>
               ))}
@@ -328,7 +328,7 @@ export function TermsStep(ctx: StepContext) {
         htmlFor="lw-rent"
         required
         error={errors.rent?.message}
-        help={unit ? `Listed rent for Unit ${unit.unitNumber} is ${formatCurrency(unit.monthlyRent)}` : undefined}
+        help={unit ? `Listed rent for ${unitLabel(unit.unitNumber)} is ${formatCurrency(unit.monthlyRent)}` : undefined}
       >
         <Controller
           control={control}
@@ -470,7 +470,7 @@ export function ReviewStep({ form, closed, units, unitLine, lookupTenant, templa
       <KeyValueList
         labelWidth={150}
         items={[
-          { label: "Unit", value: unit ? `Unit ${unit.unitNumber}` : unitLine || <Dash /> },
+          { label: "Unit", value: unit ? `${unitLabel(unit.unitNumber)}` : unitLine || <Dash /> },
           { label: "Primary tenant", value: v.primaryTenantId ? (lookupTenant(v.primaryTenantId)?.fullName ?? <Dash />) : <Dash /> },
           { label: "Co-tenants", value: coNames.length > 0 ? coNames.join(", ") : <Dash /> },
           {

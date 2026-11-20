@@ -1,6 +1,7 @@
 /** Display text for tickets: number, location, age, SLA, closed line, week start (unit-tested). */
 import { addDaysISO, formatCurrency, parseDateOnly } from "@/lib/format";
 import type { MaintenanceStatus, MaintenanceTicket } from "@/types/maintenance";
+import { unitLabel } from "@/lib/labels";
 
 const ACTIVE: MaintenanceStatus[] = ["OPEN", "ASSIGNED", "IN_PROGRESS"];
 
@@ -16,7 +17,7 @@ export function ticketNo(t: Pick<MaintenanceTicket, "ticketNumber">): string {
 
 /** "Unit 7D, Maple Court", "Common area, Oakridge Commons", or just the property name. The unit wins over the note. */
 export function locationLabel(t: Pick<MaintenanceTicket, "property" | "unit" | "locationNote">): string {
-  if (t.unit) return `Unit ${t.unit.unitNumber}, ${t.property.name}`;
+  if (t.unit) return `${unitLabel(t.unit.unitNumber)}, ${t.property.name}`;
   if (t.locationNote) return `${t.locationNote}, ${t.property.name}`;
   return t.property.name;
 }

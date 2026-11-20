@@ -15,6 +15,7 @@ import { PriorityBadge, TicketExpenseBadge, TicketStatusBadges } from "@/feature
 import { locationLabel, slaText, ticketNo, timestampText } from "@/features/maintenance/ticketText";
 import { useTradeLabel } from "@/features/vendors/hooks";
 import type { MaintenanceTicket } from "@/types/maintenance";
+import { unitLabel } from "@/lib/labels";
 
 export interface TicketDrawerProps {
   id: string;
@@ -94,7 +95,7 @@ export function TicketDrawer({ id, placeholder, onAction, onClose }: TicketDrawe
               labelWidth={140}
               items={[
                 { label: "Property", value: t.property.name },
-                { label: "Location", value: [t.unit ? `Unit ${t.unit.unitNumber}` : null, t.locationNote].filter(Boolean).join(" · ") || <Dash /> },
+                { label: "Location", value: [t.unit ? `${unitLabel(t.unit.unitNumber)}` : null, t.locationNote].filter(Boolean).join(" · ") || <Dash /> },
                 {
                   label: "SLA",
                   value: sla ? (

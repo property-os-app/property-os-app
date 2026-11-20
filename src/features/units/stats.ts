@@ -1,6 +1,6 @@
 /** Numbers and notes the frontend computes for units and their active lease. All money math in integer cents. */
 import { centsToAmount, formatCurrency, toCents } from "@/lib/format";
-import { plural, unitLayout } from "@/lib/labels";
+import { plural, unitLayout, unitLabel } from "@/lib/labels";
 import { compareNatural } from "@/lib/sort";
 import type { Lease } from "@/types/lease";
 import type { Unit, UnitStatus } from "@/types/unit";
@@ -33,13 +33,13 @@ export function buildUnitListRows(units: Unit[], activeLeases: Lease[], property
 export function maintenanceNote(rows: UnitListRow[]): string {
   const list = rows.filter((r) => r.unit.status === "UNDER_MAINTENANCE");
   if (list.length === 0) return "None";
-  if (list.length === 1) return `Unit ${list[0].unit.unitNumber}${list[0].propertyName ? `, ${list[0].propertyName}` : ""}`;
+  if (list.length === 1) return `${unitLabel(list[0].unit.unitNumber)}${list[0].propertyName ? `, ${list[0].propertyName}` : ""}`;
   return plural(list.length, "unit");
 }
 
 /** Text for searching a row: unit number, property name and every tenant on the active lease. */
 export function unitSearchText(row: UnitListRow): string[] {
-  return [row.unit.unitNumber, `Unit ${row.unit.unitNumber}`, row.propertyName, ...(row.active?.tenants.map((t) => t.fullName) ?? [])];
+  return [row.unit.unitNumber, `${unitLabel(row.unit.unitNumber)}`, row.propertyName, ...(row.active?.tenants.map((t) => t.fullName) ?? [])];
 }
 
 /** Drawer description: "1 bd / 1 ba · 750 sq ft · Floor 3 · Listed rent $1,450.00" (null parts skipped). */

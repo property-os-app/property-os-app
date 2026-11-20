@@ -23,11 +23,11 @@ describe("rentReminderLinks", () => {
   afterEach(() => vi.useRealTimers());
 
   it("quotes the overdue amount, not the whole balance", () => {
-    expect(body(input)).toContain("your rent of $1,200.00 for Maple Court 4B is 23 days overdue (due Oct 1, 2026)");
+    expect(body(input)).toContain("your rent of $1,200.00 for Maple Court, Unit 4B is 23 days overdue (due Oct 1, 2026)");
   });
 
   it("leaves the amount out when it is unknown", () => {
-    expect(body({ ...input, overdue: null })).toContain("your rent for Maple Court 4B is 23 days overdue");
+    expect(body({ ...input, overdue: null })).toContain("your rent for Maple Court, Unit 4B is 23 days overdue");
   });
 
   it("no email or phone: no links", () => {

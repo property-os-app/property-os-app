@@ -6,9 +6,13 @@ Small page pieces used by more than one feature area (built only from design sys
 
 Pieces of the detail pages (`/properties/:id`, `/leases/:id`).
 
-- `BackBreadcrumb({ parent, current, backInHistory })`: one line on top of a detail page, "[←] Parent › Current". The arrow (aria-label "Back to {Parent}", 44px on phones) and the Parent crumb go to the same place: back in history when `backInHistory` and there is an in-app entry (keeps the list's month, filters and search), else `parent.to`. The crumb is a real link (ctrl / middle click opens a new tab). Never wraps: Parent shortens with an ellipsis, Current stays whole (`aria-current="page"`). `Crumb`: `{ label, to }`.
+- `BackBreadcrumb({ parent, current, backInHistory })`: one line on top of a detail page, "[←] Parent › Current [✕]". The arrow (aria-label "Back to {Parent}", 44px on phones), the Parent crumb, the ✕ at the right end (aria-label and tooltip "Close", 44px on phones, 32px from md) and Esc (`useEscapeClose`) go to the same place: back in history when `backInHistory` and there is an in-app entry (keeps the list's month, filters and search), else `parent.to`. The crumb is a real link (ctrl / middle click opens a new tab). Never wraps: Parent shortens with an ellipsis, Current stays whole (`aria-current="page"`). `Crumb`: `{ label, to }`.
 - `Crumb`: one breadcrumb link (`label`, `to`).
 - `Tile({ label, value, note, loading, className })`: KPI tile inside the header card; skeleton while `loading`.
+
+## escapeClose.ts
+- `canEscapeClose(event, doc)`: true for a plain, single Esc when no modal, drawer or menu is open and focus isn't in a text field or select.
+- `useEscapeClose(onClose)`: calls `onClose` on such an Esc. Listens on window in the capture phase, before Radix and `KebabMenu` close their layer, so one Esc never closes both the layer and the page.
 
 ## WakingNotice.tsx
 - `WakingNotice({ className })`: "Waking up the server… this can take up to a minute." (polite live region) while `useServerWaking()` is true; empty otherwise. Used under `FullPageLoading` and above the page in `AppLayout`.
@@ -33,6 +37,10 @@ Phone (under md) toolbar pieces; desktop toolbars use only the compact `SortSele
 - `SortSelect({ sort, onSortChange, options, id, compact })`: "Sort by" select for views without column headers (phones, desktop Cards view); writes the same `useClientTable` sort. `compact`: no visible label (aria-label "Sort by"), 224px wide, options read "Sort: Tenant, A to Z", for a desktop toolbar. `SortOption`: key, label, kind (labels "A to Z", "low to high", "soonest first").
 - `FilterGroup({ label, children })`: a labelled block in the sheet for a control that isn't one field (status segments, a chip).
 
+## columnVisibility.ts
+- `useColumnVisibility(page, known, defaults)`: a table's shown optional columns, saved in this browser (key `propertyos.{page}.columns`); returns `visible` (in `known` order), `toggle(key, shown)` and `reset()`. Storage errors fall back to the defaults. Used by the yearly Rent Roll.
+- `parseSavedColumns(saved, known)`: the saved JSON list, filtered to known keys (null when missing or broken). Tested in `columnVisibility.test.ts`.
+
 ## listView.ts
 - `ListView`: "cards" | "table", a main list's desktop view.
 - `useListView(page, fallback)`: the saved choice (`useStoredView`, key `propertyos.{page}.view`). Used by Properties and Tenants (default Cards) and Leases, Units, Rent Roll (default Table). Phones ignore it (always cards).
@@ -51,4 +59,5 @@ Phone (under md) toolbar pieces; desktop toolbars use only the compact `SortSele
 - `MergedSortHeader({ sort, onSortChange, keys })`: the header of a DataTable column that merges sortable columns: one sort button per merged column ("Rating · Jobs", "Tenant · Unit"), same look and cycle as DataTable's own. Use it as the column `header`, without `sortable`. `MergedSortHeaderProps`.
 
 ## Tests (`npm test`)
+- `escapeClose.test.ts`: Esc closes the page only with no open layer, no text field focused, no modifier and no key repeat.
 - `rentReminder.test.ts`: the email quotes the overdue amount, leaves it out when unknown, no links without email or phone.

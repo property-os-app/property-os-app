@@ -138,3 +138,12 @@ export function labelOptions<K extends string>(labels: Record<K, string>): { val
 export function plural(count: number, singular: string, pluralWord = `${singular}s`): string {
   return `${count.toLocaleString("en-US")} ${count === 1 ? singular : pluralWord}`;
 }
+
+/**
+ * How a unit is named everywhere: "Unit " in front only when the unit number starts with a digit ("2" -> "Unit 2",
+ * "4B" -> "Unit 4B"); otherwise as entered ("Unit 1", "UNIT 1", "House", "Office"), so nothing reads "Unit Unit 1".
+ */
+export function unitLabel(unitNumber: string): string {
+  const n = unitNumber.trim();
+  return /^\d/.test(n) ? `Unit ${n}` : n;
+}
