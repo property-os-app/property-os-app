@@ -6,7 +6,7 @@ import { KebabMenu, ListCard, StatusBadge, type MenuItem } from "@/components/mo
 import { CardList, DataTable, type Column, type DataTableProps } from "@/components/organisms";
 import { cn } from "@/lib/cn";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { signatureStatusLabels } from "@/lib/labels";
+import { signatureStatusLabels, unitLabel } from "@/lib/labels";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { BalanceText } from "@/features/ledger/LedgerParts";
 import type { LeasePageState } from "@/features/leases/LeasePage";
@@ -85,7 +85,7 @@ export function LeasesTable({ cards, onOpen, onEdit, onActivate, onEnd, onDelete
         header: "Unit",
         cell: (l) => (
           <div className="min-w-0">
-            <div>Unit {l.unit.unitNumber}</div>
+            <div>{unitLabel(l.unit.unitNumber)}</div>
             <Caption className="block truncate">{l.unit.property.name}</Caption>
           </div>
         ),
@@ -174,7 +174,7 @@ export function LeasesTable({ cards, onOpen, onEdit, onActivate, onEnd, onDelete
               renderLink={(href, p) => <Link to={href} state={fromLeases} {...p} />}
               leading={<Avatar name={primaryTenant(l)?.fullName ?? "-"} size={32} />}
               title={name ?? <span className="text-text-muted">No tenant yet</span>}
-              subtitle={`Unit ${l.unit.unitNumber} · ${l.unit.property.name}`}
+              subtitle={`${unitLabel(l.unit.unitNumber)} · ${l.unit.property.name}`}
               badge={
                 <>
                   <LeaseBadge lease={l} />

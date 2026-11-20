@@ -2,7 +2,7 @@ import { Dash, Num, Small } from "@/components/atoms";
 import { ListCard, StatusBadge } from "@/components/molecules";
 import { CardList, DataTable, Pagination, type Column, type DataTableProps } from "@/components/organisms";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { unitTypeLabels } from "@/lib/labels";
+import { unitTypeLabels, unitLabel } from "@/lib/labels";
 import { useClientTable } from "@/lib/useClientTable";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { primaryTenantName, type UnitRow } from "@/features/properties/stats";
@@ -28,7 +28,7 @@ const columns: Column<UnitRow>[] = [
     header: "Unit",
     cell: ({ unit }) => (
       <span>
-        <span className="font-semibold">{unit.unitNumber}</span>
+        <span className="font-semibold">{unitLabel(unit.unitNumber)}</span>
         <Small>
           {" "}
           · {unitTypeLabels[unit.unitType]} · {unit.floorArea.toLocaleString("en-US")} sq ft
@@ -70,8 +70,8 @@ export function PropertyUnitsTable({ rows, state, empty, error, caption, onRowCl
           <ListCard
             flat
             onOpen={onRowClick ? () => onRowClick(r) : undefined}
-            openLabel={`Open unit ${r.unit.unitNumber}`}
-            title={`Unit ${r.unit.unitNumber}`}
+            openLabel={`Open ${unitLabel(r.unit.unitNumber)}`}
+            title={`${unitLabel(r.unit.unitNumber)}`}
             subtitle={`${unitTypeLabels[r.unit.unitType]} · ${r.unit.floorArea.toLocaleString("en-US")} sq ft`}
             badge={statusBadge(r)}
             amount={{ label: "Rent", value: <Num>{formatCurrency(r.active ? r.active.rent : r.unit.monthlyRent)}</Num> }}

@@ -3,9 +3,9 @@ import { Badge, Num } from "@/components/atoms";
 import { ListCard } from "@/components/molecules";
 import { CardList } from "@/components/organisms";
 import { formatCurrency, formatCurrencyShort, toCents } from "@/lib/format";
-import { plural } from "@/lib/labels";
+import { plural, unitLabel } from "@/lib/labels";
 import { MonthStrip } from "@/features/rent-roll/MonthStrip";
-import { isReservedRow, leaseTenantLabel, otherTenantsText, renewalAlertLabels, renewalAlertTone, rowTitle, yearRowKey, type PropertyGroup } from "@/features/rent-roll/yearStats";
+import { isReservedRow, leaseTenantLabel, renewalAlertLabels, renewalAlertTone, rowTitle, yearRowKey, type PropertyGroup } from "@/features/rent-roll/yearStats";
 import type { RentRollYearResponse, RentRollYearRow, RentRollYearTotals } from "@/types/rentRoll";
 
 /** One item of the phone list: a property's subtotal card (before its rows) or a row card. */
@@ -35,7 +35,7 @@ export interface YearCardsProps {
 
 /**
  * The yearly rent roll on phones (CardList): the grand total card on top, then per property a subtotal card followed by
- * one card per unit: the current tenant (or "Vacant" / "Reserved" with a grey badge), unit · lease number, "Earlier: …" tenants,
+ * one card per unit: the current tenant (or "Vacant" / "Reserved" with a grey badge), the unit,
  * the 12-month strip, the year's paid total and the renewal alert. A tap opens the current lease (or the Unit drawer).
  */
 export function YearCards({ data, groups, year, state, empty, error, note, onOpen }: YearCardsProps) {
@@ -60,24 +60,18 @@ export function YearCards({ data, groups, year, state, empty, error, note, onOpe
           const r = it.row;
           const names = rowTitle(r);
           const reserved = isReservedRow(r);
-          const others = otherTenantsText(r);
           return (
             <ListCard
               title={r.lease ? leaseTenantLabel(r.lease, true) : names}
-              subtitle={`Unit ${r.unit.unitNumber}${r.lease ? ` · ${r.lease.leaseNumber}` : ""}`}
+              subtitle={unitLabel(r.unit.unitNumber)}
               muted={!r.lease}
               badge={
                 reserved ? <Badge tone="neutral">Reserved</Badge> : r.renewalAlert ? <Badge tone={renewalAlertTone[r.renewalAlert]}>{renewalAlertLabels[r.renewalAlert]}</Badge> : undefined
               }
               amount={{ label: `Paid ${year}`, value: <Num title={formatCurrency(r.totalPaid)}>{formatCurrencyShort(r.totalPaid)}</Num>, caption: `of ${formatCurrencyShort(r.totalCharged)}` }}
-              note={
-                <>
-                  {others && <span className="block truncate text-text-muted">{others}</span>}
-                  <MonthStrip row={r} year={year} />
-                </>
-              }
+              note={<MonthStrip row={r} year={year} />}
               onOpen={() => onOpen(r)}
-              openLabel={r.lease ? `Open lease ${r.lease.leaseNumber}, ${names}` : `Open unit ${r.unit.unitNumber}, ${names.toLowerCase()}`}
+              openLabel={r.lease ? `Open lease ${r.lease.leaseNumber}, ${names}` : `Open ${unitLabel(r.unit.unitNumber)}, ${names.toLowerCase()}`}
             />
           );
         }}

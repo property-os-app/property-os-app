@@ -1,5 +1,6 @@
 /** Display texts for an expense. */
 import type { Expense } from "@/types/expense";
+import { unitLabel } from "@/lib/labels";
 
 /** An expense with no property: for the whole portfolio (Owner only). The sidebar's "All properties" means no filter. */
 export const PORTFOLIO_WIDE = "Portfolio-wide";
@@ -11,7 +12,7 @@ export function propertyText(e: Pick<Expense, "property">): string {
 
 /** "Maple Court · Unit 4B", "Maple Court" or "Portfolio-wide". */
 export function propertyLine(e: Pick<Expense, "property" | "unit">): string {
-  return e.unit ? `${propertyText(e)} · Unit ${e.unit.unitNumber}` : propertyText(e);
+  return e.unit ? `${propertyText(e)} · ${unitLabel(e.unit.unitNumber)}` : propertyText(e);
 }
 
 /** The Owner's own expenses are approved on creation (approvedBy = createdBy); nobody can approve their own otherwise. */

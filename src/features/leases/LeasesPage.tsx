@@ -6,7 +6,7 @@ import { FormField, KpiCard, SearchInput, SegmentedControl } from "@/components/
 import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { centsToAmount, formatCompactCurrency } from "@/lib/format";
-import { plural, signatureStatusLabels } from "@/lib/labels";
+import { plural, signatureStatusLabels, unitLabel } from "@/lib/labels";
 import { useClientTable, type SortColumn } from "@/lib/useClientTable";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
@@ -52,7 +52,7 @@ function matchStatus(l: Lease, status: StatusFilter): boolean {
 
 const matchFilters = (l: Lease, f: Filters) => matchStatus(l, f.status) && (f.esign === "all" || l.signatureStatus === f.esign);
 
-const searchText = (l: Lease) => [l.leaseNumber, l.unit.unitNumber, `Unit ${l.unit.unitNumber}`, ...l.tenants.map((t) => t.fullName)];
+const searchText = (l: Lease) => [l.leaseNumber, l.unit.unitNumber, `${unitLabel(l.unit.unitNumber)}`, ...l.tenants.map((t) => t.fullName)];
 
 const sorts: Record<string, SortColumn<Lease>> = {
   tenant: { kind: "text", value: (l) => primaryTenant(l)?.fullName },

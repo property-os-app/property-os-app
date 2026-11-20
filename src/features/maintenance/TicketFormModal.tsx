@@ -6,7 +6,7 @@ import { FormField, InlineError, toast } from "@/components/molecules";
 import { Modal } from "@/components/organisms";
 import { ApiError, errorText } from "@/lib/api";
 import { applyServerErrorBy } from "@/lib/forms";
-import { labelOptions, priorityLabels } from "@/lib/labels";
+import { labelOptions, priorityLabels, unitLabel } from "@/lib/labels";
 import { useProperties } from "@/features/properties/hooks";
 import { useScope } from "@/features/scope/scopeContext";
 import { RatingInput } from "@/features/shared/Rating";
@@ -166,7 +166,7 @@ function TicketForm({ ticket, onSaved, onClose }: TicketFormModalProps) {
             <option value="">{units.isPending ? "Loading units..." : "No unit"}</option>
             {unitOptions.map((u) => (
               <option key={u.id} value={u.id}>
-                Unit {u.unitNumber}
+                {unitLabel(u.unitNumber)}
               </option>
             ))}
           </Select>

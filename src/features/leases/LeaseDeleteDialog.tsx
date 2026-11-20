@@ -4,6 +4,7 @@ import { ConfirmDialog } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { useDeleteLease } from "@/features/leases/hooks";
 import type { Lease } from "@/types/lease";
+import { unitLabel } from "@/lib/labels";
 
 export interface LeaseDeleteDialogProps {
   /** The draft to delete; null keeps the dialog closed. */
@@ -41,7 +42,7 @@ export function LeaseDeleteDialog({ lease, onClose, onDeleted }: LeaseDeleteDial
       open={lease !== null}
       onOpenChange={(open) => !open && close()}
       title={lease ? `Delete draft lease ${lease.leaseNumber}?` : "Delete draft lease?"}
-      consequence={lease ? `This removes the draft for Unit ${lease.unit.unitNumber}, ${lease.unit.property.name}. It can't be undone.` : ""}
+      consequence={lease ? `This removes the draft for ${unitLabel(lease.unit.unitNumber)}, ${lease.unit.property.name}. It can't be undone.` : ""}
       confirmLabel="Delete draft"
       destructive
       onConfirm={() => void confirm()}

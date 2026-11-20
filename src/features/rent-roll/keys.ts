@@ -4,5 +4,5 @@ import { rentRollPrefix } from "@/features/leases/keys";
 export const rentRollKeys = {
   all: rentRollPrefix,
   month: (month: string, propertyId: string | null) => [...rentRollPrefix, month, propertyId ?? "all"] as const,
-  year: (year: number, propertyId: string | null) => [...rentRollPrefix, "year", year, propertyId ?? "all"] as const,
+  year: (year: number, propertyId: string | null, rowsBy: "unit" | "lease" = "unit") => [...rentRollPrefix, "year", year, propertyId ?? "all", rowsBy] as const,
 };

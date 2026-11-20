@@ -3,6 +3,7 @@ import { ConfirmDialog } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { useDeleteUnit } from "@/features/units/hooks";
 import type { Unit } from "@/types/unit";
+import { unitLabel } from "@/lib/labels";
 
 export interface UnitDeleteDialogProps {
   /** The unit to delete; null keeps the dialog closed. */
@@ -16,7 +17,7 @@ export interface UnitDeleteDialogProps {
 /** "Delete unit?" confirm (OWNER). The backend's 409 ("Cannot delete unit 4B: it has 1 draft lease(s). Delete them first.", active or ended leases, maintenance tickets) shows inside the dialog. */
 export function UnitDeleteDialog({ unit, propertyName, onClose, onDeleted }: UnitDeleteDialogProps) {
   const del = useDeleteUnit();
-  const name = unit ? `Unit ${unit.unitNumber}${propertyName ? `, ${propertyName}` : ""}` : "";
+  const name = unit ? `${unitLabel(unit.unitNumber)}${propertyName ? `, ${propertyName}` : ""}` : "";
 
   return (
     <ConfirmDialog
@@ -35,7 +36,7 @@ export function UnitDeleteDialog({ unit, propertyName, onClose, onDeleted }: Uni
         if (!unit) return;
         del.mutate(unit.id, {
           onSuccess: () => {
-            toast.success(`Unit ${unit.unitNumber} deleted`);
+            toast.success(`${unitLabel(unit.unitNumber)} deleted`);
             del.reset();
             onClose();
             onDeleted?.();

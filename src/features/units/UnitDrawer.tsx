@@ -6,7 +6,7 @@ import { Card, EmptyState, InlineError, KeyValueList, ListCard, StatusBadge, Tab
 import { CardList, DataTable, Drawer, type Column } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { unitStatusLabels, unitTypeLabels } from "@/lib/labels";
+import { unitStatusLabels, unitTypeLabels, unitLabel } from "@/lib/labels";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
@@ -73,7 +73,7 @@ export function UnitDrawer({ unit, propertyName, leaseFrom, onClose }: UnitDrawe
         open
         onOpenChange={(open) => !open && onClose()}
         size="lg"
-        title={`Unit ${unit.unitNumber}${propertyName ? `, ${propertyName}` : ""}`}
+        title={`${unitLabel(unit.unitNumber)}${propertyName ? `, ${propertyName}` : ""}`}
         description={unitSummary(unit)}
         status={<StatusBadge domain="unit" status={unit.status} />}
         tabs={

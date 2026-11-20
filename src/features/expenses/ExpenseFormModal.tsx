@@ -5,7 +5,7 @@ import { Button, CurrencyInput, Input, Select, Textarea } from "@/components/ato
 import { FormField, InlineError, toast } from "@/components/molecules";
 import { Modal } from "@/components/organisms";
 import { applyServerErrorBy } from "@/lib/forms";
-import { expenseTypeLabels, labelOptions, paymentMethodLabels } from "@/lib/labels";
+import { expenseTypeLabels, labelOptions, paymentMethodLabels, unitLabel } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
 import { createExpenseBody, expenseChanges, expenseDefaults, expenseErrorField, expenseSchema, PORTFOLIO, type ExpenseFormInput, type ExpenseFormOutput } from "@/features/expenses/form";
 import { propertyText } from "@/features/expenses/expenseText";
@@ -181,7 +181,7 @@ export function ExpenseFormModal({ expense, onSaved, onClose }: ExpenseFormModal
               <Input id="ef-property" readOnly value={expense ? propertyText(expense) : ""} />
             </FormField>
             <FormField label="Unit" htmlFor="ef-unit" help={`Follows ticket #${ticket.ticketNumber}.`}>
-              <Input id="ef-unit" readOnly value={expense?.unit ? `Unit ${expense.unit.unitNumber}` : "Whole property"} />
+              <Input id="ef-unit" readOnly value={expense?.unit ? `${unitLabel(expense.unit.unitNumber)}` : "Whole property"} />
             </FormField>
           </>
         ) : (
@@ -202,7 +202,7 @@ export function ExpenseFormModal({ expense, onSaved, onClose }: ExpenseFormModal
                 <option value="">{units.isPending ? "Loading units..." : "Whole property"}</option>
                 {unitOptions.map((u) => (
                   <option key={u.id} value={u.id}>
-                    Unit {u.unitNumber}
+                    {unitLabel(u.unitNumber)}
                   </option>
                 ))}
               </Select>

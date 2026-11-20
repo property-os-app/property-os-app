@@ -4,7 +4,7 @@ import { Caption, Dash, Num } from "@/components/atoms";
 import { KebabMenu, ListCard, StatusBadge, type MenuItem } from "@/components/molecules";
 import { CardList, DataTable, type Column, type DataTableProps } from "@/components/organisms";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { unitLayout } from "@/lib/labels";
+import { unitLayout, unitLabel } from "@/lib/labels";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { primaryTenantName } from "@/features/properties/stats";
 import type { UnitListRow } from "@/features/units/stats";
@@ -34,7 +34,7 @@ export function UnitsTable({ cards, onOpen, onEdit, onDelete, ...props }: Props)
             const items: MenuItem[] = [];
             if (onEdit) items.push({ label: "Edit", icon: <Pencil strokeWidth={1.5} />, onSelect: () => onEdit(row) });
             if (onDelete) items.push({ label: "Delete", icon: <Trash2 strokeWidth={1.5} />, destructive: true, onSelect: () => onDelete(row) });
-            return <KebabMenu label={`Actions for unit ${row.unit.unitNumber}`} items={items} />;
+            return <KebabMenu label={`Actions for ${unitLabel(row.unit.unitNumber)}`} items={items} />;
           }
         : null,
     [onEdit, onDelete],
@@ -49,7 +49,7 @@ export function UnitsTable({ cards, onOpen, onEdit, onDelete, ...props }: Props)
         sortable: true,
         cell: (r) => (
           <div className="min-w-0">
-            <div className="font-semibold">Unit {r.unit.unitNumber}</div>
+            <div className="font-semibold">{unitLabel(r.unit.unitNumber)}</div>
             {r.propertyName && (
               <Caption className="block max-w-48 truncate" title={r.propertyName}>
                 {r.propertyName}
@@ -107,8 +107,8 @@ export function UnitsTable({ cards, onOpen, onEdit, onDelete, ...props }: Props)
         renderCard={(r) => (
           <ListCard
             onOpen={() => onOpen(r)}
-            openLabel={`Open unit ${r.unit.unitNumber}${r.propertyName ? `, ${r.propertyName}` : ""}`}
-            title={`Unit ${r.unit.unitNumber}`}
+            openLabel={`Open ${unitLabel(r.unit.unitNumber)}${r.propertyName ? `, ${r.propertyName}` : ""}`}
+            title={`${unitLabel(r.unit.unitNumber)}`}
             subtitle={[r.propertyName, unitLayout(r.unit.unitType, r.unit.bathrooms)].filter(Boolean).join(" · ")}
             badge={<StatusBadge domain="unit" status={r.unit.status} />}
             amount={{ label: "Current rent", value: r.active ? formatCurrency(r.active.rent) : <Dash /> }}

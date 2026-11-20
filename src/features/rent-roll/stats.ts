@@ -10,7 +10,7 @@ import {
   todayUTC,
   toCents,
 } from "@/lib/format";
-import { paymentFrequencyLabels, plural } from "@/lib/labels";
+import { paymentFrequencyLabels, plural, unitLabel } from "@/lib/labels";
 import { firstRentDate } from "@/features/leases/stats";
 import { billOnDate } from "@/features/settings/billing";
 import type { PaymentTarget } from "@/features/ledger/RecordPaymentModal";
@@ -110,7 +110,7 @@ export function statusCounts(rows: RentRollRow[], upcoming: Map<string, Upcoming
 }
 
 /** Same fields as the API search, except co-tenants (rows only carry the primary tenant). */
-export const rowSearchText = (r: RentRollRow) => [r.leaseNumber, r.unit.unitNumber, `Unit ${r.unit.unitNumber}`, r.primaryTenant?.fullName];
+export const rowSearchText = (r: RentRollRow) => [r.leaseNumber, r.unit.unitNumber, `${unitLabel(r.unit.unitNumber)}`, r.primaryTenant?.fullName];
 
 /** Leases that owe something (balance > 0), for the Outstanding KPI chip. */
 export const owingCount = (rows: RentRollRow[]) => rows.filter((r) => toCents(r.balance) > 0).length;
@@ -179,7 +179,7 @@ export function statusDate(
 }
 
 /** "{tenant}, Unit {n}, {property}". */
-export const rowLabel = (r: RentRollRow) => `${r.primaryTenant?.fullName ?? "No tenant"}, Unit ${r.unit.unitNumber}, ${r.unit.property.name}`;
+export const rowLabel = (r: RentRollRow) => `${r.primaryTenant?.fullName ?? "No tenant"}, ${unitLabel(r.unit.unitNumber)}, ${r.unit.property.name}`;
 
 /** Record Payment choices from the month's rows (balance = the row's balance at month end). */
 export const paymentTargets = (rows: RentRollRow[]): PaymentTarget[] =>

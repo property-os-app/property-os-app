@@ -4,6 +4,7 @@ import { Drawer } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { useUnit } from "@/features/units/hooks";
 import { UnitDrawer } from "@/features/units/UnitDrawer";
+import { unitLabel } from "@/lib/labels";
 
 /**
  * The Unit drawer for a vacant row of the yearly Rent Roll. The row only has part of the unit, so this loads it
@@ -13,7 +14,7 @@ export function YearUnitDrawer({ unitId, unitNumber, propertyName, onClose }: { 
   const unit = useUnit(unitId);
   if (unit.isSuccess) return <UnitDrawer unit={unit.data} propertyName={propertyName} leaseFrom={{ from: "rent-roll" }} onClose={onClose} />;
   return (
-    <Drawer open onOpenChange={(open) => !open && onClose()} title={`Unit ${unitNumber}`} description={propertyName} size="lg">
+    <Drawer open onOpenChange={(open) => !open && onClose()} title={`${unitLabel(unitNumber)}`} description={propertyName} size="lg">
       {unit.isError ? (
         <InlineError title="Couldn't load this unit" description={errorText(unit.error)} onRetry={() => void unit.refetch()} />
       ) : (

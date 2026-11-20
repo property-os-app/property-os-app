@@ -5,7 +5,7 @@ import { KebabMenu, ListCard, StatusBadge, type MenuItem } from "@/components/mo
 import { CardList, DataTable, type Column, type DataTableProps } from "@/components/organisms";
 import { cn } from "@/lib/cn";
 import { centsToAmount, formatCurrency, toCents, type MoneyInput } from "@/lib/format";
-import { leaseStatusLabels } from "@/lib/labels";
+import { leaseStatusLabels, unitLabel } from "@/lib/labels";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { BalanceText } from "@/features/ledger/LedgerParts";
 import { balanceText } from "@/features/ledger/balance";
@@ -63,7 +63,7 @@ function OwedTotal({ owedCents, creditCents }: { owedCents: number; creditCents:
 
 /** "Unit 4B · Maple Court · LSE-2026-001" (the property only when the list spans properties). */
 function unitText(r: RentRollRow, showProperty: boolean): string {
-  return [`Unit ${r.unit.unitNumber}`, showProperty ? r.unit.property.name : null, r.leaseNumber].filter(Boolean).join(" · ");
+  return [`${unitLabel(r.unit.unitNumber)}`, showProperty ? r.unit.property.name : null, r.leaseNumber].filter(Boolean).join(" · ");
 }
 
 /** Amount with an optional caption under it, right-aligned. `wrap`: the caption wraps (max 144px) instead of widening the column. */
@@ -220,7 +220,7 @@ export function RentRollTable({ cards, totalRows, showProperty, pastMonth, billi
               openLabel={`Open ledger for lease ${r.leaseNumber}${name ? `, ${name}` : ""}`}
               leading={<Avatar name={name ?? "-"} size={32} />}
               title={name ?? <span className="text-text-muted">No tenant</span>}
-              subtitle={[`Unit ${r.unit.unitNumber}`, showProperty ? r.unit.property.name : null, r.leaseNumber].filter(Boolean).join(" · ")}
+              subtitle={[`${unitLabel(r.unit.unitNumber)}`, showProperty ? r.unit.property.name : null, r.leaseNumber].filter(Boolean).join(" · ")}
               badge={
                 <>
                   {next ? <Badge tone="info">Upcoming</Badge> : <StatusBadge domain="rent" status={r.status} />}

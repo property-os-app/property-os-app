@@ -5,6 +5,7 @@ import { Modal } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { useEndLease } from "@/features/leases/hooks";
 import type { Lease } from "@/types/lease";
+import { unitLabel } from "@/lib/labels";
 
 type EndStatus = "ENDED" | "TERMINATED";
 
@@ -52,7 +53,7 @@ export function LeaseEndModal({ lease, onClose }: { lease: Lease; onClose: () =>
         className="w-fit max-w-full flex-wrap"
       />
       <Body className="m-0">
-        Unit {lease.unit.unitNumber} becomes vacant if it has no other active lease. Charges and payments stay in the ledger.
+        {unitLabel(lease.unit.unitNumber)} becomes vacant if it has no other active lease. Charges and payments stay in the ledger.
       </Body>
       {error && <InlineError title={error} />}
     </Modal>

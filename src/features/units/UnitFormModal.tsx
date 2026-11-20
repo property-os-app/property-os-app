@@ -8,7 +8,7 @@ import { Modal } from "@/components/organisms";
 import { ApiError } from "@/lib/api";
 import { applyServerError } from "@/lib/forms";
 import { centsToAmount, toCents } from "@/lib/format";
-import { labelOptions, unitStatusLabels, unitTypeLabels } from "@/lib/labels";
+import { labelOptions, unitStatusLabels, unitTypeLabels, unitLabel } from "@/lib/labels";
 import { useProperties } from "@/features/properties/hooks";
 import { useCreateUnit, useUnits, useUpdateUnit } from "@/features/units/hooks";
 import type { Unit, UnitCreateBody, UnitStatus, UnitType, UnitUpdateBody } from "@/types/unit";
@@ -75,7 +75,7 @@ function makeSchema(units: Unit[], propertyName: (id: string) => string, editing
         (u) => u.propertyId === v.propertyId && u.id !== editing?.id && u.unitNumber.trim().toLowerCase() === number,
       );
       if (number && taken) {
-        ctx.addIssue({ code: "custom", path: ["unitNumber"], message: `Unit ${v.unitNumber} already exists in ${propertyName(v.propertyId)}.` });
+        ctx.addIssue({ code: "custom", path: ["unitNumber"], message: `${unitLabel(v.unitNumber)} already exists in ${propertyName(v.propertyId)}.` });
       }
     });
 }
@@ -164,7 +164,7 @@ export function UnitFormModal({ unit, defaultPropertyId, step, onSaved, onClose 
       if (unit) {
         const body = changedFields(v, unit);
         saved = Object.keys(body).length > 0 ? await update.mutateAsync({ id: unit.id, body }) : unit;
-        if (saved !== unit) toast.success(`Unit ${saved.unitNumber} updated`);
+        if (saved !== unit) toast.success(`${unitLabel(saved.unitNumber)} updated`);
       } else {
         const body: UnitCreateBody = {
           propertyId: v.propertyId,
@@ -178,7 +178,7 @@ export function UnitFormModal({ unit, defaultPropertyId, step, onSaved, onClose 
           ...(v.description ? { description: v.description } : {}),
         };
         saved = await create.mutateAsync(body);
-        toast.success(`Unit ${saved.unitNumber} added to ${propertyName(saved.propertyId)}`);
+        toast.success(`${unitLabel(saved.unitNumber)} added to ${propertyName(saved.propertyId)}`);
       }
       (onSaved ?? onClose)(saved);
     } catch (err) {

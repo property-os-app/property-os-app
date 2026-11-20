@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Calendar, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { Button, Select } from "@/components/atoms";
-import { ColumnsMenu, FilterChip, FormField, SearchInput, toast } from "@/components/molecules";
+import { ColumnsMenu, FilterChip, FormField, InlineError, SearchInput, SegmentedControl, toast } from "@/components/molecules";
 import { PageHeader, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -24,6 +24,11 @@ import {
   groupByProperty,
   matchesChips,
   MIN_YEAR,
+  OUTDATED_BACKEND_DESCRIPTION,
+  OUTDATED_BACKEND_TITLE,
+  rowsByLabels,
+  rowsFromParam,
+  rowsSwitchParams,
   YEAR_CHIPS,
   YEAR_OPTIONAL_COLUMNS,
   YEAR_OPTIONAL_KEYS,
@@ -37,7 +42,7 @@ import { useColumnVisibility } from "@/features/shared/columnVisibility";
 import { FilterGroup, MobileFilters } from "@/features/shared/MobileFilters";
 import { NoProperties } from "@/features/shared/NoProperties";
 import type { LeasePageState } from "@/features/leases/LeasePage";
-import type { RentRollYearRow } from "@/types/rentRoll";
+import type { RentRollYearRow, RentRollYearRowsBy } from "@/types/rentRoll";
 
 /** The note under the table / cards while a search or chip hides rows (the totals are the API's, for every row). */
 const FILTERED_TOTALS_NOTE = "Totals include all units in scope, not just the filtered rows.";
@@ -46,8 +51,10 @@ const FILTERED_TOTALS_NOTE = "Totals include all units in scope, not just the fi
  * /rent-roll?view=year&year=YYYY: the client's spreadsheet rent roll from GET /rent-roll/year. Header: Month | Year switch,
  * year picker (limited to `availableYears`), Export CSV (the whole year for the scope). Toolbar: search, Property (the app-wide
  * scope), chips Ends soon / Unpaid months / Vacant (?q= and ?chips= in the URL), Columns menu (saved per browser).
- * Then the summary cards (YearSummary) and the colour key. Desktop: YearTable; phones: YearCards. One row per unit: it opens
- * its current lease (back returns to this year), a month of an earlier lease opens that lease; a vacant / reserved unit the Unit drawer.
+ * A "By unit | By tenant" switch (?rows=lease; unit is the default and isn't written): one row per unit (its current tenant)
+ * or one per lease (a unit that changed tenants shows twice, older first). Then the summary cards (YearSummary) and the
+ * colour key. Desktop: YearTable; phones: YearCards. A row opens its lease (back returns to this year); a vacant / reserved
+ * unit the Unit drawer. A response of unknown shape (older backend) shows "This page needs the latest backend" instead.
  */
 export function RentRollYearView() {
   const navigate = useNavigate();
@@ -60,6 +67,7 @@ export function RentRollYearView() {
   const year = yearFromParam(params.get("year"));
   const chipsParam = params.get("chips");
   const chips = useMemo(() => chipsFromParam(chipsParam), [chipsParam]);
+  const rowsBy = rowsFromParam(params.get("rows"));
   const urlSearch = params.get("q") ?? "";
   // The box shows typing at once; the URL follows (replace, so Back skips keystrokes).
   const [search, setSearchState] = useState(urlSearch);
@@ -89,6 +97,8 @@ export function RentRollYearView() {
   const showChip = (chip: YearChip) => {
     if (!chips.includes(chip)) toggleChip(chip);
   };
+  // Like a filter: replaces the history entry and keeps the scroll position.
+  const setRowsBy = (next: RentRollYearRowsBy) => setParams((prev) => rowsSwitchParams(prev, next), { replace: true, preventScrollReset: true });
   const clearFilters = () =>
     writeParams((p) => {
       p.delete("q");
@@ -107,16 +117,18 @@ export function RentRollYearView() {
     );
 
   const columns = useColumnVisibility("rent-roll-year", YEAR_OPTIONAL_KEYS, []);
-  const query = useRentRollYear(year, scope);
-  const data = query.data;
-  const rows = useMemo(() => data?.rows ?? [], [data]);
+  const query = useRentRollYear(year, scope, rowsBy);
+  // null: the response isn't a shape this page knows (older backend).
+  const outdated = query.isSuccess && query.data === null;
+  const data = query.data ?? undefined;
+  const rows = useMemo((): RentRollYearRow[] => data?.rows ?? [], [data]);
   const filtered = useMemo(() => filterYearRows(rows, search, chips), [rows, search, chips]);
   const groups = useMemo(() => groupByProperty(filtered, data?.propertyTotals ?? []), [filtered, data]);
   const chipCounts = useMemo(() => Object.fromEntries(YEAR_CHIPS.map((c) => [c, rows.filter((r) => matchesChips(r, [c])).length])) as Record<YearChip, number>, [rows]);
   const isFiltered = search.trim() !== "" || chips.length > 0;
 
   const [openUnit, setOpenUnit] = useState<{ id: string; unitNumber: string; propertyName: string } | null>(null);
-  // A row opens its current lease on the Ledger tab (a month cell can open an earlier lease); vacant / reserved units the Unit drawer.
+  // A row opens its lease on the Ledger tab (by unit: the current one); vacant / reserved units the Unit drawer.
   const openLease = (leaseId: string) => void navigate(yearLeasePath(leaseId, year, "ledger"), { state: { from: "rent-roll" } satisfies LeasePageState });
   const onOpen = (r: RentRollYearRow) => {
     if (r.lease) openLease(r.lease.id);
@@ -131,7 +143,11 @@ export function RentRollYearView() {
           description: "Every unit in scope shows here, with or without a lease. Add units to see them.",
           action: <Button onClick={() => void navigate("/units")}>Go to Units</Button>,
         }
-      : { title: "No units match your filters", description: "Try another search or chip.", action: <Button onClick={clearFilters}>Clear filters</Button> };
+      : {
+          title: rowsBy === "lease" ? "No tenants or units match your filters" : "No units match your filters",
+          description: "Try another search or chip.",
+          action: <Button onClick={clearFilters}>Clear filters</Button>,
+        };
   const error = { title: `Couldn't load the ${year} rent roll`, description: query.isError ? errorText(query.error) : undefined, onRetry: () => void query.refetch() };
 
   // The picker's range: the API's availableYears once loaded, else the API's own limits.
@@ -143,13 +159,13 @@ export function RentRollYearView() {
   const exportCsv = () => {
     if (!data) return;
     downloadYearCsv(data, scopeName);
-    toast.success(`Downloaded ${yearCsvFilename(data.year, scopeName)}`);
+    toast.success(`Downloaded ${yearCsvFilename(data.year, scopeName, data.rowsBy)}`);
   };
   const exportButton = (className?: string) => (
     <Button
       className={className}
       icon={<Download size={16} strokeWidth={1.5} />}
-      disabled={!query.isSuccess || rows.length === 0}
+      disabled={!data || rows.length === 0}
       onClick={exportCsv}
       aria-label="Export CSV"
       title={scope ? "Exports the whole year for the selected property" : "Exports the whole year for all properties"}
@@ -215,6 +231,15 @@ export function RentRollYearView() {
       ))}
     </div>
   );
+  const rowsSwitch = (
+    <SegmentedControl<RentRollYearRowsBy>
+      aria-label="Rows"
+      value={rowsBy}
+      onChange={setRowsBy}
+      segments={(["unit", "lease"] as const).map((v) => ({ value: v, label: rowsByLabels[v] }))}
+      className={cn(isMobile && "w-full [&>button]:h-9 [&>button]:flex-1 [&>button]:justify-center")}
+    />
+  );
   const propertySelect = (id?: string) => (
     <Select id={id} aria-label={id ? undefined : "Property"} value={scope ?? "all"} onChange={(e) => setPropertyId(e.target.value === "all" ? null : e.target.value)}>
       <option value="all">All properties</option>
@@ -261,44 +286,54 @@ export function RentRollYearView() {
       />
 
       {isMobile ? (
-        <Toolbar className="flex-nowrap">
-          {searchBox}
-          <MobileFilters count={chips.length} resultCount={query.isSuccess ? filtered.length : undefined} onClear={() => setChips([])}>
-            <FilterGroup label="Show only">{chipRow}</FilterGroup>
-            <FormField label="Property (all pages)" htmlFor="rent-roll-year-property">
-              {propertySelect("rent-roll-year-property")}
-            </FormField>
-          </MobileFilters>
-        </Toolbar>
+        <>
+          <Toolbar className="flex-nowrap">
+            {searchBox}
+            <MobileFilters count={chips.length} resultCount={query.isSuccess ? filtered.length : undefined} onClear={() => setChips([])}>
+              <FilterGroup label="Show only">{chipRow}</FilterGroup>
+              <FormField label="Property (all pages)" htmlFor="rent-roll-year-property">
+                {propertySelect("rent-roll-year-property")}
+              </FormField>
+            </MobileFilters>
+          </Toolbar>
+          <div className="mb-4">{rowsSwitch}</div>
+        </>
       ) : (
         <Toolbar>
           {searchBox}
           <div className="w-52">{propertySelect()}</div>
           {chipRow}
+          {rowsSwitch}
           {/* ml-auto: stays at the right edge even when the toolbar wraps, so its right-aligned panel stays on screen. */}
           <ColumnsMenu className="ml-auto" options={[...YEAR_OPTIONAL_COLUMNS]} visible={columns.visible} onToggle={columns.toggle} onReset={columns.reset} />
         </Toolbar>
       )}
 
-      <YearSummary data={data} year={year} isError={query.isError} onShow={showChip} />
-
-      <YearLegend />
-
-      {isMobile ? (
-        <YearCards data={data} groups={groups} year={year} state={state} empty={empty} error={error} note={note} onOpen={onOpen} />
+      {outdated ? (
+        <InlineError title={OUTDATED_BACKEND_TITLE} description={OUTDATED_BACKEND_DESCRIPTION} />
       ) : (
-        <YearTable
-          data={data}
-          groups={groups}
-          year={year}
-          visible={columns.visible}
-          state={state}
-          empty={empty}
-          error={error}
-          footer={note}
-          onOpen={onOpen}
-          onOpenLease={openLease}
-        />
+        <>
+          <YearSummary data={data} year={year} isError={query.isError} onShow={showChip} />
+
+          <YearLegend />
+
+          {isMobile ? (
+            <YearCards data={data} groups={groups} year={year} state={state} empty={empty} error={error} note={note} onOpen={onOpen} />
+          ) : (
+            <YearTable
+              data={data}
+              groups={groups}
+              year={year}
+              rowsBy={rowsBy}
+              visible={columns.visible}
+              state={state}
+              empty={empty}
+              error={error}
+              footer={note}
+              onOpen={onOpen}
+            />
+          )}
+        </>
       )}
 
       {openUnit && <YearUnitDrawer unitId={openUnit.id} unitNumber={openUnit.unitNumber} propertyName={openUnit.propertyName} onClose={() => setOpenUnit(null)} />}

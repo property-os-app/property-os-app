@@ -1,6 +1,6 @@
 /**
- * Pure helpers for the yearly rent roll (GET /rent-roll/year, one row per unit): the year param, cell tones / labels /
- * tooltip text, the unit's leases (earlier tenants, who a month belongs to, which lease a cell opens), lease-end and renewal
+ * Pure helpers for the yearly rent roll (GET /rent-roll/year, one row per unit or, "By tenant", per lease): the year and
+ * rows params, the response check, cell tones / labels / tooltip text, the unit's leases (who a month belongs to, earlier tenants for the CSV), lease-end and renewal
  * text, search, the chip filters, the property groups and the Collected % / summary counts. No React here, so it is all tested.
  */
 import { statusLabel } from "@/components/molecules/StatusBadge";
@@ -13,8 +13,11 @@ import type {
   RentRollYearNextLease,
   RentRollYearResponse,
   RentRollYearRow,
+  RentRollYearRowsBy,
   RentRollYearUnitLease,
+  RentRollYearUnitRow,
 } from "@/types/rentRoll";
+import { unitLabel } from "@/lib/labels";
 
 /* ---------- Year ---------- */
 
@@ -44,7 +47,7 @@ export type RentRollView = "month" | "year";
  */
 export function viewSwitchParams(prev: URLSearchParams, to: RentRollView, period: string, now = new Date()): URLSearchParams {
   const out = new URLSearchParams(prev);
-  for (const key of ["view", "month", "year", "status", "sort", "page", "chips"]) out.delete(key);
+  for (const key of ["view", "month", "year", "status", "sort", "page", "chips", "rows"]) out.delete(key);
   if (to === "year") {
     out.set("view", "year");
     out.set("year", period.slice(0, 4));
@@ -53,6 +56,54 @@ export function viewSwitchParams(prev: URLSearchParams, to: RentRollView, period
     out.set("month", period.slice(0, 4) === thisMonth.slice(0, 4) ? thisMonth : `${period.slice(0, 4)}-01`);
   }
   return out;
+}
+
+/* ---------- Rows mode (?rows=) and the response check ---------- */
+
+/** ?rows=lease -> "lease" ("By tenant"); anything else -> "unit" (the default, never written to the URL). */
+export function rowsFromParam(param: string | null | undefined): RentRollYearRowsBy {
+  return param === "lease" ? "lease" : "unit";
+}
+
+/** The URL after the By unit | By tenant switch: ?rows=lease, or no param for "unit" (the default). Keeps everything else. */
+export function rowsSwitchParams(prev: URLSearchParams, rowsBy: RentRollYearRowsBy): URLSearchParams {
+  const out = new URLSearchParams(prev);
+  if (rowsBy === "lease") out.set("rows", "lease");
+  else out.delete("rows");
+  return out;
+}
+
+/** The first column's header: "Unit · Tenants" by unit, "Tenant · Unit" by tenant. */
+export function tenantColumnHeader(rowsBy: RentRollYearRowsBy): string {
+  return rowsBy === "lease" ? "Tenant · Unit" : "Unit · Tenants";
+}
+
+/** The switch labels. */
+export const rowsByLabels: Record<RentRollYearRowsBy, string> = { unit: "By unit", lease: "By tenant" };
+
+/** A unit row (rows=unit: it has `leases` and merged cells) rather than a lease row. */
+export function isUnitRow(row: RentRollYearRow): row is RentRollYearUnitRow {
+  return "leases" in row;
+}
+
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
+const isTotals = (v: unknown) => isObject(v) && Array.isArray(v.months) && typeof v.totalPaid === "string" && typeof v.totalCharged === "string";
+
+/**
+ * True when the response has the shape this page knows for the mode asked: `rowsBy` echoes it, 12 months, totals, and every
+ * row has 12 cells (unit rows also `leases` and cells with `leaseIds`). An older backend fails this, so the page shows
+ * "needs the latest backend" instead of crashing.
+ */
+export function isYearResponse(data: unknown, rowsBy: RentRollYearRowsBy): data is RentRollYearResponse {
+  if (!isObject(data) || data.rowsBy !== rowsBy || !Array.isArray(data.months) || data.months.length !== 12) return false;
+  if (!Array.isArray(data.rows) || !Array.isArray(data.propertyTotals) || !isTotals(data.totals) || !isObject(data.availableYears)) return false;
+  if (!data.propertyTotals.every((t) => isTotals(t) && isObject(t.property))) return false;
+  return data.rows.every((r: unknown) => {
+    if (!isObject(r) || !isObject(r.unit) || !isObject(r.unit.property) || !Array.isArray(r.months) || r.months.length !== 12) return false;
+    if (!r.months.every((c: unknown) => isObject(c) && typeof c.status === "string" && typeof c.paid === "string")) return false;
+    if (rowsBy === "lease") return true;
+    return Array.isArray(r.leases) && r.months.every((c: unknown) => isObject(c) && Array.isArray(c.leaseIds));
+  });
 }
 
 /* ---------- Cells ---------- */
@@ -81,8 +132,11 @@ export const cellStatusLabels: Record<RentRollYearCellStatus, string> = {
   OUTSIDE_LEASE: "Outside lease",
 };
 
-/** Legend order: problems first, then the calm and muted kinds ("Reserved" is added by the legend). */
-export const CELL_STATUSES: RentRollYearCellStatus[] = ["OVERDUE", "UNPAID", "PARTIAL", "NOT_BILLED", "PAID", "FUTURE", "VACANT", "OUTSIDE_LEASE"];
+/** Every cell status. */
+export const CELL_STATUSES: RentRollYearCellStatus[] = ["PAID", "PARTIAL", "UNPAID", "OVERDUE", "NOT_BILLED", "FUTURE", "VACANT", "OUTSIDE_LEASE"];
+
+/** The legend's statuses ("Reserved" is added by the legend). Not billed, future and outside-lease months are just empty or "-" cells. */
+export const LEGEND_STATUSES: RentRollYearCellStatus[] = ["PAID", "PARTIAL", "UNPAID", "OVERDUE", "VACANT"];
 
 /** Light diagonal stripes from theme tokens (works in light and dark): vacant months, and reserved ones in another neutral shade. */
 export const VACANT_STRIPES = "bg-[image:repeating-linear-gradient(135deg,var(--surface-3)_0_5px,transparent_5px_10px)]";
@@ -91,14 +145,14 @@ export const RESERVED_STRIPES = "bg-[image:repeating-linear-gradient(45deg,var(-
 /**
  * Status -> theme classes. `cell`: the table cell / strip square (background + text). `swatch`: the legend square.
  * Problems stand out (OVERDUE strongest, with a left marker; UNPAID red; PARTIAL amber); PAID is calm (a very light tint,
- * normal text); NOT_BILLED neutral; FUTURE empty; VACANT striped. Theme tokens only, so light and dark both work.
+ * normal text, a stronger tint in dark mode so it stays faintly visible); NOT_BILLED / FUTURE / OUTSIDE_LEASE plain; VACANT striped. Theme tokens only, so light and dark both work.
  */
 export const cellTone: Record<RentRollYearCellStatus, { cell: string; swatch: string }> = {
-  PAID: { cell: "bg-success-soft/40 text-text-primary", swatch: "bg-success-soft/40 border-success/50" },
+  PAID: { cell: "bg-success-soft/60 text-text-primary dark:bg-success-soft", swatch: "bg-success-soft border-success/50" },
   PARTIAL: { cell: "bg-warning-soft text-text-primary", swatch: "bg-warning-soft border-warning" },
   UNPAID: { cell: "bg-danger-soft text-danger", swatch: "bg-danger-soft border-danger" },
   OVERDUE: { cell: "bg-danger/20 text-danger font-semibold shadow-[inset_3px_0_0_var(--danger)]", swatch: "bg-danger/20 border-danger border-l-4" },
-  NOT_BILLED: { cell: "bg-surface-2 text-text-secondary", swatch: "bg-surface-2 border-border-strong" },
+  NOT_BILLED: { cell: "text-text-muted", swatch: "bg-surface-1 border-border-subtle" },
   FUTURE: { cell: "text-text-muted", swatch: "bg-surface-1 border-border-subtle" },
   VACANT: { cell: `${VACANT_STRIPES} text-text-muted`, swatch: `${VACANT_STRIPES} border-border-strong` },
   OUTSIDE_LEASE: { cell: "text-text-muted", swatch: "bg-surface-1 border-border-subtle border-dashed" },
@@ -155,6 +209,14 @@ export function cellDescription(cell: RentRollYearCell, opts: { reserved?: boole
   }
 }
 
+/**
+ * The cell as shown. By tenant, a lease row's VACANT month (the unit was empty) is outside that lease: a muted "-" like any
+ * other month without it. Unit rows and vacant / reserved units keep their stripes.
+ */
+export function shownCell<C extends RentRollYearCell>(row: RentRollYearRow, cell: C): C {
+  return !isUnitRow(row) && row.lease && cell.status === "VACANT" ? { ...cell, status: "OUTSIDE_LEASE" } : cell;
+}
+
 /** The table cell / strip classes for a month: its status background and text colour (reserved months striped). */
 export function monthCellClass(cell: RentRollYearCell | undefined, reserved = false): string | undefined {
   return cell ? toneOf(cell, reserved).cell : undefined;
@@ -179,19 +241,18 @@ export function leaseTenantLabel(lease: Pick<RentRollYearLease, "tenants">, with
   return withCount && others > 0 ? `${first} +${others}` : first;
 }
 
-/** Who a month belongs to: the primary tenant of each lease in leaseIds, oldest first ("John Smith → Sarah Lee"). "" when none. */
-export function cellTenants(row: Pick<RentRollYearRow, "leases">, cell: RentRollYearCell): string {
-  return cell.leaseIds
+/**
+ * Who a month belongs to. Unit row: the primary tenant of each lease in the cell's leaseIds, oldest first ("John Smith →
+ * Sarah Lee"). Lease row: its own tenant, in the months of that lease. "" when none.
+ */
+export function cellTenants(row: RentRollYearRow, cell: RentRollYearCell): string {
+  if (!isUnitRow(row)) return row.lease && cell.status !== "VACANT" && cell.status !== "OUTSIDE_LEASE" ? leaseTenantLabel(row.lease) : "";
+  const ids = "leaseIds" in cell && Array.isArray(cell.leaseIds) ? (cell.leaseIds as string[]) : [];
+  return ids
     .map((id) => row.leases.find((l) => l.id === id))
     .filter((l): l is RentRollYearUnitLease => Boolean(l))
     .map((l) => leaseTenantLabel(l))
     .join(" → ");
-}
-
-/** The lease a month cell opens: its leaseId (the newest of its leases) when that isn't the row's current lease, else null (the row opens). */
-export function cellLeaseTarget(row: Pick<RentRollYearRow, "lease" | "leases">, cell: RentRollYearCell): RentRollYearUnitLease | null {
-  if (!cell.leaseId || cell.leaseId === row.lease?.id) return null;
-  return row.leases.find((l) => l.id === cell.leaseId) ?? null;
 }
 
 /** "2026-01".."2026-04" -> "Jan–Apr"; one month -> "Mar"; none -> "". From the first to the last month given (terms are contiguous). */
@@ -207,7 +268,7 @@ export function monthRange(months: readonly string[]): string {
  * The unit's other leases in the year, split around the current one: `earlier` (listed before it, the API's oldest-first
  * order) and `later`. Leases with an empty monthsCovered (only listed for a balance carried from an earlier year) are left out.
  */
-export function otherLeases(row: Pick<RentRollYearRow, "lease" | "leases">): { earlier: RentRollYearUnitLease[]; later: RentRollYearUnitLease[] } {
+export function otherLeases(row: Pick<RentRollYearUnitRow, "lease" | "leases">): { earlier: RentRollYearUnitLease[]; later: RentRollYearUnitLease[] } {
   const current = row.lease ? row.leases.findIndex((l) => l.id === row.lease!.id) : row.leases.length;
   const earlier: RentRollYearUnitLease[] = [];
   const later: RentRollYearUnitLease[] = [];
@@ -218,15 +279,9 @@ export function otherLeases(row: Pick<RentRollYearRow, "lease" | "leases">): { e
   return { earlier, later };
 }
 
-/** "John Smith (Jan–Apr), Sarah Lee (Apr–Jun)". */
+/** "John Smith (Jan–Apr), Sarah Lee (Apr–Jun)" (the CSV's Earlier tenants column). */
 export function tenantsWithMonths(leases: readonly RentRollYearUnitLease[]): string {
   return leases.map((l) => `${leaseTenantLabel(l)} (${monthRange(l.monthsCovered)})`).join(", ");
-}
-
-/** The tenant cell's muted second line: "Earlier: John Smith (Jan–Apr)", plus " · Later: …" for a lease after the current one. "" when none. */
-export function otherTenantsText(row: Pick<RentRollYearRow, "lease" | "leases">): string {
-  const { earlier, later } = otherLeases(row);
-  return [earlier.length ? `Earlier: ${tenantsWithMonths(earlier)}` : "", later.length ? `Later: ${tenantsWithMonths(later)}` : ""].filter(Boolean).join(" · ");
 }
 
 /* ---------- Lease end and renewal ---------- */
@@ -293,20 +348,20 @@ export function tenantNames(row: Pick<RentRollYearRow, "lease">): string {
   return row.lease?.tenants.map((t) => t.fullName).join(", ") ?? "";
 }
 
-/** A stable key: one row per unit. */
-export function yearRowKey(row: Pick<RentRollYearRow, "unit">): string {
-  return `unit-${row.unit.id}`;
+/** A stable key: the unit on a unit row (and a vacant unit), the lease on a lease row (a unit can have several). */
+export function yearRowKey(row: RentRollYearRow): string {
+  return !isUnitRow(row) && row.lease ? `lease-${row.lease.id}` : `unit-${row.unit.id}`;
 }
 
 /**
- * The texts search looks in: every tenant of the unit's leases in the year (earlier tenants too), "Unit 4B", property,
- * the lease numbers, and "Vacant" / "Reserved" on rows without a lease.
+ * The texts search looks in: the tenants of the row's leases (a unit row: every lease of the year, earlier tenants too;
+ * a lease row: its own), "Unit 4B", property, the lease numbers, and "Vacant" / "Reserved" on rows without a lease.
  */
 export function yearSearchText(row: RentRollYearRow): string[] {
-  const leases: RentRollYearLease[] = row.leases.length ? row.leases : row.lease ? [row.lease] : [];
+  const leases: RentRollYearLease[] = isUnitRow(row) && row.leases.length ? row.leases : row.lease ? [row.lease] : [];
   return [
     ...(leases.length ? leases.flatMap((l) => l.tenants.map((t) => t.fullName)) : [rowTitle(row)]),
-    `Unit ${row.unit.unitNumber}`,
+    `${unitLabel(row.unit.unitNumber)}`,
     row.unit.property.name,
     ...leases.map((l) => l.leaseNumber),
   ];
@@ -394,12 +449,21 @@ export function collectedTone(percent: number): "success" | "warning" | "danger"
   return percent >= 100 ? "success" : percent >= 90 ? "warning" : "danger";
 }
 
-/** The summary row's counts over every row in scope (not only the filtered ones, like the totals). */
+/**
+ * The summary row's counts over every row in scope (not only the filtered ones, like the totals). Units are counted once
+ * (by tenant a unit can have several rows, each with the same vacantMonths); leases ending soon per lease. Same in both modes.
+ */
 export function yearSummary(rows: readonly RentRollYearRow[]): { vacantUnitMonths: number; endsSoon: number; unpaidUnits: number } {
+  const vacantByUnit = new Map<string, number>();
+  const unpaid = new Set<string>();
+  for (const r of rows) {
+    vacantByUnit.set(r.unit.id, Math.max(vacantByUnit.get(r.unit.id) ?? 0, shownVacantMonths(r).length));
+    if (hasUnpaidMonths(r)) unpaid.add(r.unit.id);
+  }
   return {
-    vacantUnitMonths: rows.reduce((sum, r) => sum + shownVacantMonths(r).length, 0),
+    vacantUnitMonths: [...vacantByUnit.values()].reduce((sum, n) => sum + n, 0),
     endsSoon: rows.filter((r) => r.renewalAlert === "ENDS_SOON").length,
-    unpaidUnits: rows.filter(hasUnpaidMonths).length,
+    unpaidUnits: unpaid.size,
   };
 }
 
@@ -420,3 +484,9 @@ export const YEAR_OPTIONAL_COLUMNS = [
 export type YearOptionalColumn = (typeof YEAR_OPTIONAL_COLUMNS)[number]["key"];
 
 export const YEAR_OPTIONAL_KEYS: YearOptionalColumn[] = YEAR_OPTIONAL_COLUMNS.map((c) => c.key);
+
+/* ---------- Older backend ---------- */
+
+/** Shown instead of the grid when the response isn't a shape this page knows (see `isYearResponse`). */
+export const OUTDATED_BACKEND_TITLE = "This page needs the latest backend.";
+export const OUTDATED_BACKEND_DESCRIPTION = "Please update the backend.";

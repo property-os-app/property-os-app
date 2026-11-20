@@ -3,7 +3,6 @@ import {
   CELL_STATUSES,
   cellDescription,
   cellDisplay,
-  cellLeaseTarget,
   cellTenants,
   collectedLabel,
   collectedPercent,
@@ -11,7 +10,8 @@ import {
   monthCellClass,
   monthRange,
   otherLeases,
-  otherTenantsText,
+  LEGEND_STATUSES,
+  tenantsWithMonths,
   cellStatusLabels,
   cellTone,
   chipsFromParam,
@@ -33,14 +33,29 @@ import {
   yearRowKey,
   yearSearchText,
   yearSummary,
+  isUnitRow,
+  isYearResponse,
+  rowsFromParam,
+  rowsSwitchParams,
+  shownCell,
+  tenantColumnHeader,
 } from "@/features/rent-roll/yearStats";
-import type { RentRollYearCell, RentRollYearCellStatus, RentRollYearLease, RentRollYearResponse, RentRollYearRow, RentRollYearTotals } from "@/types/rentRoll";
+import type {
+  RentRollYearCell,
+  RentRollYearCellStatus,
+  RentRollYearLease,
+  RentRollYearLeaseRow,
+  RentRollYearResponse,
+  RentRollYearTotals,
+  RentRollYearUnitCell,
+  RentRollYearUnitRow,
+} from "@/types/rentRoll";
 
 /* ---------- Hand-written fixtures in the API sample's shape ---------- */
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => `2026-${String(i + 1).padStart(2, "0")}`);
 
-function cell(month: string, status: RentRollYearCellStatus, paid = "0.00", charged = "0.00", balance = "0.00", leaseIds: string[] = []): RentRollYearCell {
+function cell(month: string, status: RentRollYearCellStatus, paid = "0.00", charged = "0.00", balance = "0.00", leaseIds: string[] = []): RentRollYearUnitCell {
   return { month, status, paid, charged, balance, leaseIds, leaseId: leaseIds[leaseIds.length - 1] ?? null };
 }
 
@@ -59,7 +74,7 @@ const LEASE: RentRollYearLease = {
   ],
 };
 
-function makeRow(over: Partial<RentRollYearRow> = {}): RentRollYearRow {
+function makeRow(over: Partial<RentRollYearUnitRow> = {}): RentRollYearUnitRow {
   return {
     kind: "LEASE",
     unit: { id: "u1", unitNumber: "1", status: "OCCUPIED", monthlyRent: "2900.00", property: { id: "p1", name: "Fieldstone" } },
@@ -77,7 +92,7 @@ function makeRow(over: Partial<RentRollYearRow> = {}): RentRollYearRow {
   };
 }
 
-const vacantRow = (over: Partial<RentRollYearRow> = {}) =>
+const vacantRow = (over: Partial<RentRollYearUnitRow> = {}) =>
   makeRow({
     kind: "VACANT_UNIT",
     lease: null,
@@ -142,6 +157,15 @@ describe("cell status → tone and label", () => {
     expect(cellTone.OVERDUE.cell).toContain("text-danger");
     expect(cellTone.VACANT.cell).toContain("text-text-muted");
     expect(cellStatusLabels.NOT_BILLED).toBe("Not billed");
+  });
+
+  it("keeps the legend to Paid, Partial, Unpaid, Overdue and Vacant; not billed / future / outside lease are plain cells", () => {
+    expect(LEGEND_STATUSES).toEqual(["PAID", "PARTIAL", "UNPAID", "OVERDUE", "VACANT"]);
+    for (const s of ["NOT_BILLED", "FUTURE", "OUTSIDE_LEASE"] as const) expect(cellTone[s].cell).toBe("text-text-muted");
+  });
+
+  it("keeps the paid tint faintly visible in dark mode", () => {
+    expect(cellTone.PAID.cell).toContain("dark:bg-success-soft");
   });
 });
 
@@ -344,8 +368,8 @@ describe("a unit with two leases in the year", () => {
     expect(monthRange(["2026-03"])).toBe("Mar");
     expect(monthRange([])).toBe("");
     expect(otherLeases(row).earlier.map((l) => l.id)).toEqual(["old"]);
-    expect(otherTenantsText(row)).toBe("Earlier: John Smith (Jan–Apr)");
-    expect(otherTenantsText(makeRow())).toBe("");
+    expect(tenantsWithMonths(otherLeases(row).earlier)).toBe("John Smith (Jan–Apr)");
+    expect(otherLeases(makeRow()).earlier).toEqual([]);
     const three = makeRow({
       lease: sarah,
       leases: [
@@ -354,7 +378,7 @@ describe("a unit with two leases in the year", () => {
         { ...sarah, monthsCovered: MONTHS.slice(6) },
       ],
     });
-    expect(otherTenantsText(three)).toBe("Earlier: John Smith (Jan–Mar), Bo Diaz (Apr–Jun)");
+    expect(tenantsWithMonths(otherLeases(three).earlier)).toBe("John Smith (Jan–Mar), Bo Diaz (Apr–Jun)");
   });
 
   it("names the tenant in the tooltip, both when two leases share a month", () => {
@@ -367,14 +391,6 @@ describe("a unit with two leases in the year", () => {
       "Apr 2026 · John Smith → Sarah Lee · Paid $2,000.00 of $4,000.00 · Balance $2,000.00 · Overdue · balance includes earlier months",
     );
     expect(cellTenants(vacantRow(), vacantRow().months[0]!)).toBe("");
-  });
-
-  it("opens the earlier lease from its months, the row's lease otherwise", () => {
-    expect(cellLeaseTarget(row, row.months[0]!)?.id).toBe("old");
-    // A shared month's leaseId is the newest lease: the current one, so the row opens.
-    expect(cellLeaseTarget(row, row.months[3]!)).toBeNull();
-    expect(cellLeaseTarget(row, row.months[6]!)).toBeNull();
-    expect(cellLeaseTarget(vacantRow(), vacantRow().months[0]!)).toBeNull();
   });
 
   it("finds the unit by an earlier tenant or lease number", () => {
@@ -417,5 +433,138 @@ describe("yearSummary", () => {
     const unpaid = makeRow({ renewalAlert: null, months: MONTHS.map((m) => cell(m, m === "2026-03" ? "UNPAID" : "PAID")) });
     expect(yearSummary([makeRow(), vacantRow(), reserved, unpaid])).toEqual({ vacantUnitMonths: 11, endsSoon: 1, unpaidUnits: 1 });
     expect(yearSummary([])).toEqual({ vacantUnitMonths: 0, endsSoon: 0, unpaidUnits: 0 });
+  });
+});
+
+/* ---------- By unit | By tenant (rows=unit / rows=lease) ---------- */
+
+/** A rows=unit cell as rows=lease sends it (no leaseIds / leaseId). */
+const toLeaseCell = (c: RentRollYearCell): RentRollYearCell => ({ month: c.month, charged: c.charged, paid: c.paid, balance: c.balance, status: c.status });
+
+/** A rows=unit row as rows=lease sends it: no `leases`, plain cells. */
+function toLeaseRow(r: RentRollYearUnitRow): RentRollYearLeaseRow {
+  const out: Partial<RentRollYearUnitRow> = { ...r };
+  delete out.leases;
+  return { ...(out as RentRollYearLeaseRow), months: r.months.map(toLeaseCell) };
+}
+
+/** A rows=lease row: the lease's own cells (no leaseIds), no `leases`. */
+function leaseModeRow(over: Partial<RentRollYearLeaseRow> = {}): RentRollYearLeaseRow {
+  return { ...toLeaseRow(makeRow()), ...over };
+}
+
+describe("the rows switch", () => {
+  it("reads ?rows=: lease, else unit", () => {
+    expect(rowsFromParam("lease")).toBe("lease");
+    expect(rowsFromParam("unit")).toBe("unit");
+    expect(rowsFromParam(null)).toBe("unit");
+    expect(rowsFromParam("tenant")).toBe("unit");
+  });
+  it("writes ?rows=lease, and removes it for unit (the default), keeping the other params", () => {
+    const lease = rowsSwitchParams(new URLSearchParams("view=year&year=2026&q=ana&chips=unpaid"), "lease");
+    expect(lease.toString()).toBe("view=year&year=2026&q=ana&chips=unpaid&rows=lease");
+    const unit = rowsSwitchParams(lease, "unit");
+    expect(unit.has("rows")).toBe(false);
+    expect(unit.get("q")).toBe("ana");
+  });
+  it("drops ?rows= when switching to the month view", () => {
+    expect(viewSwitchParams(new URLSearchParams("view=year&year=2026&rows=lease"), "month", "2026").has("rows")).toBe(false);
+  });
+  it("names the first column per mode", () => {
+    expect(tenantColumnHeader("unit")).toBe("Unit · Tenants");
+    expect(tenantColumnHeader("lease")).toBe("Tenant · Unit");
+  });
+});
+
+describe("rows by tenant (one row per lease)", () => {
+  const john: RentRollYearLease = { ...LEASE, id: "old", leaseNumber: "LSE-2025-009", status: "ENDED", tenants: [{ id: "t9", fullName: "John Smith", isPrimary: true }] };
+  // Unit 1: John Jan-Mar, vacant Apr, Ana May-Dec.
+  const older = leaseModeRow({
+    lease: john,
+    months: MONTHS.map((m, i) => (i < 3 ? cell(m, "PAID", "2000.00", "2000.00") : i === 3 ? cell(m, "VACANT") : cell(m, "OUTSIDE_LEASE"))),
+    vacantMonths: ["2026-04"],
+    renewalAlert: "ENDED",
+  });
+  const newer = leaseModeRow({
+    months: MONTHS.map((m, i) => (i < 3 ? cell(m, "OUTSIDE_LEASE") : i === 3 ? cell(m, "VACANT") : cell(m, "UNPAID", "0.00", "2850.00", "2850.00"))),
+    vacantMonths: ["2026-04"],
+  });
+  const vacant = toLeaseRow(vacantRow());
+
+  it("tells the row shapes apart", () => {
+    expect(isUnitRow(makeRow())).toBe(true);
+    expect(isUnitRow(older)).toBe(false);
+  });
+
+  it("keys each lease row by its lease (the unit shows twice), a vacant unit by the unit", () => {
+    expect(yearRowKey(older)).toBe("lease-old");
+    expect(yearRowKey(newer)).toBe("lease-l1");
+    expect(yearRowKey(vacant)).toBe("unit-u2");
+    expect(yearRowKey(makeRow())).toBe("unit-u1");
+  });
+
+  it("shows months outside the lease as a muted dash: a lease row's vacant month too, a vacant unit keeps its stripes", () => {
+    const apr = shownCell(older, older.months[3]!);
+    expect(apr.status).toBe("OUTSIDE_LEASE");
+    expect(cellDisplay(apr)).toBeNull();
+    expect(monthCellClass(apr)).toBe("text-text-muted");
+    expect(cellDisplay(shownCell(older, older.months[5]!))).toBeNull();
+    expect(shownCell(vacant, vacant.months[0]!).status).toBe("VACANT");
+    expect(shownCell(makeRow(), cell("2026-04", "VACANT")).status).toBe("VACANT");
+  });
+
+  it("uses the same cell colours as by unit", () => {
+    expect(monthCellClass(newer.months[6])).toBe(cellTone.UNPAID.cell);
+    expect(cellDisplay(older.months[0]!)).toBe("$2,000");
+  });
+
+  it("names the row's own tenant in the tooltip, only in that lease's months", () => {
+    expect(cellTenants(older, older.months[0]!)).toBe("John Smith");
+    expect(cellTenants(older, shownCell(older, older.months[3]!))).toBe("");
+    expect(cellTenants(newer, newer.months[6]!)).toBe("Ana Reyes");
+    expect(cellTenants(vacant, vacant.months[0]!)).toBe("");
+  });
+
+  it("searches each row by its own lease only", () => {
+    expect(yearSearchText(older)).toEqual(expect.arrayContaining(["John Smith", "LSE-2025-009"]));
+    expect(yearSearchText(older)).not.toContain("Ana Reyes");
+    expect(filterYearRows([older, newer, vacant], "john", [])).toEqual([older]);
+    expect(filterYearRows([older, newer, vacant], "", ["unpaid"])).toEqual([newer]);
+  });
+
+  it("counts each unit once in the summary (vacant months, unpaid units)", () => {
+    expect(yearSummary([older, newer, vacant])).toEqual({ vacantUnitMonths: 12, endsSoon: 1, unpaidUnits: 1 });
+  });
+
+  it("groups both leases of a unit under its property, older first (the API's order)", () => {
+    const groups = groupByProperty([older, newer, vacant], [{ ...totals(), property: { id: "p1", name: "Fieldstone" } }]);
+    expect(groups[0]!.rows).toEqual([older, newer, vacant]);
+  });
+});
+
+describe("isYearResponse (an older backend never crashes the page)", () => {
+  const base = { year: 2026, months: MONTHS, availableYears: { from: 2025, to: 2027 }, propertyTotals: [{ ...totals(), property: { id: "p1", name: "Fieldstone" } }], totals: totals() };
+  const byUnit: RentRollYearResponse = { ...base, rowsBy: "unit", rows: [makeRow(), vacantRow()] };
+  const byLease: RentRollYearResponse = { ...base, rowsBy: "lease", rows: [leaseModeRow()] };
+
+  it("accepts both shapes for the mode asked", () => {
+    expect(isYearResponse(byUnit, "unit")).toBe(true);
+    expect(isYearResponse(byLease, "lease")).toBe(true);
+    expect(isYearResponse({ ...base, rowsBy: "unit", rows: [] }, "unit")).toBe(true);
+  });
+
+  it("rejects an unknown shape", () => {
+    expect(isYearResponse(byUnit, "lease")).toBe(false); // rowsBy doesn't echo the mode
+    expect(isYearResponse(byLease, "unit")).toBe(false);
+    const noRowsBy: Record<string, unknown> = { ...byUnit }; // a backend before ?rows=
+    delete noRowsBy.rowsBy;
+    expect(isYearResponse(noRowsBy, "unit")).toBe(false);
+    expect(isYearResponse({ ...byLease, rowsBy: "unit" }, "unit")).toBe(false); // unit mode without leases / leaseIds
+    expect(isYearResponse({ ...byUnit, months: MONTHS.slice(0, 6) }, "unit")).toBe(false);
+    expect(isYearResponse({ ...byUnit, totals: null }, "unit")).toBe(false);
+    expect(isYearResponse({ ...byUnit, rows: [{ ...makeRow(), months: [] }] }, "unit")).toBe(false);
+    expect(isYearResponse(null, "unit")).toBe(false);
+    expect(isYearResponse("<html>", "unit")).toBe(false);
+    expect(isYearResponse([], "unit")).toBe(false);
   });
 });

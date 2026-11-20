@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { buildYearCsv, csvField, csvMoney, csvText, yearCsvFilename, yearCsvHeader } from "@/features/rent-roll/yearCsv";
-import type { RentRollYearCell, RentRollYearResponse, RentRollYearRow, RentRollYearTotals } from "@/types/rentRoll";
+import type { RentRollYearCell, RentRollYearLeaseRow, RentRollYearResponse, RentRollYearTotals, RentRollYearUnitCell, RentRollYearUnitRow } from "@/types/rentRoll";
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => `2026-${String(i + 1).padStart(2, "0")}`);
 
-const cells = (status: RentRollYearCell["status"], paid: string, leaseIds: string[] = []): RentRollYearCell[] =>
+const cells = (status: RentRollYearCell["status"], paid: string, leaseIds: string[] = []): RentRollYearUnitCell[] =>
   MONTHS.map((month) => ({ month, status, paid, charged: paid, balance: "0.00", leaseIds, leaseId: leaseIds[leaseIds.length - 1] ?? null }));
 
 function totals(paid: string, year: string, lateFees = "0.00"): RentRollYearTotals {
   return { months: MONTHS.map((month) => ({ month, charged: paid, paid })), totalCharged: year, totalPaid: year, lateFees };
 }
 
-const leaseRow: RentRollYearRow = {
+const leaseRow: RentRollYearUnitRow = {
   kind: "LEASE",
   unit: { id: "u1", unitNumber: "4B", status: "OCCUPIED", monthlyRent: "2900", property: { id: "p1", name: "Oak, Main & Co" } },
   lease: {
@@ -45,7 +45,7 @@ leaseRow.leases = [
   { ...leaseRow.lease!, monthsCovered: MONTHS },
 ];
 
-const vacantRow: RentRollYearRow = {
+const vacantRow: RentRollYearUnitRow = {
   kind: "VACANT_UNIT",
   unit: { id: "u2", unitNumber: "5", status: "VACANT", monthlyRent: "2700.00", property: { id: "p2", name: "Birch" } },
   lease: null,
@@ -60,12 +60,12 @@ const vacantRow: RentRollYearRow = {
   nextLease: null,
 };
 
-const reservedRow: RentRollYearRow = {
+const reservedRow: RentRollYearUnitRow = {
   ...vacantRow,
   unit: { id: "u3", unitNumber: "Office", status: "RESERVED", monthlyRent: "0.00", property: { id: "p2", name: "Birch" } },
 };
 
-const endedRow: RentRollYearRow = {
+const endedRow: RentRollYearUnitRow = {
   ...leaseRow,
   unit: { ...leaseRow.unit, id: "u4", unitNumber: "4C" },
   lease: { ...leaseRow.lease!, id: "l3", status: "ACTIVE", endDate: "2026-11-10", tenants: [{ id: "t3", fullName: "Cy", isPrimary: true }] },
@@ -139,6 +139,8 @@ describe("csv helpers", () => {
   it("names the file after the year and property", () => {
     expect(yearCsvFilename(2026)).toBe("Rent roll 2026.csv");
     expect(yearCsvFilename(2026, 'Oak: "Main"/West')).toBe("Rent roll 2026 - Oak MainWest.csv");
+    expect(yearCsvFilename(2026, null, "lease")).toBe("Rent roll 2026 by tenant.csv");
+    expect(yearCsvFilename(2026, "Birch", "lease")).toBe("Rent roll 2026 by tenant - Birch.csv");
   });
 });
 
@@ -156,13 +158,13 @@ describe("buildYearCsv", () => {
     for (const line of table) expect(line).toHaveLength(header.length);
   });
 
-  it("groups rows under propertyTotals order with a subtotal after each property and a grand total last", () => {
+  it("groups rows under propertyTotals order with a subtotal after each property and a grand total last (units named like the app)", () => {
     expect(table.slice(1).map((r) => [r[0], r[1]])).toEqual([
-      ["Birch", "5"],
+      ["Birch", "Unit 5"],
       ["Birch", "Office"],
       ["Birch", "Subtotal"],
-      ["Oak, Main & Co", "4B"],
-      ["Oak, Main & Co", "4C"],
+      ["Oak, Main & Co", "Unit 4B"],
+      ["Oak, Main & Co", "Unit 4C"],
       ["Oak, Main & Co", "Subtotal"],
       ["Total", ""],
     ]);
@@ -213,5 +215,83 @@ describe("buildYearCsv", () => {
     const total = table[7]!;
     expect(total[col("Total charged")]).toBe("68400.00");
     expect(total[col("Tenants")]).toBe("");
+  });
+});
+
+/* ---------- By tenant (rows=lease): one line per lease ---------- */
+
+/** A rows=unit cell as rows=lease sends it (no leaseIds / leaseId). */
+const toLeaseCell = (c: RentRollYearCell): RentRollYearCell => ({ month: c.month, charged: c.charged, paid: c.paid, balance: c.balance, status: c.status });
+
+/** A rows=unit row as rows=lease sends it: no `leases`, plain cells. */
+function toLeaseRow(r: RentRollYearUnitRow): RentRollYearLeaseRow {
+  const out: Partial<RentRollYearUnitRow> = { ...r };
+  delete out.leases;
+  return { ...(out as RentRollYearLeaseRow), months: r.months.map(toLeaseCell) };
+}
+
+const plainCells = (paidMonths: number[]) =>
+  MONTHS.map((month, i) =>
+    paidMonths.includes(i)
+      ? { month, status: "PAID" as const, paid: "2850.00", charged: "2850.00", balance: "0.00" }
+      : { month, status: "OUTSIDE_LEASE" as const, paid: "0.00", charged: "0.00", balance: "0.00" },
+  );
+const leaseBase = toLeaseRow(leaseRow);
+const earlierLeaseRow: RentRollYearLeaseRow = {
+  ...leaseBase,
+  lease: { ...leaseRow.lease!, id: "l0", leaseNumber: "LSE-2025-003", status: "ENDED", rent: "2700.00", tenants: [{ id: "t0", fullName: "Jo Park", isPrimary: true }] },
+  months: plainCells([0, 1, 2]),
+  daysToLeaseEnd: null,
+  renewalAlert: "ENDED",
+  nextLease: { id: "l1", leaseNumber: "LSE-2026-001", status: "ACTIVE", startDate: "2026-04-01", sharesTenant: false },
+};
+const currentLeaseRow: RentRollYearLeaseRow = { ...leaseBase, months: plainCells([3, 4, 5, 6, 7, 8, 9, 10, 11]) };
+const vacantLeaseModeRow = toLeaseRow(vacantRow);
+
+const byLease: RentRollYearResponse = {
+  ...data,
+  rowsBy: "lease",
+  rows: [vacantLeaseModeRow, earlierLeaseRow, currentLeaseRow],
+};
+
+describe("buildYearCsv by tenant", () => {
+  const table = parse(buildYearCsv(byLease));
+  const header = table[0]!;
+  const col = (name: string) => header.indexOf(name);
+
+  it("has the lease header: no Earlier tenants, Rent instead of Current rent; every line the same width", () => {
+    expect(header).toEqual(yearCsvHeader(MONTHS, "lease"));
+    expect(header).not.toContain("Earlier tenants");
+    expect(header).toContain("Rent");
+    expect(header).not.toContain("Current rent");
+    for (const line of table) expect(line).toHaveLength(header.length);
+  });
+
+  it("writes one line per lease, older first, the unit twice", () => {
+    expect(table.slice(1).map((r) => [r[0], r[1], r[col("Lease number")]])).toEqual([
+      ["Birch", "Unit 5", ""],
+      ["Birch", "Subtotal", ""],
+      ["Oak, Main & Co", "Unit 4B", "LSE-2025-003"],
+      ["Oak, Main & Co", "Unit 4B", "LSE-2026-001"],
+      ["Oak, Main & Co", "Subtotal", ""],
+      ["Total", "", ""],
+    ]);
+    const earlier = table[3]!;
+    expect(earlier[col("Tenants")]).toBe("Jo Park");
+    expect(earlier[col("Rent")]).toBe("2700.00");
+    expect(earlier[col("Mar 2026 paid")]).toBe("2850.00");
+    expect(earlier[col("Apr 2026 paid")]).toBe(""); // outside that lease
+    expect(earlier[col("Next lease")]).toBe("Next tenant LSE-2026-001");
+    expect(table[4]![col("Jan 2026 paid")]).toBe("");
+    expect(table[4]![col("Apr 2026 paid")]).toBe("2850.00");
+  });
+
+  it("copies the same subtotals and total as by unit", () => {
+    const unitTable = parse(buildYearCsv(data));
+    const unitCol = (name: string) => unitTable[0]!.indexOf(name);
+    for (const name of ["Jan 2026 paid", "Total paid", "Total charged", "Late fees"]) {
+      expect(table[5]![col(name)]).toBe(unitTable[6]![unitCol(name)]);
+      expect(table[6]![col(name)]).toBe(unitTable[7]![unitCol(name)]);
+    }
   });
 });

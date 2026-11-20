@@ -1,11 +1,13 @@
 /**
- * The yearly rent roll as an Excel-friendly CSV, built on the client from the same GET /rent-roll/year response (one line per unit).
+ * The yearly rent roll as an Excel-friendly CSV, built on the client from the same GET /rent-roll/year response: one line
+ * per unit, or per lease "By tenant" (it follows the response's rowsBy).
  * Always the whole year for the selected property (search and chips are ignored), so the API's subtotals and total match.
  */
 import { toCents } from "@/lib/format";
 import { saveBlob } from "@/lib/pdf";
-import { isLeaseEnded, otherLeases, renewalAlertLabels, renewalText, rowTitle, shortMonth, shownVacantMonths, tenantsWithMonths } from "@/features/rent-roll/yearStats";
-import type { RentRollYearCell, RentRollYearResponse, RentRollYearRow, RentRollYearTotals } from "@/types/rentRoll";
+import { unitLabel } from "@/lib/labels";
+import { isLeaseEnded, isUnitRow, otherLeases, renewalAlertLabels, renewalText, rowTitle, shortMonth, shownVacantMonths, tenantsWithMonths } from "@/features/rent-roll/yearStats";
+import type { RentRollYearCell, RentRollYearResponse, RentRollYearRow, RentRollYearRowsBy, RentRollYearTotals } from "@/types/rentRoll";
 
 /** Money as a plain number with 2 decimals ("3400.00", "-150.00"): no $, no commas, no float math. Empty stays empty. */
 export function csvMoney(value: string | null | undefined): string {
@@ -32,12 +34,16 @@ function cellValue(cell: RentRollYearCell): string {
   return cell.status === "VACANT" || cell.status === "OUTSIDE_LEASE" ? "" : csvMoney(cell.paid);
 }
 
-const LEAD_COLUMNS = ["Property", "Unit", "Tenants", "Earlier tenants", "Lease number", "Current rent", "Market rent", "Lease start", "Lease end", "Deposit"];
+/** The fixed columns before the months: by unit with "Earlier tenants" and "Current rent"; by tenant (one lease a line) "Rent". */
+const LEAD_COLUMNS: Record<RentRollYearRowsBy, string[]> = {
+  unit: ["Property", "Unit", "Tenants", "Earlier tenants", "Lease number", "Current rent", "Market rent", "Lease start", "Lease end", "Deposit"],
+  lease: ["Property", "Unit", "Tenants", "Lease number", "Rent", "Market rent", "Lease start", "Lease end", "Deposit"],
+};
 const TAIL_COLUMNS = ["Total paid", "Total charged", "Late fees", "Vacant months", "Renewal alert", "Days to lease end", "Next lease"];
 
 /** Column headers: the fixed columns, "Jan 2026 paid" … "Dec 2026 paid", then the totals and renewal columns. */
-export function yearCsvHeader(months: string[]): string[] {
-  return [...LEAD_COLUMNS, ...months.map((m) => `${shortMonth(m)} ${m.slice(0, 4)} paid`), ...TAIL_COLUMNS];
+export function yearCsvHeader(months: string[], rowsBy: RentRollYearRowsBy = "unit"): string[] {
+  return [...LEAD_COLUMNS[rowsBy], ...months.map((m) => `${shortMonth(m)} ${m.slice(0, 4)} paid`), ...TAIL_COLUMNS];
 }
 
 function rowCells(row: RentRollYearRow): string[] {
@@ -46,10 +52,10 @@ function rowCells(row: RentRollYearRow): string[] {
   const next = row.nextLease ? `${renewalText(row.nextLease)} ${row.nextLease.leaseNumber}` : "";
   return [
     csvText(row.unit.property.name),
-    csvText(row.unit.unitNumber),
+    csvText(unitLabel(row.unit.unitNumber)),
     csvText(lease ? lease.tenants.map((t) => t.fullName).join("; ") : rowTitle(row)),
-    // "John Smith (Jan–Apr), Sarah Lee (Apr–Jun)": the unit's leases before the current one that covered months this year.
-    csvText(tenantsWithMonths(otherLeases(row).earlier)),
+    // By unit: "John Smith (Jan–Apr), Sarah Lee (Apr–Jun)", the unit's leases before the current one that covered months this year.
+    ...(isUnitRow(row) ? [csvText(tenantsWithMonths(otherLeases(row).earlier))] : []),
     csvText(lease?.leaseNumber),
     csvMoney(lease?.rent),
     csvMoney(row.unit.monthlyRent),
@@ -69,8 +75,8 @@ function rowCells(row: RentRollYearRow): string[] {
 }
 
 /** A subtotal or total line: label in Property, the kind in Unit, then the API's per-month paid and the year sums. */
-function totalsCells(property: string, unit: string, totals: RentRollYearTotals): string[] {
-  const blanks = LEAD_COLUMNS.length - 2;
+function totalsCells(property: string, unit: string, totals: RentRollYearTotals, rowsBy: RentRollYearRowsBy): string[] {
+  const blanks = LEAD_COLUMNS[rowsBy].length - 2;
   return [
     csvText(property),
     unit,
@@ -88,24 +94,28 @@ function totalsCells(property: string, unit: string, totals: RentRollYearTotals)
  * "Subtotal" line from propertyTotals; a last "Total" line from totals. Never recomputed.
  */
 export function buildYearCsv(data: RentRollYearResponse): string {
-  const lines: string[][] = [yearCsvHeader(data.months)];
+  const lines: string[][] = [yearCsvHeader(data.months, data.rowsBy)];
+  const rows: RentRollYearRow[] = data.rows;
   for (const totals of data.propertyTotals) {
-    for (const row of data.rows) if (row.unit.property.id === totals.property.id) lines.push(rowCells(row));
-    lines.push(totalsCells(totals.property.name, "Subtotal", totals));
+    for (const row of rows) if (row.unit.property.id === totals.property.id) lines.push(rowCells(row));
+    lines.push(totalsCells(totals.property.name, "Subtotal", totals, data.rowsBy));
   }
-  lines.push(totalsCells("Total", "", data.totals));
+  lines.push(totalsCells("Total", "", data.totals, data.rowsBy));
   return lines.map((cells) => cells.map(csvField).join(",")).join("\r\n") + "\r\n";
 }
 
-/** "Rent roll 2026.csv", or "Rent roll 2026 - Birch Hollow.csv" for one property (characters Windows forbids are removed). */
-export function yearCsvFilename(year: number, propertyName?: string | null): string {
+/**
+ * "Rent roll 2026.csv", "Rent roll 2026 by tenant.csv" (one line per lease), plus " - Birch Hollow" for one property
+ * (characters Windows forbids are removed).
+ */
+export function yearCsvFilename(year: number, propertyName?: string | null, rowsBy: RentRollYearRowsBy = "unit"): string {
   const name = propertyName?.replace(/[\\/:*?"<>|]/g, "").trim();
-  return name ? `Rent roll ${year} - ${name}.csv` : `Rent roll ${year}.csv`;
+  const base = `Rent roll ${year}${rowsBy === "lease" ? " by tenant" : ""}`;
+  return name ? `${base} - ${name}.csv` : `${base}.csv`;
 }
 
 /** Saves the CSV with a UTF-8 BOM, so Excel reads accents and the "·" correctly. */
 export function downloadYearCsv(data: RentRollYearResponse, propertyName?: string | null): void {
   const blob = new Blob(["﻿", buildYearCsv(data)], { type: "text/csv;charset=utf-8" });
-  saveBlob(blob, yearCsvFilename(data.year, propertyName));
+  saveBlob(blob, yearCsvFilename(data.year, propertyName, data.rowsBy));
 }
-

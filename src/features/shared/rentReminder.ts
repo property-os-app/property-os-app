@@ -1,7 +1,7 @@
 /** The "Call" and "Email reminder" links for an overdue lease, used by the lease page and the Rent Roll menu. */
 import { firstName, mailtoHref, telHref } from "@/lib/contact";
 import { daysSince, formatCurrency, formatDate, type MoneyInput } from "@/lib/format";
-import { plural } from "@/lib/labels";
+import { plural, unitLabel } from "@/lib/labels";
 
 export interface RentReminderInput {
   tenantName: string;
@@ -29,10 +29,10 @@ export interface RentReminderLinks {
   mailto: string | null;
 }
 
-/** Subject "Rent reminder – Maple Court 4B" and the reminder body; the day count is the one the screens show (`daysSince`). */
+/** Subject "Rent reminder – Maple Court, Unit 4B" and the reminder body; the day count is the one the screens show (`daysSince`). */
 export function rentReminderLinks(p: RentReminderInput): RentReminderLinks {
   const name = firstName(p.tenantName);
-  const place = `${p.propertyName} ${p.unitNumber}`;
+  const place = `${p.propertyName}, ${unitLabel(p.unitNumber)}`;
   const body = [
     `Hi ${name},`,
     "",

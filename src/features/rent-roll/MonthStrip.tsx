@@ -1,5 +1,5 @@
 import { cn } from "@/lib/cn";
-import { cellDescription, cellTenants, isReservedRow, toneOf } from "@/features/rent-roll/yearStats";
+import { cellDescription, cellTenants, isReservedRow, shownCell, toneOf } from "@/features/rent-roll/yearStats";
 import type { RentRollYearRow } from "@/types/rentRoll";
 
 const LETTERS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
@@ -13,7 +13,8 @@ export function MonthStrip({ row, year }: { row: RentRollYearRow; year: number }
   const reserved = isReservedRow(row);
   return (
     <span role="list" aria-label={`Payments in ${year}`} className="mt-2 grid grid-cols-12 gap-1">
-      {row.months.map((c, i) => {
+      {row.months.map((raw, i) => {
+        const c = shownCell(row, raw);
         const tone = toneOf(c, reserved);
         return (
           <span

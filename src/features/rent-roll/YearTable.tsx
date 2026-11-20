@@ -4,11 +4,10 @@ import { Badge, Bar, Dash, Num } from "@/components/atoms";
 import { SpreadsheetTable, type SheetColumn } from "@/components/organisms";
 import { cn } from "@/lib/cn";
 import { formatCurrency, formatCurrencyShort, formatDate, formatMonth, toCents } from "@/lib/format";
-import { plural } from "@/lib/labels";
+import { plural, unitLabel } from "@/lib/labels";
 import { linkFocus } from "@/features/shared/linkClass";
 import { MonthCell } from "@/features/rent-roll/MonthCell";
 import {
-  cellLeaseTarget,
   cellTenants,
   collectedLabel,
   collectedPercent,
@@ -19,20 +18,21 @@ import {
   isReservedRow,
   leaseTenantLabel,
   monthCellClass,
-  otherTenantsText,
   renewalAlertLabels,
   renewalAlertTone,
   renewalText,
   shortMonth,
   shortMonthYear,
+  shownCell,
   shownVacantMonths,
+  tenantColumnHeader,
   tenantNames,
   yearLeasePath,
   yearRowKey,
   type PropertyGroup,
   type YearOptionalColumn,
 } from "@/features/rent-roll/yearStats";
-import type { RentRollYearResponse, RentRollYearRow, RentRollYearTotals } from "@/types/rentRoll";
+import type { RentRollYearResponse, RentRollYearRow, RentRollYearRowsBy, RentRollYearTotals } from "@/types/rentRoll";
 
 type YearColumn = SheetColumn<RentRollYearRow> & {
   /** What the subtotal / grand total row shows in this column (nothing when absent). */
@@ -41,14 +41,19 @@ type YearColumn = SheetColumn<RentRollYearRow> & {
   optional?: YearOptionalColumn;
 };
 
-const money = (value: string | null | undefined) => (value ? <Num>{formatCurrency(value)}</Num> : <Dash />);
+/** Short money ("$2,950"), the exact amount as a tooltip; a Dash when empty. */
+const money = (value: string | null | undefined) => (value ? <Num title={formatCurrency(value)}>{formatCurrencyShort(value)}</Num> : <Dash />);
 
-/** Paid on top, "of $charged" under it (subtotal and total rows), in short money with the exact amounts as a tooltip. */
+/**
+ * Subtotal and total rows: the paid amount in short money; a small muted "of $charged" under it only when less than
+ * charged was paid. The exact amounts are in the tooltip.
+ */
 function paidOfCharged(paid: string, charged: string) {
+  const short = toCents(paid) < toCents(charged);
   return (
     <span className="inline-flex flex-col items-end py-1 leading-tight" title={`Paid ${formatCurrency(paid)} of ${formatCurrency(charged)}`}>
       <Num>{formatCurrencyShort(paid)}</Num>
-      <span className="text-caption font-normal text-text-secondary">of {formatCurrencyShort(charged)}</span>
+      {short && <span className="text-caption font-normal text-text-muted">of {formatCurrencyShort(charged)}</span>}
     </span>
   );
 }
@@ -83,45 +88,47 @@ export interface YearTableProps {
   data: RentRollYearResponse | undefined;
   groups: PropertyGroup[];
   year: number;
+  /** "unit": one row per unit (its current tenant). "lease" (By tenant): one row per lease. */
+  rowsBy?: RentRollYearRowsBy;
   visible: readonly string[];
   state: "ideal" | "loading" | "empty" | "error";
   empty: { title: string; description: string; action?: ReactNode };
   error: { title: string; description?: string; onRetry?: () => void };
   /** Under the table (the "totals include all units" note). */
   footer?: ReactNode;
-  /** A row opens its current lease; a vacant or reserved unit the Unit drawer. */
+  /** A row opens its lease (by unit: the current one); a vacant or reserved unit the Unit drawer. */
   onOpen: (row: RentRollYearRow) => void;
-  /** A month of another lease than the row's current one opens that lease. */
-  onOpenLease: (leaseId: string) => void;
 }
 
 /**
- * The yearly grid on desktop (SpreadsheetTable), one row per unit: unit / tenants (sticky left, with "Earlier: …" tenants),
- * current rent, optional lease columns, Jan–Dec (short paid amounts; colour only on problems; vacant striped; the current
- * month tagged "Now" and outlined; thin lines after Mar, Jun, Sep), Total paid (pinned right), optional late fees / vacancy,
- * the renewal alert, optional days to end / renewal, and Collected % with a tiny bar. Property bands carry the API's
- * collected totals; subtotal rows and the sticky grand total come from the API.
+ * The yearly grid on desktop (SpreadsheetTable), one row per unit or, By tenant, per lease (months outside it a muted "-"):
+ * tenant and unit (sticky left), current rent, optional
+ * lease columns, Jan–Dec (short paid amounts; colour only on problems; vacant striped; the current month tagged "Now",
+ * outlined and scrolled into view on load; thin lines after Mar, Jun, Sep), Total paid (pinned right), optional late fees /
+ * vacancy, the renewal alert, optional days to end / renewal, and Collected % with a tiny bar. All money is short, exact in
+ * the tooltip. Property bands carry the API's collected totals; subtotal rows and the sticky grand total come from the API.
+ * The page is the only vertical scroller (pageScroll): the header and total row stay in view, the sideways scrollbar sticks to the bottom.
  */
-export function YearTable({ data, groups, year, visible, state, empty, error, footer, onOpen, onOpenLease }: YearTableProps) {
+export function YearTable({ data, groups, year, rowsBy = "unit", visible, state, empty, error, footer, onOpen }: YearTableProps) {
   const months = data?.months ?? Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, "0")}`);
   const shown = new Set(visible);
+  const nowMonth = months.find((m) => isCurrentMonth(m));
 
   const allColumns: YearColumn[] = [
     {
       key: "unit",
-      header: "Unit · Tenants",
+      header: tenantColumnHeader(rowsBy),
       minWidth: 220,
       cell: (r) => {
         const names = tenantNames(r);
         const reserved = isReservedRow(r);
-        const others = otherTenantsText(r);
-        const label = r.lease ? `Open lease ${r.lease.leaseNumber}, ${names}` : `Open unit ${r.unit.unitNumber}, ${reserved ? "reserved" : "vacant"}`;
+        const label = r.lease ? `Open lease ${r.lease.leaseNumber}, ${names}` : `Open ${unitLabel(r.unit.unitNumber)}, ${reserved ? "reserved" : "vacant"}`;
         return (
           <div className="flex min-w-0 flex-col py-1.5">
             <button
               type="button"
               aria-label={label}
-              title={names || undefined}
+              title={r.lease ? `${names} · ${r.lease.leaseNumber}` : undefined}
               onClick={(e) => {
                 e.stopPropagation();
                 onOpen(r);
@@ -130,15 +137,7 @@ export function YearTable({ data, groups, year, visible, state, empty, error, fo
             >
               {r.lease ? leaseTenantLabel(r.lease, true) : reserved ? <Badge tone="neutral">Reserved</Badge> : "Vacant"}
             </button>
-            <span className="text-small text-text-secondary">
-              Unit {r.unit.unitNumber}
-              {r.lease && ` · ${r.lease.leaseNumber}`}
-            </span>
-            {others && (
-              <span className="max-w-[260px] truncate text-small text-text-muted" title={others}>
-                {others}
-              </span>
-            )}
+            <span className="text-small text-text-secondary">{unitLabel(r.unit.unitNumber)}</span>
           </div>
         );
       },
@@ -167,19 +166,15 @@ export function YearTable({ data, groups, year, visible, state, empty, error, fo
         // Thin separators after Mar, Jun and Sep; the current month gets a soft outline down the whole column.
         columnClassName: cn(isQuarterEnd(i) && "border-r border-r-border-strong", now && "border-x border-x-info/50"),
         cell: (r) => {
-          const c = r.months[i];
-          if (!c) return <Dash />;
-          const target = cellLeaseTarget(r, c);
-          return (
-            <MonthCell
-              cell={c}
-              reserved={isReservedRow(r)}
-              tenants={cellTenants(r, c)}
-              openLease={target ? { leaseNumber: target.leaseNumber, onOpen: () => onOpenLease(target.id) } : undefined}
-            />
-          );
+          const raw = r.months[i];
+          if (!raw) return <Dash />;
+          const c = shownCell(r, raw);
+          return <MonthCell cell={c} reserved={isReservedRow(r)} tenants={cellTenants(r, c)} />;
         },
-        cellClassName: (r) => monthCellClass(r.months[i], isReservedRow(r)),
+        cellClassName: (r) => {
+          const c = r.months[i];
+          return monthCellClass(c && shownCell(r, c), isReservedRow(r));
+        },
         total: (t) => (t.months[i] ? paidOfCharged(t.months[i].paid, t.months[i].charged) : null),
       };
     }),
@@ -269,6 +264,8 @@ export function YearTable({ data, groups, year, visible, state, empty, error, fo
         subtotal: totalsRow(`${g.property.name} total`, g.totals),
       }))}
       rowKey={yearRowKey}
+      pageScroll
+      scrollToColumn={nowMonth}
       onRowClick={onOpen}
       rowMuted={(r) => r.kind === "VACANT_UNIT"}
       totals={data ? totalsRow(`Total ${year}`, data.totals) : undefined}

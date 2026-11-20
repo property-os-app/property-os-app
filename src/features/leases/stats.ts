@@ -1,6 +1,6 @@
 /** Lease money and date helpers shared by the leases page, the unit drawer and the tenants page. Money math in integer cents. */
 import { addDaysISO, addMonthsISO, addMonthsYM, currentMonth, dayInMonth, daysUntil, formatDate, formatShortDate, parseDateOnly, todayUTC, toCents } from "@/lib/format";
-import { plural } from "@/lib/labels";
+import { plural, unitLabel } from "@/lib/labels";
 import type { Lease, LeaseStatus, LeaseTenant } from "@/types/lease";
 
 /** "Nov 1, 2026 to Oct 31, 2027"; null when both dates are missing (a missing one shows "-"). */
@@ -109,7 +109,7 @@ export function startedThisMonth(leases: Lease[], month = currentMonth()): numbe
 
 /** "Unit 4B, Maple Court". */
 export function leaseUnitLine(lease: Lease): string {
-  return `Unit ${lease.unit.unitNumber}, ${lease.unit.property.name}`;
+  return `${unitLabel(lease.unit.unitNumber)}, ${lease.unit.property.name}`;
 }
 
 /** "Past end date" KPI note: one -> "Unit 4B, Maple Court"; more -> "3 leases"; none -> "None". */

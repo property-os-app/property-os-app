@@ -8,7 +8,7 @@ import { usePageNav, usePageTitle } from "@/app/pageTitle";
 import { ApiError, errorText } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { centsToAmount, currentMonthUTC, daysUntil, formatCurrency, formatDate, formatMonth, isMonth, ordinal, toCents } from "@/lib/format";
-import { plural } from "@/lib/labels";
+import { plural, unitLabel } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { useActivateAction, useLease, type ActivateError } from "@/features/leases/hooks";
@@ -155,7 +155,7 @@ export function LeasePage() {
 
 /** "Unit 4B, Maple Court · Nov 1, 2026 to Oct 31, 2027 · LSE-2026-001"; a DRAFT without both dates shows "Draft". */
 function subtitle(lease: Lease): string {
-  const unit = `Unit ${lease.unit.unitNumber}, ${lease.unit.property.name}`;
+  const unit = `${unitLabel(lease.unit.unitNumber)}, ${lease.unit.property.name}`;
   const dates = lease.startDate && lease.endDate ? `${formatDate(lease.startDate)} to ${formatDate(lease.endDate)}` : lease.status === "DRAFT" ? "Draft" : formatDate(lease.endDate);
   return [unit, dates, lease.leaseNumber].join(" · ");
 }
