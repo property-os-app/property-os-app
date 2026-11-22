@@ -45,6 +45,8 @@ export interface Lease {
   /** 1–31; null only on DRAFT. */
   rentDueDay: number | null;
   autoRenew: boolean;
+  /** true for a history-only ("old") lease (POST /leases/history): always ENDED + SIGNED, never billed, not in the rent roll. */
+  isHistorical: boolean;
   tags: string[];
   notes: string | null;
   /** The pinned lease template version; null when the lease has no template. */
@@ -112,6 +114,22 @@ export type LeaseUpdateBody = Partial<
   /** A different id re-pins to its current version; the same id changes nothing; null removes it. 409 while SIGNED. */
   templateId?: string | null;
 };
+
+/**
+ * POST /leases/history body: an old lease recorded for history. endDate after startDate and before UTC today.
+ * Nothing else is sent: it is always ENDED + SIGNED, isHistorical true. Money is a JSON number.
+ */
+export interface LeaseHistoryBody {
+  unitId: string;
+  primaryTenantId: string;
+  coTenantIds?: string[];
+  startDate: string;
+  endDate: string;
+  rent?: number;
+  deposit?: number;
+  notes?: string;
+  tags?: string[];
+}
 
 /** POST /leases/:id/end body. Default ENDED. */
 export interface LeaseEndBody {

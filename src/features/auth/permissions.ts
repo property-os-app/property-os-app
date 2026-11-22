@@ -1,6 +1,7 @@
 import type { Role } from "@/components/organisms";
 import { userRoleLabels } from "@/lib/labels";
 import type { Me, UserRole } from "@/types/auth";
+import type { DocumentOwner } from "@/types/document";
 
 /** Things a user may do. The UI hides what a user can't do (never disables). The backend is the real guard. */
 export type Action =
@@ -68,6 +69,22 @@ export function can(me: Pick<Me, "role" | "permissions">, action: Action): boole
   if (me.role !== "PROPERTY_MANAGER") return false;
   const key = ACTION_KEYS[action];
   return key !== null && me.permissions.includes(key);
+}
+
+/**
+ * Uploading and deleting documents needs the owner record's edit permission (API.md, Documents): leases.manage,
+ * tenants.create_edit, units.create_edit or properties.edit. The property photo uses property.edit too.
+ */
+const DOCUMENT_ACTIONS: Record<DocumentOwner, Action> = {
+  leases: "lease.edit",
+  tenants: "tenant.edit",
+  units: "unit.edit",
+  properties: "property.edit",
+};
+
+/** True when the user may upload and delete documents on that owner type. Seeing them only needs access to the record. */
+export function canManageDocuments(me: Pick<Me, "role" | "permissions">, owner: DocumentOwner): boolean {
+  return can(me, DOCUMENT_ACTIONS[owner]);
 }
 
 /** Design system Sidebar role: OWNER -> "admin", PROPERTY_MANAGER -> "manager". TENANT never reaches the app layout. */

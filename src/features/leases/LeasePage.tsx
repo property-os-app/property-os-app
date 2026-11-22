@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
-import { FileX, Pencil, Plus, Wallet } from "lucide-react";
+import { FileX, History, Pencil, Plus, Wallet } from "lucide-react";
 import { Avatar, Button, Dash, H1, Skeleton, Small } from "@/components/atoms";
 import { Card, EmptyState, InlineError, StatusBadge, Tabs } from "@/components/molecules";
 import type { ModuleKey } from "@/components/organisms";
@@ -10,7 +10,9 @@ import { cn } from "@/lib/cn";
 import { centsToAmount, currentMonthUTC, daysUntil, formatCurrency, formatDate, formatMonth, isMonth, ordinal, toCents } from "@/lib/format";
 import { plural, unitLabel } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
-import { can } from "@/features/auth/permissions";
+import { can, canManageDocuments } from "@/features/auth/permissions";
+import { DocumentsPanel } from "@/features/documents/DocumentsPanel";
+import { useDocuments } from "@/features/documents/hooks";
 import { useActivateAction, useLease, type ActivateError } from "@/features/leases/hooks";
 import { LeaseAlert } from "@/features/leases/LeaseAlert";
 import { LeaseDeleteDialog } from "@/features/leases/LeaseDeleteDialog";
@@ -18,7 +20,7 @@ import { LeaseEndModal } from "@/features/leases/LeaseEndModal";
 import { LeaseBadge } from "@/features/leases/LeaseParts";
 import { DetailsTab, TenantsTab } from "@/features/leases/LeaseTabs";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
-import { dueNote, dueState, primaryTenant } from "@/features/leases/stats";
+import { canDeleteLease, dueNote, dueState, isOldLease, primaryTenant } from "@/features/leases/stats";
 import { AddChargeModal } from "@/features/ledger/AddChargeModal";
 import { balanceText } from "@/features/ledger/balance";
 import { useLedger } from "@/features/ledger/hooks";
@@ -30,8 +32,8 @@ import { BackBreadcrumb, Tile, type Crumb } from "@/features/shared/DetailParts"
 import { linkFocus, textLink } from "@/features/shared/linkClass";
 import type { Lease } from "@/types/lease";
 
-type Tab = "ledger" | "details" | "tenants";
-const TABS: Tab[] = ["ledger", "details", "tenants"];
+type Tab = "ledger" | "details" | "tenants" | "documents";
+const TABS: Tab[] = ["ledger", "details", "tenants", "documents"];
 
 /** Where an in-app click came from: names the first crumb (the place the back arrow goes) and picks the Sidebar item. */
 export type LeaseOrigin = "leases" | "rent-roll" | "dashboard" | "tenants" | "units" | "property";
@@ -180,11 +182,15 @@ function LeaseDetail({ lease }: { lease: Lease }) {
   const canPay = can(user, "payment.create");
   const canVoid = can(user, "entry.void");
 
-  const ledger = useLedger(lease.id);
+  // An old (history-only) lease is never billed: no ledger call, no Ledger tab, no money actions.
+  const old = isOldLease(lease);
+  const ledger = useLedger(lease.id, { enabled: !old });
+  const documents = useDocuments("leases", lease.id);
   const activate = useActivateAction();
 
   const tabParam = params.get("tab") as Tab | null;
-  const tab: Tab = tabParam && TABS.includes(tabParam) ? tabParam : fromRentRoll ? "ledger" : "details";
+  const tabs = old ? TABS.filter((t) => t !== "ledger") : TABS;
+  const tab: Tab = tabParam && tabs.includes(tabParam) ? tabParam : fromRentRoll && !old ? "ledger" : "details";
   const setTab = (next: Tab) =>
     setParams(
       (prev) => {
@@ -259,6 +265,20 @@ function LeaseDetail({ lease }: { lease: Lease }) {
         {payButton(true)}
       </>
     );
+  } else if (old) {
+    // Only notes, tags and documents change; Delete only while it has no documents (409 otherwise).
+    actions = canEdit && (
+      <>
+        {canDeleteLease(lease, documents.data?.length) && (
+          <Button variant="ghost" onClick={() => setDeleting(true)}>
+            Delete
+          </Button>
+        )}
+        <Button icon={editIcon} onClick={() => setEditing(true)}>
+          Edit notes and tags
+        </Button>
+      </>
+    );
   } else {
     actions = (
       <>
@@ -307,6 +327,14 @@ function LeaseDetail({ lease }: { lease: Lease }) {
             )}
           </div>
 
+          {old ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Tile label="Monthly rent" loading={false} value={formatCurrency(lease.rent)} note="As recorded" />
+              <Tile label="Deposit" loading={false} value={formatCurrency(lease.deposit)} note="As recorded" />
+              <Tile label="Term" loading={false} value={lease.termMonths !== null ? plural(lease.termMonths, "month") : <Dash />} note={formatDate(lease.startDate)} />
+              <Tile label="Ended" loading={false} value={formatDate(lease.endDate)} note={endsNote(lease.endDate)} />
+            </div>
+          ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Tile
               label="Current balance"
@@ -331,6 +359,7 @@ function LeaseDetail({ lease }: { lease: Lease }) {
             />
             <Tile label="Lease ends" loading={false} value={formatDate(lease.endDate)} note={endsNote(lease.endDate)} />
           </div>
+          )}
         </div>
         <div className="px-6">
           <Tabs<Tab>
@@ -338,9 +367,10 @@ function LeaseDetail({ lease }: { lease: Lease }) {
             onChange={setTab}
             className="border-b-0"
             tabs={[
-              { value: "ledger", label: "Ledger", count: ledger.data?.entries.length },
+              ...(old ? [] : [{ value: "ledger" as const, label: "Ledger", count: ledger.data?.entries.length }]),
               { value: "details", label: "Details" },
               { value: "tenants", label: "Tenants", count: lease.tenants.length },
+              { value: "documents", label: "Documents", count: documents.data?.length },
             ]}
           />
         </div>
@@ -356,7 +386,14 @@ function LeaseDetail({ lease }: { lease: Lease }) {
           )}
         </div>
       )}
-      <LeaseAlert lease={lease} split={split} />
+      {old ? (
+        <Card padding="compact" className="flex items-center gap-3">
+          <History size={16} strokeWidth={1.5} className="shrink-0 text-text-muted" aria-hidden />
+          <Small>History only – no rent tracked. This old lease is kept for the record: only its notes, tags and documents can change.</Small>
+        </Card>
+      ) : (
+        <LeaseAlert lease={lease} split={split} />
+      )}
 
       {tab === "ledger" ? (
         isDraft ? (
@@ -368,6 +405,8 @@ function LeaseDetail({ lease }: { lease: Lease }) {
         )
       ) : tab === "details" ? (
         <DetailsTab lease={lease} canEdit={canEdit} />
+      ) : tab === "documents" ? (
+        <DocumentsPanel owner="leases" ownerId={lease.id} canManage={canManageDocuments(user, "leases")} emptyText="No documents on this lease yet." />
       ) : (
         <TenantsTab lease={lease} />
       )}

@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
-import { Plus } from "lucide-react";
-import { Badge, Button, Dash, Select, Skeleton } from "@/components/atoms";
+import { History, Plus } from "lucide-react";
+import { Badge, Button, Checkbox, Dash, Select, Skeleton } from "@/components/atoms";
 import { FormField, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
 import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
@@ -17,6 +17,7 @@ import { LeaseEndModal } from "@/features/leases/LeaseEndModal";
 import type { LeasePageState } from "@/features/leases/LeasePage";
 import { LeasesTable } from "@/features/leases/LeasesTable";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
+import { OldLeaseModal } from "@/features/leases/OldLeaseModal";
 import { compareLeasesDefault, expiresWithin, isClosed, isPastEnd, pastEndNote, primaryTenant, startedThisMonth } from "@/features/leases/stats";
 import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
 import { useProperties } from "@/features/properties/hooks";
@@ -29,11 +30,13 @@ import { NoProperties } from "@/features/shared/NoProperties";
 import type { Lease, SignatureStatus } from "@/types/lease";
 
 type StatusFilter = "all" | "active" | "expiring" | "draft" | "ended";
-type Filters = { status: StatusFilter; esign: "all" | SignatureStatus };
+/** `old`: "show" (default) lists old (history-only) leases with their badge; "hide" asks GET /leases?historical=false. */
+type Filters = { status: StatusFilter; esign: "all" | SignatureStatus; old: "show" | "hide" };
 
-const initialFilters: Filters = { status: "all", esign: "all" };
+const initialFilters: Filters = { status: "all", esign: "all", old: "show" };
 const statusValues: StatusFilter[] = ["all", "active", "expiring", "draft", "ended"];
 const esignValues: Filters["esign"][] = ["all", "NOT_SENT", "PENDING", "SIGNED"];
+const oldValues: Filters["old"][] = ["show", "hide"];
 
 function matchStatus(l: Lease, status: StatusFilter): boolean {
   switch (status) {
@@ -50,7 +53,8 @@ function matchStatus(l: Lease, status: StatusFilter): boolean {
   }
 }
 
-const matchFilters = (l: Lease, f: Filters) => matchStatus(l, f.status) && (f.esign === "all" || l.signatureStatus === f.esign);
+const matchFilters = (l: Lease, f: Filters) =>
+  matchStatus(l, f.status) && (f.esign === "all" || l.signatureStatus === f.esign) && (f.old === "show" || !l.isHistorical);
 
 const searchText = (l: Lease) => [l.leaseNumber, l.unit.unitNumber, `${unitLabel(l.unit.unitNumber)}`, ...l.tenants.map((t) => t.fullName)];
 
@@ -90,10 +94,14 @@ function LeasesList() {
   const { propertyId: scope, setPropertyId } = useScope();
 
   const properties = useProperties();
-  const leases = useLeases({ propertyId: scope ?? undefined });
+  // "Show old leases" off (?old=hide): the API leaves them out (historical=false). Read from the URL, which the table writes.
+  const [params] = useSearchParams();
+  const hideOld = params.get("old") === "hide";
+  const leases = useLeases({ propertyId: scope ?? undefined, historical: hideOld ? false : undefined });
   const activate = useActivateAction();
 
   const [adding, setAdding] = useState(false);
+  const [addingOld, setAddingOld] = useState(false);
   const [editLease, setEditLease] = useState<Lease | null>(null);
   const [endLease, setEndLease] = useState<Lease | null>(null);
   const [deleteLease, setDeleteLease] = useState<Lease | null>(null);
@@ -108,7 +116,7 @@ function LeasesList() {
     matchFilters,
     sorts,
     inUrl: true,
-    filterValues: { status: statusValues, esign: esignValues },
+    filterValues: { status: statusValues, esign: esignValues, old: oldValues },
   });
 
   const all = useMemo(() => leases.data ?? [], [leases.data]);
@@ -180,7 +188,7 @@ function LeasesList() {
       ]}
     />
   );
-  const search = <SearchInput placeholder="Search tenant, unit or lease number" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />;
+  const search = <SearchInput containerClassName={isMobile ? undefined : "min-w-[200px]"} placeholder="Search tenant, unit or lease number" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />;
   const propertySelect = (id?: string) => (
     <Select id={id} aria-label={id ? undefined : "Property"} value={scope ?? "all"} onChange={(e) => setPropertyId(e.target.value === "all" ? null : e.target.value)}>
       <option value="all">All properties</option>
@@ -202,6 +210,16 @@ function LeasesList() {
     </Select>
   );
 
+  const oldToggle = (id: string) => (
+    <Checkbox
+      id={id}
+      label="Show old leases"
+      className="whitespace-nowrap text-small"
+      checked={table.filters.old === "show"}
+      onChange={(e) => table.setFilter("old", e.target.checked ? "show" : "hide")}
+    />
+  );
+
   if (properties.data?.length === 0) {
     return (
       <>
@@ -217,7 +235,16 @@ function LeasesList() {
       <PageHeader
         title="Leases"
         description={ready ? `Lease lifecycle for ${plural(all.length, "lease")}, with signature status.` : undefined}
-        actions={addButton("primary")}
+        actions={
+          canCreate ? (
+            <>
+              <Button icon={<History size={16} strokeWidth={1.5} />} onClick={() => setAddingOld(true)}>
+                Add old lease
+              </Button>
+              {addButton("primary")}
+            </>
+          ) : undefined
+        }
       />
 
       <KpiRow>
@@ -257,6 +284,7 @@ function LeasesList() {
             <FormField label="E-signature" htmlFor="leases-esign">
               {esignSelect("leases-esign")}
             </FormField>
+            <FilterGroup label="Old leases">{oldToggle("leases-old")}</FilterGroup>
             <SortSelect id="leases-sort" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />
           </MobileFilters>
         </Toolbar>
@@ -266,9 +294,12 @@ function LeasesList() {
           {search}
           <div className="w-52">{propertySelect()}</div>
           <div className="w-44">{esignSelect()}</div>
-          <div className="flex-1" />
-          {cards && <SortSelect compact id="leases-sort-desktop" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />}
-          <ViewToggle value={view} onChange={setView} />
+          {/* One group, so on a narrow row the checkbox and the view toggle wrap together to the right. */}
+          <div className="ml-auto flex items-center gap-3">
+            {oldToggle("leases-old-desktop")}
+            {cards && <SortSelect compact id="leases-sort-desktop" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />}
+            <ViewToggle value={view} onChange={setView} />
+          </div>
         </Toolbar>
       )}
 
@@ -295,6 +326,7 @@ function LeasesList() {
       </div>
 
       {adding && <LeaseWizard onClose={() => setAdding(false)} />}
+      {addingOld && <OldLeaseModal presetPropertyId={scope ?? undefined} leaseFrom={{ from: "leases" }} onClose={() => setAddingOld(false)} />}
       {editLease && <LeaseWizard lease={editLease} onClose={() => setEditLease(null)} />}
       {endLease && <LeaseEndModal lease={endLease} onClose={() => setEndLease(null)} />}
       <LeaseDeleteDialog lease={deleteLease} onClose={() => setDeleteLease(null)} />

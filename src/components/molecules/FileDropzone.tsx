@@ -2,6 +2,7 @@ import * as React from "react";
 import { Upload, FileText, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Bar } from "@/components/atoms/Progress";
+import { Button } from "@/components/atoms/Button";
 
 export interface DropzoneFile {
   id: string;
@@ -17,30 +18,53 @@ export interface FileDropzoneProps {
   onRemove?: (id: string) => void;
   accept?: string;
   hint?: string;
+  /** Pick more than one file (default true). */
+  multiple?: boolean;
+  /** Shows a real button with this text under the hint (easier to tap on phones than "browse"). */
+  chooseLabel?: string;
+  disabled?: boolean;
   className?: string;
 }
 
 /** Dashed dropzone with a thumbnail list and per-file progress. Receipts, photos, documents. */
-export function FileDropzone({ files = [], onFiles, onRemove, accept, hint = "PDF, PNG, JPG up to 20 MB", className }: FileDropzoneProps) {
+export function FileDropzone({ files = [], onFiles, onRemove, accept, hint = "PDF, PNG, JPG up to 20 MB", multiple = true, chooseLabel, disabled, className }: FileDropzoneProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [over, setOver] = React.useState(false);
   return (
     <div className={cn("flex flex-col gap-3", className)}>
       <div
-        onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+        onDragOver={(e) => { e.preventDefault(); if (!disabled) setOver(true); }}
         onDragLeave={() => setOver(false)}
-        onDrop={(e) => { e.preventDefault(); setOver(false); onFiles(e.dataTransfer.files); }}
-        className={cn("flex flex-col items-center gap-2 rounded-card border border-dashed bg-surface-2 p-6 text-center text-text-secondary", over ? "border-success" : "border-border-strong")}
+        onDrop={(e) => { e.preventDefault(); setOver(false); if (!disabled && e.dataTransfer.files.length > 0) onFiles(e.dataTransfer.files); }}
+        className={cn("flex flex-col items-center gap-2 rounded-card border border-dashed bg-surface-2 p-6 text-center text-text-secondary", over ? "border-success" : "border-border-strong", disabled && "opacity-60")}
       >
         <Upload size={24} strokeWidth={1.5} />
         <div className="text-small">
-          Drop files here, or{" "}
-          <button type="button" className="font-semibold text-success underline-offset-2 hover:underline" onClick={() => inputRef.current?.click()}>
+          Drop {multiple ? "files" : "a file"} here, or{" "}
+          <button type="button" disabled={disabled} className="font-semibold text-success underline-offset-2 hover:underline disabled:no-underline" onClick={() => inputRef.current?.click()}>
             browse
           </button>
         </div>
         <div className="text-caption text-text-muted">{hint}</div>
-        <input ref={inputRef} type="file" multiple accept={accept} className="sr-only" onChange={(e) => e.target.files && onFiles(e.target.files)} />
+        {chooseLabel && (
+          <Button type="button" size="sm" disabled={disabled} onClick={() => inputRef.current?.click()} className="mt-1 max-md:h-11">
+            {chooseLabel}
+          </Button>
+        )}
+        {/* Cleared after each pick, so choosing the same file again still fires onChange. */}
+        <input
+          ref={inputRef}
+          type="file"
+          multiple={multiple}
+          accept={accept}
+          disabled={disabled}
+          tabIndex={-1}
+          className="sr-only"
+          onChange={(e) => {
+            if (e.target.files && e.target.files.length > 0) onFiles(e.target.files);
+            e.target.value = "";
+          }}
+        />
       </div>
       {files.length > 0 && (
         <ul className="m-0 flex list-none flex-col gap-2 p-0">

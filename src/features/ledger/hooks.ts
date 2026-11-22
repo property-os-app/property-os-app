@@ -17,8 +17,8 @@ export function refreshAfterMoneyChange(qc: QueryClient) {
 }
 
 /** GET /leases/:id/ledger: entries oldest first, voided ones included, plus the summary. Works for any lease status. */
-export function useLedger(leaseId: string) {
-  return useQuery(ledgerQuery(leaseId));
+export function useLedger(leaseId: string, options: { enabled?: boolean } = {}) {
+  return useQuery({ ...ledgerQuery(leaseId), enabled: options.enabled });
 }
 
 /** The ledger query options, also for a one-off fetch (the Rent Roll's Email reminder needs the overdue amount). */

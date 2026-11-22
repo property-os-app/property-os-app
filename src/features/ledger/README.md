@@ -4,7 +4,7 @@ The lease ledger (lease page, Ledger tab): charges, payments, voids and re-entri
 
 ## hooks.ts
 - `refreshAfterMoneyChange(qc)`: invalidates `["rent-roll"]`, `["leases"]` and `["tenants"]`. Also used by Run billing now.
-- `useLedger(leaseId)`: GET /leases/:id/ledger (key `leaseKeys.ledger(id)`).
+- `useLedger(leaseId, { enabled? })`: GET /leases/:id/ledger (key `leaseKeys.ledger(id)`); the lease page turns it off for old leases.
 - `ledgerQuery(leaseId)`: the same query options, for a one-off `fetchQuery` (Rent Roll Email reminder).
 - `useAddCharge()`: POST /leases/:id/charges. `useRecordPayment()`: POST /leases/:id/payments.
 - `useVoidCharge()`, `useVoidPayment()`: POST .../void with `{ reason }` (owner, or a manager with `money.void`).

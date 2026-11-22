@@ -5,17 +5,17 @@ import { friendlyLeaseMessage, parseMissingMessage } from "@/features/leases/sta
 import { leaseKeys, rentRollPrefix, type LeaseListParams } from "@/features/leases/keys";
 import { tenantKeys } from "@/features/tenants/keys";
 import { unitKeys } from "@/features/units/keys";
-import type { Lease, LeaseCreateBody, LeaseEndBody, LeaseUpdateBody } from "@/types/lease";
+import type { Lease, LeaseCreateBody, LeaseEndBody, LeaseHistoryBody, LeaseUpdateBody } from "@/types/lease";
 import { unitLabel } from "@/lib/labels";
 
 const leasePath = (id: string) => `/leases/${encodeURIComponent(id)}`;
 
-/** GET /leases (?propertyId=&unitId=&status=): OWNER sees all, PROPERTY_MANAGER only assigned. Newest first. */
+/** GET /leases (?propertyId=&unitId=&status=&historical=): OWNER sees all, PROPERTY_MANAGER only assigned. Newest first. */
 export function useLeases(params: LeaseListParams = {}, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: leaseKeys.list(params),
     queryFn: ({ signal }) =>
-      apiFetch<Lease[]>("/leases", { query: { propertyId: params.propertyId, unitId: params.unitId, status: params.status }, signal }),
+      apiFetch<Lease[]>("/leases", { query: { propertyId: params.propertyId, unitId: params.unitId, status: params.status, historical: params.historical }, signal }),
     enabled: options.enabled,
   });
 }
@@ -65,6 +65,15 @@ export function useCreateLease() {
   });
 }
 
+/** POST /leases/history: an old lease (ENDED + SIGNED, isHistorical). 400 dates, 409 when it overlaps another lease on the unit. */
+export function useCreateOldLease() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: LeaseHistoryBody) => apiFetch<Lease>("/leases/history", { method: "POST", body }),
+    onSuccess: () => refreshAfterLeaseChange(qc),
+  });
+}
+
 /** PATCH /leases/:id (never status). On an ACTIVE lease the backend re-runs the activation checks. */
 export function useUpdateLease() {
   const qc = useQueryClient();
@@ -92,7 +101,7 @@ export function useEndLease() {
   });
 }
 
-/** DELETE /leases/:id: DRAFT only (409 otherwise). Drops the detail from the cache so the closing drawer doesn't refetch a 404. */
+/** DELETE /leases/:id: DRAFT and old leases, only with no documents (409 otherwise). Drops the detail from the cache so the closing drawer doesn't refetch a 404. */
 export function useDeleteLease() {
   const qc = useQueryClient();
   return useMutation({

@@ -7,17 +7,19 @@ import type { Lease } from "@/types/lease";
 import { unitLabel } from "@/lib/labels";
 
 export interface LeaseDeleteDialogProps {
-  /** The draft to delete; null keeps the dialog closed. */
+  /** The draft or old lease to delete; null keeps the dialog closed. */
   lease: Lease | null;
   onClose: () => void;
   /** After a successful delete (e.g. close the drawer). */
   onDeleted?: () => void;
 }
 
-/** Delete a DRAFT lease (DELETE /leases/:id). A 409 shows inside the dialog. */
+/** Delete a DRAFT or an old (history-only) lease (DELETE /leases/:id). A 409 (e.g. it still has documents) shows inside the dialog. */
 export function LeaseDeleteDialog({ lease, onClose, onDeleted }: LeaseDeleteDialogProps) {
   const remove = useDeleteLease();
   const [error, setError] = useState<string | null>(null);
+  const kind = lease?.isHistorical ? "old lease" : "draft lease";
+  const where = lease ? `${unitLabel(lease.unit.unitNumber)}, ${lease.unit.property.name}` : "";
 
   const close = () => {
     setError(null);
@@ -29,7 +31,7 @@ export function LeaseDeleteDialog({ lease, onClose, onDeleted }: LeaseDeleteDial
     setError(null);
     try {
       await remove.mutateAsync(lease.id);
-      toast.success(`Draft lease ${lease.leaseNumber} deleted`);
+      toast.success(`${lease.isHistorical ? "Old lease" : "Draft lease"} ${lease.leaseNumber} deleted`);
       close();
       onDeleted?.();
     } catch (err) {
@@ -41,9 +43,15 @@ export function LeaseDeleteDialog({ lease, onClose, onDeleted }: LeaseDeleteDial
     <ConfirmDialog
       open={lease !== null}
       onOpenChange={(open) => !open && close()}
-      title={lease ? `Delete draft lease ${lease.leaseNumber}?` : "Delete draft lease?"}
-      consequence={lease ? `This removes the draft for ${unitLabel(lease.unit.unitNumber)}, ${lease.unit.property.name}. It can't be undone.` : ""}
-      confirmLabel="Delete draft"
+      title={lease ? `Delete ${kind} ${lease.leaseNumber}?` : "Delete lease?"}
+      consequence={
+        lease
+          ? lease.isHistorical
+            ? `This removes the old lease record for ${where}. It can't be undone.`
+            : `This removes the draft for ${where}. It can't be undone.`
+          : ""
+      }
+      confirmLabel={lease?.isHistorical ? "Delete old lease" : "Delete draft"}
       destructive
       onConfirm={() => void confirm()}
       busy={remove.isPending}

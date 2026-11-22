@@ -10,7 +10,7 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 
 ## property.ts
 - `PropertyType`: `RESIDENTIAL | COMMERCIAL | MIXED_USE`.
-- `Property`: every Property endpoint (`propertyValue` is a money string like "250000.00", `acquisitionDate` a "YYYY-MM-DD" date, `unitCount`, `managers`).
+- `Property`: every Property endpoint (`propertyValue` is a money string like "250000.00", `acquisitionDate` a "YYYY-MM-DD" date, `unitCount`, `managers`, `photoUrl` signed cover photo link or null: use it straight in `<img src>`, it changes hourly, never save it).
 - `PropertyManagerRef`: `{ id, name }`, one embedded manager (no email).
 - `PropertyCreateBody`: POST /properties body. `PropertyUpdateBody`: PATCH body (any subset, `description` may be null).
 
@@ -31,12 +31,18 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 - `TenantListItem`: one row of GET /tenants (no `idNumber`).
 - `TenantCreateBody`: POST body. `TenantUpdateBody`: PATCH body (`idNumber`, `address`, `moveInDate`, `notes` may be null).
 
+## document.ts
+- `DocumentOwner`: `leases | tenants | units | properties` (the path prefix). `DocumentCategoryOption` (`{ value, label }`) and `DocumentCategories` (GET /documents/categories: `{ lease, tenant, unit, property }`, singular keys, each list in display order). `Document.category` is a plain string (the lists come from the API, never hard-coded).
+- `Document`: one uploaded file (`name`, `category`, `contentType`, `sizeBytes`, `uploadedBy { id, email }`, `createdAt`). `DocumentContentType`.
+- `DocumentDownload`: `{ url, expiresAt }`, a 5-minute signed link; open it at once, never store it.
+
 ## lease.ts
 - `LeaseStatus`, `SignatureStatus`, `PaymentFrequency`: lease enums.
 - `LeaseTenant`: one tenant on a lease (`isPrimary`).
-- `Lease`: one row from GET /leases (dates "YYYY-MM-DD", money strings with 2 decimals, `tenants` primary first then by name, `endingSoon`, `balance`, `templateVersionId`, `template`).
+- `Lease`: one row from GET /leases (dates "YYYY-MM-DD", money strings with 2 decimals, `tenants` primary first then by name, `endingSoon`, `balance`, `templateVersionId`, `template`, `isHistorical` true for an old (history-only) lease).
 - `LeaseTemplateRef`: the lease's embedded template `{ id, name, version, archived }`; `version` is the pinned one.
 - `LeaseCreateBody`: POST /leases body (only `unitId` required; `status` DRAFT or ACTIVE). `LeaseUpdateBody`: PATCH body (never `status`; dates, rent, deposit, rentDueDay, notes, primaryTenantId, templateId may be null). Both take `templateId`. `LeaseEndBody`: `{ status?: ENDED | TERMINATED }`.
+- `LeaseHistoryBody`: POST /leases/history body (unit, primary tenant, start and end required; co-tenants, rent, deposit, notes, tags optional).
 
 ## leaseTemplate.ts
 - `LeaseTemplateListItem`: one row of GET /lease-templates (`defaultTermMonths`, `isDefault`, `archivedAt`, `currentVersion`, `leaseCount`).

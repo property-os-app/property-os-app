@@ -10,6 +10,8 @@ export interface ApiFetchOptions {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   /** Plain object, sent as JSON. */
   body?: unknown;
+  /** multipart/form-data (file uploads). Sent as is with no Content-Type, so the browser adds the boundary. Don't pass `body` too. */
+  form?: FormData;
   /** Turned into ?a=1&b=2. undefined, null and "" are skipped. */
   query?: Record<string, QueryValue>;
   signal?: AbortSignal;
@@ -104,19 +106,20 @@ function wait(ms: number, signal?: AbortSignal): Promise<void> {
 
 /** Sends one attempt with the Firebase token when signed in. A network failure returns null. */
 async function attempt(path: string, options: ApiFetchOptions, accept: string): Promise<Response | null> {
-  const { method = "GET", body, query, signal } = options;
+  const { method = "GET", body, form, query, signal } = options;
 
   await authReady;
   const headers: Record<string, string> = { Accept: accept };
   const user = auth.currentUser;
   if (user) headers.Authorization = `Bearer ${await getToken(user)}`;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  // A FormData body gets its multipart Content-Type (with the boundary) from the browser.
+  if (body !== undefined && !form) headers["Content-Type"] = "application/json";
 
   try {
     return await fetch(buildUrl(path, query), {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: form ?? (body === undefined ? undefined : JSON.stringify(body)),
       signal,
     });
   } catch (err) {

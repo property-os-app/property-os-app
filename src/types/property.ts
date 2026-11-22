@@ -30,6 +30,8 @@ export interface Property {
   unitCount: number;
   /** Oldest assignment first; [] when none. */
   managers: PropertyManagerRef[];
+  /** Signed link to the cover photo, or null. Changes every UTC hour: use it directly in <img src>, never save it. */
+  photoUrl: string | null;
 }
 
 /** POST /properties body. Money is a JSON number (max 2 decimals); acquisitionDate is "YYYY-MM-DD". */

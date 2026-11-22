@@ -1,0 +1,9 @@
+import type { DocumentOwner } from "@/types/document";
+
+/** TanStack Query keys for documents. One list per owner record. */
+export const documentKeys = {
+  all: ["documents"] as const,
+  list: (owner: DocumentOwner, ownerId: string) => ["documents", owner, ownerId] as const,
+  /** GET /documents/categories (the same for every record; cached for the session). */
+  categories: ["documents", "categories"] as const,
+};
