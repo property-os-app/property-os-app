@@ -98,6 +98,11 @@ export interface YearTableProps {
   footer?: ReactNode;
   /** A row opens its lease (by unit: the current one); a vacant or reserved unit the Unit drawer. */
   onOpen: (row: RentRollYearRow) => void;
+  /**
+   * Full screen: the table scrolls inside its own box filling the window under the slim header (sticky header row, first
+   * column and Total column), instead of the page scrolling (pageScroll).
+   */
+  fill?: boolean;
 }
 
 /**
@@ -108,8 +113,9 @@ export interface YearTableProps {
  * vacancy, the renewal alert, optional days to end / renewal, and Collected % with a tiny bar. All money is short, exact in
  * the tooltip. Property bands carry the API's collected totals; subtotal rows and the sticky grand total come from the API.
  * The page is the only vertical scroller (pageScroll): the header and total row stay in view, the sideways scrollbar sticks to the bottom.
+ * With `fill` (full screen) it scrolls in its own box instead.
  */
-export function YearTable({ data, groups, year, rowsBy = "unit", visible, state, empty, error, footer, onOpen }: YearTableProps) {
+export function YearTable({ data, groups, year, rowsBy = "unit", visible, state, empty, error, footer, onOpen, fill = false }: YearTableProps) {
   const months = data?.months ?? Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, "0")}`);
   const shown = new Set(visible);
   const nowMonth = months.find((m) => isCurrentMonth(m));
@@ -264,7 +270,9 @@ export function YearTable({ data, groups, year, rowsBy = "unit", visible, state,
         subtotal: totalsRow(`${g.property.name} total`, g.totals),
       }))}
       rowKey={yearRowKey}
-      pageScroll
+      pageScroll={!fill}
+      // Full screen: the window minus the slim header (3.5rem), the layer's padding (2rem) and the note under the table if any.
+      maxHeight={fill ? (footer ? "calc(100dvh - 9rem)" : "calc(100dvh - 6rem)") : undefined}
       scrollToColumn={nowMonth}
       onRowClick={onOpen}
       rowMuted={(r) => r.kind === "VACANT_UNIT"}

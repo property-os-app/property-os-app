@@ -118,7 +118,19 @@ Links that open the user's own phone and email apps (no backend).
 - `SEARCH_KEY`, `SORT_KEY`, `PAGE_KEY`, `TableParams`, `TableDefaults`.
 - `SortKind`, `SortColumn`: sort column types.
 
+## sidebarPref.ts
+- `readSidebarCollapsed(storage?)`: the desktop menu's saved choice (localStorage `propos.sidebar.collapsed`); only "1" is collapsed, so nothing saved, garbage or a storage error means expanded.
+- `writeSidebarCollapsed(collapsed, storage?)`: saves "1" / "0"; storage errors are ignored. `SIDEBAR_COLLAPSED_KEY`: the key.
+
+## fullscreen.ts
+- `enterBrowserFullscreen(target?, doc?)`: asks for browser full screen (default the document element, navigation UI hidden); `"browser"`, or `"window"` when unsupported or refused. Never throws.
+- `exitBrowserFullscreen(doc?)`: leaves it only when something is in full screen; never throws.
+- `leftBrowserFullscreen(mode, doc?)`: on `fullscreenchange`, true when we were in browser full screen and the browser has left it.
+- `FullscreenMode`, `FullscreenDoc`, `FullscreenTarget`: types.
+
 ## Tests (`npm test`)
+- `sidebarPref.test.ts`: expanded by default, a saved choice, garbage, storage that throws on read and write, missing storage.
+- `fullscreen.test.ts`: request succeeds / refused / unsupported (not called), exit only when in full screen and never throws, the left-full-screen check (browser vs in-app only).
 - `format.test.ts`: money (`toCents`, `centsToAmount`, `formatCurrency`, `formatCurrencyShort`, `formatCompactCurrency`, `formatPercent`) and dates (`parseDateOnly`, `formatDate`, `formatTimestampDate`, today / UTC today, `daysUntil`, `daysSince`, month helpers), in UTC and America/New_York with a fake "now".
 - `contact.test.ts`: `telHref`, `mailtoHref` (encoding, optional parts), `firstName`.
 - `clipboard.test.ts`: `copyText` on the Clipboard API path and that it never throws.

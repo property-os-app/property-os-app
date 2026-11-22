@@ -4,6 +4,7 @@ import { LogOut, SlidersHorizontal } from "lucide-react";
 import { defaultNavGroups, type ModuleKey, type NavGroup, type NavItem, type SidebarProps } from "@/components/organisms";
 import { ThemeSwitch } from "@/components/molecules";
 import { WorkspaceShell } from "@/components/templates";
+import { readSidebarCollapsed, writeSidebarCollapsed } from "@/lib/sidebarPref";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { PageNavContext, PageTitleContext } from "@/app/pageTitle";
 import { PageSkeleton } from "@/app/PageSkeleton";
@@ -77,6 +78,14 @@ function AppShell() {
     setMenuOpen(false);
   }
 
+  // Desktop menu: icon rail or full width, remembered per browser (expanded when storage is unavailable).
+  const [collapsed, setCollapsed] = useState(readSidebarCollapsed);
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    writeSidebarCollapsed(next);
+  };
+
   // A page opened for the first time downloads its code (lazy route): show a skeleton instead of the old page meanwhile.
   const navigation = useNavigation();
   const pageLoading = navigation.state === "loading" && navigation.location.pathname !== location.pathname;
@@ -103,6 +112,9 @@ function AppShell() {
         badges: emergencies > 0 ? { maintenance: { count: emergencies, tone: "danger" } } : undefined,
         brand: "PropertyOS",
         renderLink,
+        // The phone menu (NavMenuDrawer) always shows the full menu and no toggle.
+        collapsed,
+        onToggleCollapsed: toggleCollapsed,
       }}
       topbar={{
         title,
