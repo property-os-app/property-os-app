@@ -9,7 +9,9 @@ import { formatCurrency, formatDate, formatTimestampDate, parseDateOnly } from "
 import { contactMethodLabels, paymentFrequencyLabels, tenantTypeLabels, unitLabel } from "@/lib/labels";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
-import { can, roleLabel } from "@/features/auth/permissions";
+import { can, canManageDocuments, roleLabel } from "@/features/auth/permissions";
+import { DocumentsPanel } from "@/features/documents/DocumentsPanel";
+import { useDocuments } from "@/features/documents/hooks";
 import type { LeasePageState } from "@/features/leases/LeasePage";
 import { LeaseBadge, StatCard } from "@/features/leases/LeaseParts";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
@@ -23,7 +25,7 @@ import { unitLine, type TenantRow } from "@/features/tenants/stats";
 import type { Lease } from "@/types/lease";
 import type { TenantDetail } from "@/types/tenant";
 
-type Tab = "overview" | "leases";
+type Tab = "overview" | "leases" | "documents";
 
 const leasePath = (l: Lease) => `/leases/${encodeURIComponent(l.id)}`;
 /** The drawer lives on the Tenants page: the lease page goes back there. */
@@ -46,12 +48,16 @@ export function TenantDrawer({ row, onClose }: TenantDrawerProps) {
   const { me } = useAuth();
   const user = me!;
   const detail = useTenant(row.tenant.id);
-  const [tab, setTab] = useState<Tab>("overview");
+  const documents = useDocuments("tenants", row.tenant.id);
+  const [chosenTab, setTab] = useState<Tab>("overview");
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [addingLease, setAddingLease] = useState(false);
 
   const notFound = detail.error instanceof ApiError && detail.error.status === 404;
+  // A manager sees a tenant's documents only when the tenant is on a lease in their properties or they created them; else 404 (rules.md): hide the tab.
+  const docsHidden = documents.error instanceof ApiError && documents.error.status === 404;
+  const tab: Tab = docsHidden && chosenTab === "documents" ? "overview" : chosenTab;
   const tenant = detail.data ?? row.tenant;
   const { current, leases } = row;
   const canEdit = can(user, "tenant.edit") && !notFound;
@@ -74,6 +80,7 @@ export function TenantDrawer({ row, onClose }: TenantDrawerProps) {
               tabs={[
                 { value: "overview", label: "Overview" },
                 { value: "leases", label: "Leases", count: leases.length },
+                ...(docsHidden ? [] : [{ value: "documents" as const, label: "Documents", count: documents.data?.length }]),
               ]}
             />
           )
@@ -118,6 +125,8 @@ export function TenantDrawer({ row, onClose }: TenantDrawerProps) {
               )}
             </div>
           </>
+        ) : tab === "documents" ? (
+          <DocumentsPanel owner="tenants" ownerId={row.tenant.id} canManage={canManageDocuments(user, "tenants")} emptyText="No documents for this tenant yet." />
         ) : (
           <LeasesTab tenantId={row.tenant.id} leases={leases} onAddLease={can(user, "lease.create") ? () => setAddingLease(true) : undefined} />
         )}

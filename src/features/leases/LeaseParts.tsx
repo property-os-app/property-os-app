@@ -1,10 +1,11 @@
-import { Caption, H2, Overline } from "@/components/atoms";
+import { Badge, Caption, H2, Overline } from "@/components/atoms";
 import { Card, StatusBadge } from "@/components/molecules";
 import { cn } from "@/lib/cn";
 import type { Lease } from "@/types/lease";
 
-/** Lease badge: "Expiring" (warning) for an ACTIVE lease ending soon, else the lease status. */
+/** Lease badge: neutral "Old lease" for a history-only lease, "Expiring" (warning) for an ACTIVE lease ending soon, else the lease status. */
 export function LeaseBadge({ lease }: { lease: Lease }) {
+  if (lease.isHistorical) return <Badge tone="neutral">Old lease</Badge>;
   return <StatusBadge domain="lease" status={lease.endingSoon ? "EXPIRING" : lease.status} />;
 }
 

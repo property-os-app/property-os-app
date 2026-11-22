@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { FileText, Plus } from "lucide-react";
+import { FileText, History, Plus } from "lucide-react";
 import { Avatar, Badge, Button, Caption, Dash, H3, Num, Skeleton } from "@/components/atoms";
 import { Card, EmptyState, InlineError, KeyValueList, ListCard, StatusBadge, Tabs } from "@/components/molecules";
 import { CardList, DataTable, Drawer, type Column } from "@/components/organisms";
@@ -9,11 +9,14 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { unitStatusLabels, unitTypeLabels, unitLabel } from "@/lib/labels";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
-import { can } from "@/features/auth/permissions";
+import { can, canManageDocuments } from "@/features/auth/permissions";
+import { DocumentsPanel } from "@/features/documents/DocumentsPanel";
+import { useDocuments } from "@/features/documents/hooks";
 import { useLeases } from "@/features/leases/hooks";
 import type { LeasePageState } from "@/features/leases/LeasePage";
 import { LeaseBadge, StatCard } from "@/features/leases/LeaseParts";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
+import { OldLeaseModal } from "@/features/leases/OldLeaseModal";
 import { dueNote, dueState, leaseEndsNote, leasePeriod } from "@/features/leases/stats";
 import { ContactLink } from "@/features/shared/ContactLink";
 import { primaryTenantName } from "@/features/properties/stats";
@@ -23,7 +26,7 @@ import { rentDiffNote, unitSummary } from "@/features/units/stats";
 import type { Lease } from "@/types/lease";
 import type { Unit } from "@/types/unit";
 
-type Tab = "tenant" | "history";
+type Tab = "tenant" | "history" | "documents";
 
 const leasePath = (l: Lease) => `/leases/${encodeURIComponent(l.id)}`;
 
@@ -52,10 +55,12 @@ export function UnitDrawer({ unit, propertyName, leaseFrom, onClose }: UnitDrawe
   const { me } = useAuth();
   const user = me!;
   const leases = useLeases({ unitId: unit.id });
+  const documents = useDocuments("units", unit.id);
   const [tab, setTab] = useState<Tab>("tenant");
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [addingLease, setAddingLease] = useState(false);
+  const [addingOld, setAddingOld] = useState(false);
 
   const active = leases.data?.find((l) => l.status === "ACTIVE");
   const canEdit = can(user, "unit.edit");
@@ -83,6 +88,7 @@ export function UnitDrawer({ unit, propertyName, leaseFrom, onClose }: UnitDrawe
             tabs={[
               { value: "tenant", label: "Tenant" },
               { value: "history", label: "Lease history", count: leases.data?.length },
+              { value: "documents", label: "Documents", count: documents.data?.length },
             ]}
           />
         }
@@ -146,7 +152,19 @@ export function UnitDrawer({ unit, propertyName, leaseFrom, onClose }: UnitDrawe
               />
             </div>
           </>
-        ) : isMobile ? (
+        ) : tab === "documents" ? (
+          <DocumentsPanel owner="units" ownerId={unit.id} canManage={canManageDocuments(user, "units")} emptyText="No documents on this unit yet." />
+        ) : (
+          <div className="flex flex-col gap-3">
+            {canAddLease && (
+              <div className="flex items-center justify-between gap-3">
+                <Caption>Record a lease that ended before today, for the history.</Caption>
+                <Button size="sm" icon={<History size={16} strokeWidth={1.5} />} onClick={() => setAddingOld(true)} className="shrink-0 max-md:h-11">
+                  Add old lease
+                </Button>
+              </div>
+            )}
+            {isMobile ? (
           <CardList
             rows={leases.data ?? []}
             rowKey={(l) => l.id}
@@ -180,11 +198,21 @@ export function UnitDrawer({ unit, propertyName, leaseFrom, onClose }: UnitDrawe
             empty={historyEmpty}
             error={historyError}
           />
+            )}
+          </div>
         )}
       </Drawer>
 
       {editing && <UnitFormModal unit={unit} onClose={() => setEditing(false)} />}
       {addingLease && <LeaseWizard presetUnit={unit} onClose={() => setAddingLease(false)} />}
+      {addingOld && (
+        <OldLeaseModal
+          presetUnit={unit}
+          presetUnitLine={`${unitLabel(unit.unitNumber)}${propertyName ? `, ${propertyName}` : ""}`}
+          leaseFrom={leaseFrom}
+          onClose={() => setAddingOld(false)}
+        />
+      )}
       <UnitDeleteDialog unit={deleting ? unit : null} propertyName={propertyName} onClose={() => setDeleting(false)} onDeleted={onClose} />
     </>
   );

@@ -5,6 +5,7 @@
  */
 import { statusLabel } from "@/components/molecules/StatusBadge";
 import type { UserRole } from "@/types/auth";
+import type { DocumentCategoryByOwner, DocumentOwner } from "@/types/document";
 import type { LeaseStatus, PaymentFrequency, SignatureStatus } from "@/types/lease";
 import type { MaintenancePriority, MaintenanceStatus } from "@/types/maintenance";
 import type { ExpenseStatus, ExpenseType } from "@/types/expense";
@@ -128,6 +129,19 @@ export const ticketStatusLabels: Record<MaintenanceStatus, string> = {
   RESOLVED: statusLabel.ticket.RESOLVED,
   CANCELLED: statusLabel.ticket.CANCELLED,
 };
+
+/** Document categories per owner type, in the API's order (section 2). */
+export const documentCategoryLabels: { [O in DocumentOwner]: Record<DocumentCategoryByOwner[O], string> } = {
+  leases: { SIGNED_LEASE: "Signed lease", RENEWAL: "Renewal", ADDENDUM: "Addendum", INSPECTION: "Inspection", NOTICE: "Notice", OTHER: "Other" },
+  tenants: { ID: "ID", APPLICATION: "Application", OTHER: "Other" },
+  units: { INSPECTION: "Inspection", PHOTO: "Photo", OTHER: "Other" },
+  properties: { OWNERSHIP: "Ownership", INSURANCE: "Insurance", TAX: "Tax", OTHER: "Other" },
+};
+
+/** Friendly label of a stored category for that owner type; the raw text when it isn't in the list. */
+export function documentCategoryLabel(owner: DocumentOwner, category: string): string {
+  return (documentCategoryLabels[owner] as Record<string, string>)[category] ?? category;
+}
 
 /** Options for a Select, in the order of the map: [{ value, label }]. */
 export function labelOptions<K extends string>(labels: Record<K, string>): { value: K; label: string }[] {

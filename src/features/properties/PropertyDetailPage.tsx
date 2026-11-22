@@ -9,10 +9,12 @@ import { ApiError, errorText } from "@/lib/api";
 import { centsToAmount, formatCompactCurrency, formatCurrency, formatDate, formatPercent } from "@/lib/format";
 import { plural, propertyTypeLabels } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
-import { can } from "@/features/auth/permissions";
+import { can, canManageDocuments } from "@/features/auth/permissions";
+import { DocumentsPanel } from "@/features/documents/DocumentsPanel";
+import { useDocuments } from "@/features/documents/hooks";
 import { useLeases } from "@/features/leases/hooks";
 import { useDeleteProperty, useProperty } from "@/features/properties/hooks";
-import { PropertyImage } from "@/features/properties/PropertyCard";
+import { PropertyPhoto } from "@/features/properties/PropertyPhoto";
 import { PropertyFormModal } from "@/features/properties/PropertyFormModal";
 import { PropertyManagersCard } from "@/features/properties/PropertyManagersCard";
 import { PropertyUnitsTable } from "@/features/properties/PropertyUnitsTable";
@@ -24,7 +26,7 @@ import { UnitDrawer } from "@/features/units/UnitDrawer";
 import { UnitFormModal } from "@/features/units/UnitFormModal";
 import type { Property } from "@/types/property";
 
-type Tab = "overview" | "units";
+type Tab = "overview" | "units" | "documents";
 
 /** Router state from the Properties list (cards and table): back goes back in history, so its filters and search stay. */
 export interface PropertyPageState {
@@ -101,6 +103,7 @@ function PropertyDetail({ property }: { property: Property }) {
   const units = useUnits({ propertyId: property.id });
   const leases = useLeases({ propertyId: property.id });
   const del = useDeleteProperty();
+  const documents = useDocuments("properties", property.id);
 
   const [tab, setTab] = useState<Tab>("overview");
   const [editing, setEditing] = useState(false);
@@ -147,7 +150,7 @@ function PropertyDetail({ property }: { property: Property }) {
 
       <Card padding="none">
         <div className="flex flex-col gap-6 p-6 md:flex-row">
-          <PropertyImage type={property.propertyType} className="h-[180px] w-full shrink-0 rounded-control md:w-[280px]" />
+          <PropertyPhoto property={property} canEdit={can(user, "property.edit")} className="w-full shrink-0 md:w-[280px]" />
           <div className="flex min-w-0 flex-1 flex-col gap-5">
             {/* Phones: the actions go under the name and fill the width (44px). */}
             <div className="flex items-start justify-between gap-4 max-md:flex-col">
@@ -224,6 +227,7 @@ function PropertyDetail({ property }: { property: Property }) {
             tabs={[
               { value: "overview", label: "Overview" },
               { value: "units", label: "Units", count: units.data?.length },
+              { value: "documents", label: "Documents", count: documents.data?.length },
             ]}
           />
         </div>
@@ -274,6 +278,8 @@ function PropertyDetail({ property }: { property: Property }) {
             <PropertyManagersCard property={property} canAssign={can(user, "manager.assign")} />
           </div>
         </div>
+      ) : tab === "documents" ? (
+        <DocumentsPanel owner="properties" ownerId={property.id} canManage={canManageDocuments(user, "properties")} emptyText="No documents on this property yet." />
       ) : (
         <Card padding="none">
           <PropertyUnitsTable
@@ -302,7 +308,7 @@ function PropertyDetail({ property }: { property: Property }) {
         open={deleting}
         onOpenChange={setDeleting}
         title="Delete property?"
-        consequence={`This permanently deletes ${property.name} and removes its manager assignments. A property that still has units or expenses can't be deleted.`}
+        consequence={`This permanently deletes ${property.name} and removes its manager assignments. A property that still has units, documents or expenses can't be deleted.`}
         confirmLabel="Delete property"
         destructive
         typeToConfirm={property.name}

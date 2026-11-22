@@ -125,11 +125,12 @@ export function outstanding(rows: TenantRow[]): { count: number; totalCents: num
   return { count: owing.length, totalCents };
 }
 
-/** Tenants whose current lease is ENDED or TERMINATED with endDate in the last 30 days (local calendar days). */
+/** Tenants whose current lease is ENDED or TERMINATED (not an old lease) with endDate in the last 30 days (local calendar days). */
 export function recentMoveOuts(rows: TenantRow[]): number {
   return rows.filter((r) => {
     const lease = r.current;
-    if (lease?.status !== "ENDED" && lease?.status !== "TERMINATED") return false;
+    // Old (history-only) leases are records of the past, not move-outs.
+    if ((lease?.status !== "ENDED" && lease?.status !== "TERMINATED") || lease.isHistorical) return false;
     const days = daysUntil(lease.endDate);
     return days !== null && days <= 0 && days >= -30;
   }).length;

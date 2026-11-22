@@ -63,6 +63,8 @@ export function LeaseDocumentCard({ lease, canEdit }: { lease: Lease; canEdit: b
             </Button>
           </div>
         </>
+      ) : lease.isHistorical ? (
+        <Small>Old lease: the signed copy is under Documents.</Small>
       ) : (
         <>
           <Small>No template, so this lease has no PDF yet.</Small>

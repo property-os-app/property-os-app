@@ -41,6 +41,7 @@ function makeLease(over: Partial<Lease> = {}): Lease {
     lateFeeGraceDays: 0,
     rentDueDay: 1,
     autoRenew: false,
+    isHistorical: false,
     tags: [],
     notes: null,
     templateVersionId: null,

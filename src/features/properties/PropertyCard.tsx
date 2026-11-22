@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { Building2 } from "lucide-react";
 import { Link } from "react-router";
 import { Avatar, Badge, Bar, Caption, H3, Num, Overline, Skeleton, Small } from "@/components/atoms";
 import { Card } from "@/components/molecules";
@@ -20,13 +21,28 @@ export interface PropertyRow {
   rentCents: number;
 }
 
-/** Neutral block in place of the property photo (we have none), with the type badge in its top-left corner. */
-export function PropertyImage({ type, className }: { type: Property["propertyType"]; className?: string }) {
+/**
+ * The cover photo (`photoUrl`, cover-cropped, alt = property name), or a neutral block with a building icon when there is
+ * none or the image fails to load (e.g. a link that expired in a long-open tab). The type badge sits in the top-left corner.
+ * `children` go on top (the property page's "Uploading..." overlay).
+ */
+export function PropertyImage({ property, className, children }: { property: Pick<Property, "name" | "propertyType" | "photoUrl">; className?: string; children?: ReactNode }) {
+  // Remember which URL failed, so a new URL (new photo or the next hour's link) gets a fresh try.
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const url = property.photoUrl && property.photoUrl !== failedUrl ? property.photoUrl : null;
   return (
-    <div className={cn("relative bg-surface-2", className)}>
+    <div className={cn("relative overflow-hidden bg-surface-2", className)}>
+      {url ? (
+        <img src={url} alt={property.name} loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover" onError={() => setFailedUrl(url)} />
+      ) : (
+        <span className="absolute inset-0 flex items-center justify-center text-text-muted" aria-hidden>
+          <Building2 size={32} strokeWidth={1.25} />
+        </span>
+      )}
       <Badge tone="neutral" dot={false} className="absolute left-3 top-3 bg-surface-1">
-        {propertyTypeLabels[type]}
+        {propertyTypeLabels[property.propertyType]}
       </Badge>
+      {children}
     </div>
   );
 }
@@ -65,7 +81,7 @@ export function PropertyCard({ row }: { row: PropertyRow }) {
       className="group block rounded-card text-text-primary no-underline focus-visible:focus-ring"
     >
       <Card padding="none" className="h-full transition-colors duration-fast group-hover:border-border-strong">
-        <PropertyImage type={property.propertyType} className="h-40" />
+        <PropertyImage property={property} className="h-40" />
         <div className="flex flex-col gap-3.5 p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">

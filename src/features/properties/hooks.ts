@@ -51,6 +51,23 @@ export function useCreateProperty() {
   });
 }
 
+/**
+ * PUT /properties/:id/photo (multipart, only `file`: JPEG, PNG or WebP, max 5 MB; properties.edit) or, with `file: null`,
+ * DELETE /properties/:id/photo. Both answer with the Property (new photoUrl, or null): it goes in the detail cache and the
+ * list refreshes. The photoUrl is only ever read from these answers, never saved.
+ */
+export function usePropertyPhoto() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, form }: { id: string; form: FormData | null }) =>
+      apiFetch<Property>(`/properties/${encodeURIComponent(id)}/photo`, form ? { method: "PUT", form } : { method: "DELETE" }),
+    onSuccess: (property) => {
+      qc.setQueryData(propertyKeys.detail(property.id), property);
+      void qc.invalidateQueries({ queryKey: propertyKeys.list });
+    },
+  });
+}
+
 /** PATCH /properties/:id (OWNER, or a manager with properties.edit). Puts the answer in the detail cache and refreshes the list. */
 export function useUpdateProperty() {
   const qc = useQueryClient();

@@ -29,6 +29,7 @@ const property = (id: string, name: string, managerIds: string[]): Property => (
   updatedAt: "2026-01-01T00:00:00.000Z",
   unitCount: 4,
   managers: managerIds.map((m) => ({ id: m, name: m })),
+  photoUrl: null,
 });
 
 const manager = (id: string, assignedPropertyCount: number): ManagerListItem => ({ id, email: `${id}@example.com`, name: id, assignedPropertyCount });

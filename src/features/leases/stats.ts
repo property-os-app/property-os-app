@@ -90,6 +90,24 @@ export function isClosed(lease: Pick<Lease, "status">): boolean {
   return lease.status === "ENDED" || lease.status === "TERMINATED";
 }
 
+/** A history-only ("old") lease: ENDED + SIGNED, never billed, not in the rent roll; only notes, tags and documents change. */
+export function isOldLease(lease: Pick<Lease, "isHistorical">): boolean {
+  return lease.isHistorical === true;
+}
+
+/** True when the lease has a ledger to show and bill: not DRAFT and not an old lease. */
+export function hasLedger(lease: Pick<Lease, "status" | "isHistorical">): boolean {
+  return lease.status !== "DRAFT" && !isOldLease(lease);
+}
+
+/**
+ * True when the lease may be deleted: DRAFT or old lease, and only with no documents (409 otherwise).
+ * `documentCount` undefined (still loading or failed) is false, so Delete stays hidden until the count is known.
+ */
+export function canDeleteLease(lease: Pick<Lease, "status" | "isHistorical">, documentCount: number | undefined): boolean {
+  return (lease.status === "DRAFT" || isOldLease(lease)) && documentCount === 0;
+}
+
 /** ACTIVE and the end date is before UTC today (the backend's today): still active after the term. */
 export function isPastEnd(lease: Lease, today = todayUTC()): boolean {
   return lease.status === "ACTIVE" && lease.endDate !== null && lease.endDate < today;

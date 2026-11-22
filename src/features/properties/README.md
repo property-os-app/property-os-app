@@ -13,6 +13,7 @@ Properties: the list page (Cards / Table), the detail page, the add / edit modal
 - `useManagers()`: GET /managers, only runs for OWNER.
 - `useCreateProperty()`, `useUpdateProperty()`, `useDeleteProperty()`: POST / PATCH / DELETE; refresh the list, detail and manager counts.
 - `useAssignManager(propertyId)`, `useRemoveManager(propertyId)`: POST / DELETE managers; refresh that property (detail and its managers), the property list (managers are embedded) and the manager list.
+- `usePropertyPhoto()`: `{ id, form }`: PUT /properties/:id/photo (multipart `photoForm`), or DELETE with `form: null`. Puts the returned property (new `photoUrl` or null) in the detail cache and refreshes the list.
 
 ## stats.ts
 Numbers the frontend computes (money in integer cents). The API gives only `unitCount`; counts by status come from GET /units.
@@ -31,14 +32,17 @@ Numbers the frontend computes (money in integer cents). The API gives only `unit
 
 ## PropertyCard.tsx
 - `PropertyCard`: the clickable card of the Cards view (passes `from: "properties"`). `PropertyCardSkeleton`: its loading shape.
-- `PropertyImage`: neutral block with the type badge (no photos yet). `ManagerLine`: "Name, Property Manager" / "Name +2" / "No manager assigned".
+- `PropertyImage({ property, className, children })`: the cover photo (`photoUrl`, cover-cropped, alt = property name) with the type badge; a neutral block with a building icon when there is no photo or the image fails to load (a new URL gets a fresh try). `children` go on top. `ManagerLine`: "Name, Property Manager" / "Name +2" / "No manager assigned".
 - `PropertyRow`: one property plus its counts by status, occupancy and rent (units total and managers are read from the property).
 
 ## PropertiesTable.tsx
 - `PropertiesTable`: the Table view (rows and cards pass `from: "properties"`; DataTable; Name with "Type · address" under it, Units, Occupancy, Monthly rent, Managers, Value; Name, Units, Occupancy, Value sortable; row opens the detail). On phones a `CardList`: name, address, property status badge, Units / Occupancy / Type, Monthly rent; the card links to the detail page.
 
 ## PropertyDetailPage.tsx
-- `PropertyDetailPage`: /properties/:id. One line on top, "[←] Properties › {name} [✕]" (`BackBreadcrumb`; the ✕ and Esc do what the arrow does): with `PropertyPageState` `from: "properties"` (list cards and rows) back goes back in history and keeps the list's filters and search, else it opens /properties. Unit drawer lease links pass `from: "property"` with the property, so the lease page goes back here. Tiles from `features/shared/DetailParts`, header card (KPI tiles, `unitCount`, embedded managers, tabs), Overview (units needing attention, Details, Managers) and Units tabs, Edit (`property.edit`: owner, or a manager with `properties.edit`) / Delete (owner only), "Add unit" (primary, `unit.create`), unit rows open the `UnitDrawer`, "Property not found" on 404. Sets the page title to the property name. On phones the header buttons go under the name and fill the width (44px).
+- `PropertyDetailPage`: /properties/:id. One line on top, "[←] Properties › {name} [✕]" (`BackBreadcrumb`; the ✕ and Esc do what the arrow does): with `PropertyPageState` `from: "properties"` (list cards and rows) back goes back in history and keeps the list's filters and search, else it opens /properties. Unit drawer lease links pass `from: "property"` with the property, so the lease page goes back here. Tiles from `features/shared/DetailParts`, header card (KPI tiles, `unitCount`, embedded managers, tabs), Overview (units needing attention, Details, Managers), Units and Documents (`DocumentsPanel`, upload and delete with `property.edit`) tabs, the cover photo with Change / Remove photo (`PropertyPhoto`), Edit (`property.edit`: owner, or a manager with `properties.edit`) / Delete (owner only), "Add unit" (primary, `unit.create`), unit rows open the `UnitDrawer`, "Property not found" on 404. Sets the page title to the property name. On phones the header buttons go under the name and fill the width (44px).
+
+## PropertyPhoto.tsx
+- `PropertyPhoto({ property, canEdit })`: the page header photo with "Add photo" / "Change photo" (hidden file input, `checkFile(PHOTO_RULE)` first: JPEG, PNG, WebP, max 5 MB) and "Remove photo" (ConfirmDialog) for `property.edit`; "Uploading..." over the image; errors as toasts.
 
 ## PropertyUnitsTable.tsx
 - `PropertyUnitsTable`: units with tenant, rent, lease and status (expiring leases show "Expiring"); 25 per page; optional `onRowClick`. On phones flat cards inside the parent card (unit, type · sq ft, status, Tenant / Lease, Rent); the card is a button that opens the unit drawer.

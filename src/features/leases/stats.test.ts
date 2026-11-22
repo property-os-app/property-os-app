@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dueState, notDueCaption } from "@/features/leases/stats";
+import { canDeleteLease, dueState, hasLedger, isOldLease, notDueCaption } from "@/features/leases/stats";
 import type { Lease } from "@/types/lease";
 
 const TODAY = "2026-10-24";
@@ -39,5 +39,34 @@ describe("notDueCaption", () => {
     expect(notDueCaption(lease("1200.00", "2026-10-01"), TODAY)).toBeNull();
     expect(notDueCaption(lease("-50.00", null), TODAY)).toBeNull();
     expect(notDueCaption(lease("0.00", null), TODAY)).toBeNull();
+  });
+});
+
+describe("old (history-only) lease rules", () => {
+  const old = { status: "ENDED", isHistorical: true } as const;
+  const ended = { status: "ENDED", isHistorical: false } as const;
+  const draft = { status: "DRAFT", isHistorical: false } as const;
+  const active = { status: "ACTIVE", isHistorical: false } as const;
+
+  it("isOldLease follows isHistorical", () => {
+    expect(isOldLease(old)).toBe(true);
+    expect(isOldLease(ended)).toBe(false);
+  });
+
+  it("no ledger on a draft or an old lease", () => {
+    expect(hasLedger(old)).toBe(false);
+    expect(hasLedger(draft)).toBe(false);
+    expect(hasLedger(active)).toBe(true);
+    expect(hasLedger(ended)).toBe(true);
+  });
+
+  it("delete only drafts and old leases, and only with no documents", () => {
+    expect(canDeleteLease(old, 0)).toBe(true);
+    expect(canDeleteLease(old, 1)).toBe(false);
+    expect(canDeleteLease(old, undefined)).toBe(false);
+    expect(canDeleteLease(draft, 0)).toBe(true);
+    expect(canDeleteLease(draft, 2)).toBe(false);
+    expect(canDeleteLease(ended, 0)).toBe(false);
+    expect(canDeleteLease(active, 0)).toBe(false);
   });
 });

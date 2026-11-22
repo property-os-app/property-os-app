@@ -1,6 +1,7 @@
 import type { LeaseStatus } from "@/types/lease";
 
-export type LeaseListParams = { propertyId?: string; unitId?: string; status?: LeaseStatus };
+/** `historical`: true = only old leases, false = none of them, undefined = all. */
+export type LeaseListParams = { propertyId?: string; unitId?: string; status?: LeaseStatus; historical?: boolean };
 
 /** TanStack Query keys for leases. Invalidating `all` refreshes lists, details and tag suggestions. */
 export const leaseKeys = {

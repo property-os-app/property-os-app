@@ -14,6 +14,7 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 
 ## api.ts
 - `apiFetch<T>(path, { method, body, query, signal })`: calls `VITE_API_URL + path`, adds `Authorization: Bearer <token>` when signed in, sends `body` as JSON, builds the query string (skips undefined, null, ""), returns `undefined` for 204 or empty bodies.
+- `form` option (FormData): sent as multipart/form-data with no Content-Type set by hand (the browser adds the boundary); used for document uploads and the property photo. Errors (400, 403, 404, 409, 413, 415) are `ApiError`s like any other.
 - `ApiError`: thrown on error responses: `status`, `messages: string[]` (backend message is a string or an array), `error`, `code` (only on the 6 auth errors, e.g. `INVALID_TOKEN`, `FORBIDDEN_PERMISSION`; switch on it, never on message text). `status` 0 means the server could not be reached.
 - `errorText(err)`: one display text for any error.
 - Friendly texts instead of the backend's: `OFFLINE_MESSAGE` (status 0: server unreachable, or Firebase `auth/network-request-failed` while getting the token), `SERVER_ERROR_MESSAGE` (any 5xx), `FORBIDDEN_MESSAGE` (403 `FORBIDDEN_ROLE`). Other errors keep the backend message, so 403 `FORBIDDEN_PERMISSION` says which switch to ask the owner for.
@@ -80,10 +81,16 @@ Links that open the user's own phone and email apps (no backend).
 
 ## labels.ts
 - One `...Labels` map per enum in ../property-os-api/docs/frontend-handoff/API.md section 2 (`propertyTypeLabels`, `unitTypeLabels` "1 BR", `paymentMethodLabels` "ACH bank transfer", `chargeTypeLabels`, `rentStatusLabels`, `priorityLabels`, `ticketStatusLabels` (flow order), ...). Status labels come from the design system `statusLabel`.
+- `documentCategoryLabels` (per owner type: leases, tenants, units, properties, in the API order) and `documentCategoryLabel(owner, category)` (raw text when unknown).
 - `labelOptions(labels)`: `[{ value, label }]` for a Select.
 - `plural(count, singular, plural?)`: "1 unit" / "3 units".
 - `unitLabel(unitNumber)`: how a unit is named everywhere: "Unit " only when the number starts with a digit ("2" -> "Unit 2", "4B" -> "Unit 4B"); otherwise as entered ("Unit 1", "UNIT 1", "House", "Office"), so nothing reads "Unit Unit 1".
 - `unitLayout(unitType, bathrooms)`: "1 bd / 1 ba", "Studio / 1 ba", or "3 bd" when bathrooms is null.
+
+## files.ts
+- `FileRule`: allowed types (MIME and extensions), inclusive byte limit and the words for messages. `DOCUMENT_RULE` (PDF, JPEG, PNG, 20 MB), `PDF_RULE` (the old lease's signed copy), `PHOTO_RULE` (JPEG, PNG, WebP, 5 MB).
+- `checkFile(file, rule)`: null or a message (wrong type; extension used when the browser gives no type; empty; too large). The backend checks the real content again (415).
+- `acceptOf(rule)`: the file input `accept` value. `formatFileSize(bytes)`: "980 B", "482 KB", "2.3 MB".
 
 ## useIsMobile.ts
 - `useIsMobile()`: true under 768px (Tailwind `md`), read synchronously from `matchMedia` and updated on resize. List components render `CardList` instead of `DataTable` when true, and pages show the Filters sheet instead of the toolbar controls.
@@ -118,3 +125,5 @@ Links that open the user's own phone and email apps (no backend).
 - `clipboard.test.ts`: `copyText` on the Clipboard API path and that it never throws.
 - `tableParams.test.ts`: reading and writing list state in the URL, fallbacks and round trip.
 - `pdf.test.ts`: `filenameFromDisposition` (quoted, bare, `filename*`, bad escape, missing).
+- `files.test.ts`: `checkFile` (exactly 20 MB passes, one byte more fails, empty, wrong type, extension fallback, photo and PDF-only rules), `formatFileSize`, `acceptOf`.
+- `labels.test.ts` also checks `documentCategoryLabels` against the API lists and `documentCategoryLabel`'s fallback.

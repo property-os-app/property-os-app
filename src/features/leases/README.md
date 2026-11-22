@@ -1,19 +1,20 @@
 # src/features/leases
 
-Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the 4-step Add / Edit Lease wizard, activate, end and delete draft. Also the lease helpers shared by the unit drawer and the tenants page. Every lease change refreshes leases, units, tenants and the rent roll.
+Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the 4-step Add / Edit Lease wizard, activate, end and delete draft, and old (history-only) leases (Add old lease form, "Old lease" badge, no billing). Also the lease helpers shared by the unit drawer and the tenants page. Every lease change refreshes leases, units, tenants and the rent roll.
 
 ## keys.ts
-- `leaseKeys`: `all`, `lists`, `list({ propertyId?, unitId?, status? })`, `detail(id)`, `tagSuggestions`.
+- `leaseKeys`: `all`, `lists`, `list({ propertyId?, unitId?, status?, historical? })`, `detail(id)`, `tagSuggestions`.
 - `leaseKeys.ledger(id)`: GET /leases/:id/ledger, under `["leases"]` so every lease refresh also refreshes ledgers.
 - `LeaseListParams`: the list filters. `rentRollPrefix`: `["rent-roll"]`, invalidated after lease and money changes.
 
 ## hooks.ts
-- `useLeases(params, { enabled? })`: GET /leases (OWNER all, manager assigned), newest first.
+- `useLeases(params, { enabled? })`: GET /leases (OWNER all, manager assigned), newest first; `historical: false` leaves old leases out, `true` only old leases.
 - `useLease(id, placeholder?)`: GET /leases/:id; the list row shows while it loads.
 - `useTagSuggestions()`: GET /leases/tag-suggestions.
 - `useLeaseDocument()`: GET /leases/:id/document as a blob (`{ id, download }`), a mutation so it runs only on a click; 409 when the lease has no template.
 - `useCreateLease()`: POST /leases (DRAFT, or status ACTIVE to create and activate in one call).
-- `useUpdateLease()`: PATCH /leases/:id. `useActivateLease()`: POST /leases/:id/activate. `useEndLease()`: POST /leases/:id/end. `useDeleteLease()`: DELETE /leases/:id (DRAFT only).
+- `useCreateOldLease()`: POST /leases/history (an old lease: ENDED + SIGNED, `isHistorical`, never billed); 409 when it overlaps another lease on the unit.
+- `useUpdateLease()`: PATCH /leases/:id. `useActivateLease()`: POST /leases/:id/activate. `useEndLease()`: POST /leases/:id/end. `useDeleteLease()`: DELETE /leases/:id (DRAFT and old leases, only with no documents).
 - `leaseErrorText(err)`: like `errorText`, with friendly field names in lease messages (lease page signature and tag saves).
 - `ActivateError`, `activateErrorOf(err)`: a failed activation as an InlineError (friendly missing field names; `fixable` shows "Edit lease").
 - `useActivateAction()`: activate + the success toast; `run(id)` returns null or an `ActivateError`.
@@ -23,6 +24,7 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 - `notDueCaption(lease)`: "Due Nov 1" / "Due today" under a list balance when nothing of it is late yet (e.g. rent billed early); null otherwise.
 - `primaryTenant`, `coTenants`, `isClosed` (ENDED / TERMINATED), `isPastEnd` (ACTIVE, end before UTC today), `expiresWithin(lease, days)`, `startedThisMonth`, `leaseUnitLine`, `pastEndNote`: page and drawer helpers.
 - `compareLeasesDefault`: ACTIVE by soonest end, then DRAFT newest first, then ENDED / TERMINATED latest end first.
+- `isOldLease(lease)`, `hasLedger(lease)` (not DRAFT, not old), `canDeleteLease(lease, documentCount)` (DRAFT or old, and 0 documents; false while the count is unknown): the old-lease rules.
 - `activationFieldLabels`, `missingToActivate(parts)`, `leaseMissing(lease)`, `parseMissingMessage(msg)`: what activation still needs, with friendly names.
 - `leaseFieldLabels`, `leaseFieldLabel(field)`: friendly names for every lease field (`templateId` → "Template").
 - `templateLine(lease)`: "Standard Lease – 12-month · v2" (template and pinned version), or null.
@@ -40,6 +42,16 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 - `createBody(values, activate)`: POST body, empty fields left out (`templateId` only when picked). `updateBody(values, lease)`: PATCH with only the changed fields and the per-status rules (closed: notes and tags; ACTIVE: never unitId, never null for required fields); `templateId` only when it changed, `null` when cleared.
 - `serverErrorStep`: the step to show after a server error (field, overlap or template message: Terms, missing, ACTIVE-needs / closed: first named field).
 
+## oldLeaseForm.ts
+- `OldLeaseValues`, `OldLeaseField`, `OldLeaseErrors`, `emptyOldLease(preset)`: the Add old lease form state.
+- `validateOldLease(values, today)`: unit, primary tenant and both dates required; end after start and before UTC today; money and tag limits.
+- `oldLeaseBody(values)`: POST /leases/history body, optional fields only when filled (money as numbers, notes trimmed); never the property.
+- `lastOldLeaseEnd(today)`: yesterday (UTC), the end date input's `max`.
+- `oldLeaseErrorField(message)`: where a backend message goes (dates and the 409 overlap under End date, tenant messages under Primary tenant; others at the top).
+
+## OldLeaseModal.tsx
+- `OldLeaseModal({ presetUnit, presetUnitLine, presetPropertyId, leaseFrom, onClose })`: "Add old lease": unit (locked from the unit drawer, else Property → Unit), primary tenant and co-tenants (`TenantPicker`, "Add new tenant" opens `TenantFormModal` over it), start, end (before today), rent, deposit, notes, tags, optional "Signed lease (PDF)" (`PDF_RULE`). Saves, then uploads the PDF as `SIGNED_LEASE`; if only the upload fails, the lease stays saved, an error toast says so and the lease page opens on its Documents tab. Asks before discarding a filled form.
+
 ## templatePrefill.ts
 - `templateEndDate({ start, end, autoEnd, months })`: the end date to write from a template's `defaultTermMonths` (start + months − 1 day), or null. Only with a start and a term, and only when the end date is empty or still the one the prefill wrote (`autoEnd`); a typed or term-button end date is never overwritten. `TemplateEndInput`: its input.
 
@@ -47,16 +59,16 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 - `templateOptions(list, current, extra)`: the wizard's Template options (`TemplateOption`: value, label, months). The default is marked; the lease's own template shows its pinned version ("· v1 (this lease's version; latest is v2)"); an archived current template is added on top; templates made in the wizard (`extra`) show before the list refetches.
 
 ## LeaseDocumentCard.tsx
-- `LeaseDocumentCard({ lease, canEdit })`: Details tab card "Lease document": template and version (+ Archived), Preview PDF (new tab opened on the click, then the blob) and Download PDF (filename from Content-Disposition, else "{leaseNumber}.pdf"), each with "Making PDF..."; errors as a toast. Without a template: "No template, so this lease has no PDF yet."
+- `LeaseDocumentCard({ lease, canEdit })`: Details tab card "Lease document": template and version (+ Archived), Preview PDF (new tab opened on the click, then the blob) and Download PDF (filename from Content-Disposition, else "{leaseNumber}.pdf"), each with "Making PDF..."; errors as a toast. Without a template: "No template, so this lease has no PDF yet." (old lease: "Old lease: the signed copy is under Documents.")
 
 ## LeasesPage.tsx
-- `LeasesPage`: /leases. KPIs (Active, Expiring in 60 days, Past end date, Monthly rent), toolbar (status segments, search, Property = sidebar scope, e-sign), the table with its 5 states, wizard, end and delete. Desktop: Cards / Table toggle at the right end of the toolbar (`ViewToggle`, saved per page with `useListView("leases", "table")`, default Table); Cards view shows the phone cards in a grid (`LeasesTable cards`) with a compact "Sort: ..." select (no column headers there).  A row click opens /leases/:id. Kebab actions open their modal on the list; a failed kebab Activate opens the lease page with the reason (router state `LeasePageState`). Old `/leases?lease=ID` links redirect to `/leases/ID`. Search, filters, sort and page live in the URL (`useClientTable` `inUrl`): `?q=&status=&esign=&sort=&page=`. Phones (under md): search plus a "Filters" button whose sheet holds the status segments, Property, E-signature and Sort by; "Property (all pages)" is the app-wide choice, so the count and "Clear filters" leave it (and the search) alone. With no properties (GET /properties returned []) the page shows only the header and `NoProperties` (owner: Add property via `useAddPropertyFlow`). KPIs show a Dash when loading failed.
+- `LeasesPage`: /leases. KPIs (Active, Expiring in 60 days, Past end date, Monthly rent), toolbar (status segments, search, Property = sidebar scope, e-sign), "Show old leases" checkbox (default on; off writes `?old=hide` and asks GET /leases?historical=false; with the view toggle as one group on the right; in the phone Filters sheet too), header "Add old lease" (secondary, opens `OldLeaseModal` with the scope property) next to "Add Lease" (primary), the table with its 5 states, wizard, end and delete. Desktop: Cards / Table toggle at the right end of the toolbar (`ViewToggle`, saved per page with `useListView("leases", "table")`, default Table); Cards view shows the phone cards in a grid (`LeasesTable cards`) with a compact "Sort: ..." select (no column headers there).  A row click opens /leases/:id. Kebab actions open their modal on the list; a failed kebab Activate opens the lease page with the reason (router state `LeasePageState`). Old `/leases?lease=ID` links redirect to `/leases/ID`. Search, filters, sort and page live in the URL (`useClientTable` `inUrl`): `?q=&status=&esign=&sort=&page=`. Phones (under md): search plus a "Filters" button whose sheet holds the status segments, Property, E-signature and Sort by; "Property (all pages)" is the app-wide choice, so the count and "Clear filters" leave it (and the search) alone. With no properties (GET /properties returned []) the page shows only the header and `NoProperties` (owner: Add property via `useAddPropertyFlow`). KPIs show a Dash when loading failed.
 
 ## LeasesTable.tsx
 - `LeasesTable`: DataTable columns (tenant, unit, rent, status (+ "Overdue" rent badge, with "E-sign: …" under them), tags (only from 1440px, `wideOnly`; the lease page shows them), balance red only when overdue with `notDueCaption` under it; expires with the term under it, balance via the ledger's `BalanceText`) and the kebab (Open, Edit, Activate, End lease, Delete draft). On phones a `CardList` of the same rows: tenant (+n), unit · property, lease badge (+ "Overdue" rent badge), Rent / Expires / E-sign, Balance, same kebab; the card is a link to the lease page ("← Leases"). With `cards` (desktop Cards view) the same cards in a 1 / 2 / 3-column grid (`CardList grid`). Red strip (cards and table rows, `DataTable rowStrip`) only when behind on rent (`dueState` overdue: balance owed past `oldestUnpaidDueDate`), never for past end.
 
 ## LeasePage.tsx
-- `LeasePage`: /leases/:id (replaces the old lease and rent roll ledger drawers). One line on top (`BackBreadcrumb`): "[←] {Parent} › {number} [✕]". Parent is where the page was opened from (router state `from`): Leases, Dashboard, Tenants (tenant drawer), Units (unit drawer on /units), the property name (unit drawer on a property page), or "Rent Roll · {Month}" (also from `?from=rent-roll&month=`, so a pasted link keeps it), or "Rent Roll · {Year}" from the yearly view (`?from=rent-roll&view=year&year=`, links back to `/rent-roll?view=year&year=`). Opened directly: Leases. The arrow, the crumb, the ✕ and Esc go back in history when opened from there in this tab, else to the parent's URL; tab switches replace the URL and keep the state, so back skips them. Sidebar highlights the matching item (`usePageNav`). Header card: avatar + primary tenant (H1), "Unit, property · dates · number" ("Draft" without dates), lease and e-sign badges, actions by status and role (DRAFT: Delete draft, Edit, Activate; ACTIVE: End lease, Edit, Add charge, Record Payment; ENDED / TERMINATED: Edit notes and tags, Add charge, Record Payment primary only when owed), wrapping on small screens; on phones the buttons fill the width, two per row, 44px tall. Tiles: Current balance and Total paid (ledger summary, Retry on error), Monthly rent, Lease ends ("in n days" / "ended n days ago"). Activation error + `LeaseAlert` under the header. Tabs in `?tab=ledger|details|tenants` (switching keeps the scroll position) (default Ledger from the Rent Roll, month or year view, else Details). DRAFT ledger: "Activate the lease to add charges and payments." 404 "Lease not found", load error with Retry, skeletons. Title "Lease {number}". After Delete draft it goes to /leases. Add charge bills the Rent Roll month when opened from there, else the current UTC month. The Current balance tile is red only when overdue, and its note adds "includes {amount} not due yet" when only part of the balance is due (`balanceSplit` on the ledger).
+- `LeasePage`: /leases/:id (replaces the old lease and rent roll ledger drawers). One line on top (`BackBreadcrumb`): "[←] {Parent} › {number} [✕]". Parent is where the page was opened from (router state `from`): Leases, Dashboard, Tenants (tenant drawer), Units (unit drawer on /units), the property name (unit drawer on a property page), or "Rent Roll · {Month}" (also from `?from=rent-roll&month=`, so a pasted link keeps it), or "Rent Roll · {Year}" from the yearly view (`?from=rent-roll&view=year&year=`, links back to `/rent-roll?view=year&year=`). Opened directly: Leases. The arrow, the crumb, the ✕ and Esc go back in history when opened from there in this tab, else to the parent's URL; tab switches replace the URL and keep the state, so back skips them. Sidebar highlights the matching item (`usePageNav`). Header card: avatar + primary tenant (H1), "Unit, property · dates · number" ("Draft" without dates), lease and e-sign badges, actions by status and role (DRAFT: Delete draft, Edit, Activate; ACTIVE: End lease, Edit, Add charge, Record Payment; ENDED / TERMINATED: Edit notes and tags, Add charge, Record Payment primary only when owed), wrapping on small screens; on phones the buttons fill the width, two per row, 44px tall. Tiles: Current balance and Total paid (ledger summary, Retry on error), Monthly rent, Lease ends ("in n days" / "ended n days ago"). Activation error + `LeaseAlert` under the header. Documents tab (`?tab=documents`, `DocumentsPanel`, upload and delete with `lease.edit`, count in the tab). Old lease (`isHistorical`): no ledger call and no Ledger tab, tiles Monthly rent / Deposit / Term / Ended, a "History only – no rent tracked." note instead of `LeaseAlert`, actions only "Edit notes and tags" and "Delete" (only with 0 documents), default tab Details. Tabs in `?tab=ledger|details|tenants` (switching keeps the scroll position) (default Ledger from the Rent Roll, month or year view, else Details). DRAFT ledger: "Activate the lease to add charges and payments." 404 "Lease not found", load error with Retry, skeletons. Title "Lease {number}". After Delete draft it goes to /leases. Add charge bills the Rent Roll month when opened from there, else the current UTC month. The Current balance tile is red only when overdue, and its note adds "includes {amount} not due yet" when only part of the balance is due (`balanceSplit` on the ledger).
 - `LeasePageState`: router state: `from` (`LeaseOrigin`: "leases" | "rent-roll" | "dashboard" | "tenants" | "units" | "property", the first crumb and back arrow), `property` ({ id, name } with "property") and `activateError` from the list kebab.
 
 ## LeaseAlert.tsx
@@ -85,13 +97,15 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 - `LeaseEndModal`: "End lease {number}", Ended or Terminated.
 
 ## LeaseDeleteDialog.tsx
-- `LeaseDeleteDialog`: ConfirmDialog for deleting a draft; 409 shown inside.
+- `LeaseDeleteDialog`: ConfirmDialog for deleting a draft or an old lease ("Delete old lease {number}?"); 409 (e.g. it still has documents) shown inside.
 
 ## LeaseParts.tsx
-- `LeaseBadge`: lease StatusBadge, "Expiring" when `endingSoon`.
+- `LeaseBadge`: neutral "Old lease" badge for an old (history-only) lease, else the lease StatusBadge ("Expiring" when `endingSoon`). Used everywhere a lease shows (list, lease page, unit and tenant drawers, tenant cards).
 - `StatCard`: small drawer card (label, big value, optional note). Used by the unit and tenant drawers.
 
 ## Tests (`npm test`)
 - `stats.test.ts`: `dueState` (rent billed early isn't overdue, due today, credit) and `notDueCaption`.
 - `templatePrefill.test.ts`: `templateEndDate` (2025-12-01 + 12 → 2026-11-30, month-end clamp, never over a hand-set end, follows a new start or another term while still prefilled).
 - `templateOptions.test.ts`: `templateOptions` (default label, pinned and newer version, archived current on top, wizard-made templates once).
+- `stats.test.ts` also covers the old-lease rules (`isOldLease`, `hasLedger`, `canDeleteLease`).
+- `oldLeaseForm.test.ts`: `validateOldLease` (required fields, end before today and after start, primary not a co-tenant), `lastOldLeaseEnd`, `oldLeaseBody` (only filled optional fields), `oldLeaseErrorField`.

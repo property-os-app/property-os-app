@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { can, roleLabel, toSidebarRole, type Action } from "@/features/auth/permissions";
+import { can, canManageDocuments, roleLabel, toSidebarRole, type Action } from "@/features/auth/permissions";
 import type { Me } from "@/types/auth";
 
 const ACTIONS: Action[] = [
@@ -103,5 +103,24 @@ describe("roles", () => {
   it("roleLabel gives a display name", () => {
     expect(roleLabel("OWNER")).toBe("Owner");
     expect(roleLabel("PROPERTY_MANAGER")).toBe("Property Manager");
+  });
+});
+
+describe("canManageDocuments", () => {
+  it("OWNER manages every owner type; TENANT none", () => {
+    for (const owner of ["leases", "tenants", "units", "properties"] as const) {
+      expect(canManageDocuments(user("OWNER"), owner)).toBe(true);
+      expect(canManageDocuments(user("TENANT", ["leases.manage"]), owner)).toBe(false);
+    }
+  });
+
+  it("a manager needs the owner record's edit key", () => {
+    const m = user("PROPERTY_MANAGER", ["leases.manage", "units.create_edit"]);
+    expect(canManageDocuments(m, "leases")).toBe(true);
+    expect(canManageDocuments(m, "units")).toBe(true);
+    expect(canManageDocuments(m, "tenants")).toBe(false);
+    expect(canManageDocuments(m, "properties")).toBe(false);
+    expect(canManageDocuments(user("PROPERTY_MANAGER", ["tenants.create_edit", "properties.edit"]), "tenants")).toBe(true);
+    expect(canManageDocuments(user("PROPERTY_MANAGER", ["properties.edit"]), "properties")).toBe(true);
   });
 });
