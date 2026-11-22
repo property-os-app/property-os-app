@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, apiFetch, errorText } from "@/lib/api";
 import type { FileRule } from "@/lib/files";
 import { documentKeys } from "@/features/documents/keys";
+import { showInTab, type ViewTab } from "@/features/documents/view";
 import type { Document, DocumentDownload, DocumentOwner } from "@/types/document";
 
 const documentsPath = (owner: DocumentOwner, ownerId: string) => `/${owner}/${encodeURIComponent(ownerId)}/documents`;
@@ -50,4 +51,15 @@ export function useDownloadDocument() {
 export function uploadErrorText(err: unknown, rule: FileRule): string {
   if (err instanceof ApiError && err.status === 413) return `File too large (max ${rule.maxText}).`;
   return errorText(err);
+}
+
+/**
+ * View: the caller opens the blank tab on the click (`openBlankTab`, before any await, so popup blockers allow it) and
+ * passes it here; this asks for a fresh inline link (GET /documents/:id/download?inline=true) and points the tab at it.
+ * On failure the tab is closed and the error reaches `onError`. The link is never stored.
+ */
+export function useViewDocument() {
+  return useMutation({
+    mutationFn: ({ docId, tab }: { docId: string; tab: ViewTab }) => showInTab(tab, docId),
+  });
 }
