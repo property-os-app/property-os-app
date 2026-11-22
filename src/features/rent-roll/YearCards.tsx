@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 import { Badge, Num } from "@/components/atoms";
 import { ListCard } from "@/components/molecules";
 import { CardList } from "@/components/organisms";
+import { cn } from "@/lib/cn";
 import { formatCurrency, formatCurrencyShort, toCents } from "@/lib/format";
+import { groupAccent, type AccentOrder } from "@/lib/groupAccent";
 import { plural, unitLabel } from "@/lib/labels";
 import { MonthStrip } from "@/features/rent-roll/MonthStrip";
 import { isReservedRow, leaseTenantLabel, renewalAlertLabels, renewalAlertTone, rowTitle, yearRowKey, type PropertyGroup } from "@/features/rent-roll/yearStats";
@@ -31,6 +33,8 @@ export interface YearCardsProps {
   /** Under the list (the "totals include all units" note). */
   note?: ReactNode;
   onOpen: (row: RentRollYearRow) => void;
+  /** Property order for the accent colours (`accentOrderOf` the property list), the same as the table's. */
+  accentOrder?: AccentOrder;
 }
 
 /**
@@ -38,7 +42,7 @@ export interface YearCardsProps {
  * one card per unit: the current tenant (or "Vacant" / "Reserved" with a grey badge), the unit,
  * the 12-month strip, the year's paid total and the renewal alert. A tap opens the current lease (or the Unit drawer).
  */
-export function YearCards({ data, groups, year, state, empty, error, note, onOpen }: YearCardsProps) {
+export function YearCards({ data, groups, year, state, empty, error, note, onOpen, accentOrder }: YearCardsProps) {
   const items: Item[] = groups.flatMap((g) => [{ kind: "property", group: g } as Item, ...g.rows.map((row): Item => ({ kind: "row", row }))]);
   return (
     <>
@@ -55,7 +59,16 @@ export function YearCards({ data, groups, year, state, empty, error, note, onOpe
         renderCard={(it) => {
           if (it.kind === "property") {
             const g = it.group;
-            return <ListCard className="bg-surface-2" title={g.property.name} subtitle={`Property total · ${plural(g.rows.length, "unit")}`} amount={totalsAmount(g.totals)} />;
+            // A band like the table's: tinted, the property's accent bar, extra space above every property but the first.
+            const first = groups[0]?.property.id === g.property.id;
+            return (
+              <ListCard
+                className={cn("bg-surface-3", groupAccent(g.property.id, accentOrder).barClass, !first && "mt-4")}
+                title={g.property.name}
+                subtitle={`Property total · ${plural(g.rows.length, "unit")}`}
+                amount={totalsAmount(g.totals)}
+              />
+            );
           }
           const r = it.row;
           const names = rowTitle(r);

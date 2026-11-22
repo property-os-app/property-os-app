@@ -35,6 +35,13 @@
   --ai: #7c3aed;
   --ai-soft: rgba(124, 58, 237, 0.12);
 
+  /* Group accents (property bands): never a status hue (green, red, amber) or grey. Keep in sync with tokens groupAccents. */
+  --group-1: #2563eb;
+  --group-2: #4f46e5;
+  --group-3: #7c3aed;
+  --group-4: #c026d3;
+  --group-5: #0e7ba0;
+
   --scrim: rgba(11, 11, 15, 0.5);
   --shadow-overlay: 0 16px 48px rgba(11, 11, 15, 0.18);
   --focus-ring: rgba(5, 150, 105, 0.4);
@@ -68,6 +75,12 @@
   --ai: #8b5cf6;
   --ai-soft: rgba(139, 92, 246, 0.12);
 
+  --group-1: #60a5fa;
+  --group-2: #818cf8;
+  --group-3: #a78bfa;
+  --group-4: #e879f9;
+  --group-5: #22c3f0;
+
   --scrim: rgba(0, 0, 0, 0.6);
   --shadow-overlay: 0 16px 48px rgba(0, 0, 0, 0.5);
   --focus-ring: rgba(16, 185, 129, 0.4);
@@ -100,6 +113,12 @@
   --color-ai: var(--ai);
   --color-ai-soft: var(--ai-soft);
   --color-scrim: var(--scrim);
+  /* Group accents: bg-group-1 ... bg-group-5 (a property's band bar; see lib/groupAccent). */
+  --color-group-1: var(--group-1);
+  --color-group-2: var(--group-2);
+  --color-group-3: var(--group-3);
+  --color-group-4: var(--group-4);
+  --color-group-5: var(--group-5);
 
   /* Typography: font-sans, text-hero, text-display, text-h1 ... text-overline */
   --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;

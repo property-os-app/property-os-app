@@ -6,6 +6,7 @@ import { ColumnsMenu, FilterChip, FormField, InlineError, SearchInput, Segmented
 import { PageHeader, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { accentOrderOf } from "@/lib/groupAccent";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
 import { useProperties } from "@/features/properties/hooks";
@@ -128,6 +129,9 @@ export function RentRollYearView() {
   const groups = useMemo(() => groupByProperty(filtered, data?.propertyTotals ?? []), [filtered, data]);
   const chipCounts = useMemo(() => Object.fromEntries(YEAR_CHIPS.map((c) => [c, rows.filter((r) => matchesChips(r, [c])).length])) as Record<YearChip, number>, [rows]);
   const isFiltered = search.trim() !== "" || chips.length > 0;
+
+  // Band colours by the full property list by name, then id (the groups' order, so neighbours differ): independent of the filters, same on every view.
+  const accentOrder = useMemo(() => accentOrderOf(properties.data ?? []), [properties.data]);
 
   const [openUnit, setOpenUnit] = useState<{ id: string; unitNumber: string; propertyName: string } | null>(null);
   // A row opens its lease on the Ledger tab (by unit: the current one); vacant / reserved units the Unit drawer.
@@ -329,7 +333,7 @@ export function RentRollYearView() {
           <YearLegend />
 
           {isMobile ? (
-            <YearCards data={data} groups={groups} year={year} state={state} empty={empty} error={error} note={note} onOpen={onOpen} />
+            <YearCards data={data} groups={groups} year={year} state={state} empty={empty} error={error} note={note} onOpen={onOpen} accentOrder={accentOrder} />
           ) : (
             <YearTable
               data={data}
@@ -342,6 +346,7 @@ export function RentRollYearView() {
               error={error}
               footer={note}
               onOpen={onOpen}
+              accentOrder={accentOrder}
             />
           )}
         </>
@@ -360,6 +365,7 @@ export function RentRollYearView() {
             error={error}
             footer={note}
             onOpen={onOpen}
+            accentOrder={accentOrder}
             fill
           />
         </YearFullscreen>

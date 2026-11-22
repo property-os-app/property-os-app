@@ -128,7 +128,13 @@ Links that open the user's own phone and email apps (no backend).
 - `leftBrowserFullscreen(mode, doc?)`: on `fullscreenchange`, true when we were in browser full screen and the browser has left it.
 - `FullscreenMode`, `FullscreenDoc`, `FullscreenTarget`: types.
 
+## groupAccent.ts
+- `accentOrderOf(properties)`: property id → position in the full property list sorted by name A→Z (like the API's group order), then id (independent of filters).
+- `groupAccent(id, order?)`: `{ slot, color, barClass }` from the 5 design system group accents (`var(--group-1…5)`, never a status colour): position mod 5, so properties next to each other on screen always differ (adding a property may shift the ones after it); an id not in `order` falls back to `hashId`. `barClass`: a 4px left bar for cards.
+- `hashId(id)`: FNV-1a 32-bit, the stable fallback. `GROUP_ACCENT_COUNT` (5), `AccentOrder`, `GroupAccent`: types.
+
 ## Tests (`npm test`)
+- `groupAccent.test.ts`: order by name A→Z ignoring case, then id (any input order; "746 …" before "8 …" like the API), 5 properties all different, neighbours in display order differ and the 6th wraps, the filter doesn't change a colour, the hash fallback; the palette (light and dark) is saturated and at least 30° of hue from the Paid, Overdue / Unpaid and Partial colours.
 - `sidebarPref.test.ts`: expanded by default, a saved choice, garbage, storage that throws on read and write, missing storage.
 - `fullscreen.test.ts`: request succeeds / refused / unsupported (not called), exit only when in full screen and never throws, the left-full-screen check (browser vs in-app only).
 - `format.test.ts`: money (`toCents`, `centsToAmount`, `formatCurrency`, `formatCurrencyShort`, `formatCompactCurrency`, `formatPercent`) and dates (`parseDateOnly`, `formatDate`, `formatTimestampDate`, today / UTC today, `daysUntil`, `daysSince`, month helpers), in UTC and America/New_York with a fake "now".
