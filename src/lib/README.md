@@ -81,7 +81,6 @@ Links that open the user's own phone and email apps (no backend).
 
 ## labels.ts
 - One `...Labels` map per enum in ../property-os-api/docs/frontend-handoff/API.md section 2 (`propertyTypeLabels`, `unitTypeLabels` "1 BR", `paymentMethodLabels` "ACH bank transfer", `chargeTypeLabels`, `rentStatusLabels`, `priorityLabels`, `ticketStatusLabels` (flow order), ...). Status labels come from the design system `statusLabel`.
-- `documentCategoryLabels` (per owner type: leases, tenants, units, properties, in the API order) and `documentCategoryLabel(owner, category)` (raw text when unknown).
 - `labelOptions(labels)`: `[{ value, label }]` for a Select.
 - `plural(count, singular, plural?)`: "1 unit" / "3 units".
 - `unitLabel(unitNumber)`: how a unit is named everywhere: "Unit " only when the number starts with a digit ("2" -> "Unit 2", "4B" -> "Unit 4B"); otherwise as entered ("Unit 1", "UNIT 1", "House", "Office"), so nothing reads "Unit Unit 1".
@@ -126,4 +125,3 @@ Links that open the user's own phone and email apps (no backend).
 - `tableParams.test.ts`: reading and writing list state in the URL, fallbacks and round trip.
 - `pdf.test.ts`: `filenameFromDisposition` (quoted, bare, `filename*`, bad escape, missing).
 - `files.test.ts`: `checkFile` (exactly 20 MB passes, one byte more fails, empty, wrong type, extension fallback, photo and PDF-only rules), `formatFileSize`, `acceptOf`.
-- `labels.test.ts` also checks `documentCategoryLabels` against the API lists and `documentCategoryLabel`'s fallback.

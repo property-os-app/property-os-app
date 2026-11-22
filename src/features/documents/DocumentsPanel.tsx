@@ -6,11 +6,11 @@ import { CardList, DataTable, type Column } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { formatFileSize } from "@/lib/files";
 import { formatTimestampDate } from "@/lib/format";
-import { documentCategoryLabel } from "@/lib/labels";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { DocumentDeleteDialog } from "@/features/documents/DocumentDeleteDialog";
 import { DocumentUpload } from "@/features/documents/DocumentUpload";
-import { useDocuments, useDownloadDocument, useViewDocument } from "@/features/documents/hooks";
+import { categoryLabel } from "@/features/documents/categories";
+import { useDocumentCategories, useDocuments, useDownloadDocument, useViewDocument } from "@/features/documents/hooks";
 import { openBlankTab, POPUP_BLOCKED_MESSAGE } from "@/features/documents/view";
 import type { Document, DocumentOwner } from "@/types/document";
 
@@ -22,6 +22,9 @@ export interface DocumentsPanelProps {
   /** Empty-state text, e.g. "No documents on this lease yet." */
   emptyText?: string;
 }
+
+/** Table View / Download: icon-only squares (like Delete) while the panel is under 48rem wide, so the drawer tables don't scroll sideways. */
+const NARROW_ICON_ONLY = "@max-3xl:w-8 @max-3xl:px-0";
 
 /** PDF or image icon by content type. */
 function DocIcon({ doc }: { doc: Document }) {
@@ -40,6 +43,9 @@ function DocIcon({ doc }: { doc: Document }) {
  */
 export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No documents yet." }: DocumentsPanelProps) {
   const docs = useDocuments(owner, ownerId);
+  // Labels from the owner type's own list; a readable fallback while it loads (or fails), never blank.
+  const categories = useDocumentCategories();
+  const label = (d: Document) => categoryLabel(categories.data, owner, d.category);
   const download = useDownloadDocument();
   const view = useViewDocument();
   const isMobile = useIsMobile();
@@ -70,7 +76,7 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
   const state = docs.isError ? "error" : docs.isPending ? "loading" : docs.data.length === 0 ? "empty" : "ideal";
   const empty = { title: "No documents", description: canManage ? `${emptyText} Upload one above.` : emptyText };
   const error = { title: "Couldn't load documents", description: errorText(docs.error), onRetry: () => void docs.refetch() };
-  const meta = (d: Document) => `${documentCategoryLabel(owner, d.category)} · ${formatFileSize(d.sizeBytes)}`;
+  const meta = (d: Document) => `${label(d)} · ${formatFileSize(d.sizeBytes)}`;
 
   const columns: Column<Document>[] = [
     {
@@ -79,13 +85,14 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
       cell: (d) => (
         <div className="flex min-w-0 items-center gap-3">
           <DocIcon doc={d} />
-          <div className="flex min-w-0 flex-col gap-1">
+          {/* Capped in narrow panels (drawers) so long names and labels truncate instead of widening the table. */}
+          <div className="flex min-w-0 flex-col gap-1 @max-3xl:max-w-[180px]">
             <span className="truncate font-semibold text-text-primary" title={d.name}>
               {d.name}
             </span>
             <span className="flex flex-wrap items-center gap-2">
-              <Badge tone="neutral" dot={false}>
-                {documentCategoryLabel(owner, d.category)}
+              <Badge tone="neutral" dot={false} className="max-w-full" title={label(d)}>
+                <span className="truncate">{label(d)}</span>
               </Badge>
               <Caption className="tabular">{formatFileSize(d.sizeBytes)}</Caption>
             </span>
@@ -97,7 +104,7 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
       key: "uploaded",
       header: "Uploaded",
       cell: (d) => (
-        <div className="flex min-w-0 flex-col">
+        <div className="flex min-w-0 flex-col @max-3xl:max-w-[140px]">
           <Small className="text-text-primary">{formatTimestampDate(d.createdAt)}</Small>
           <Caption className="truncate" title={d.uploadedBy.email}>
             {d.uploadedBy.email}
@@ -118,9 +125,11 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
             disabled={viewingId === d.id}
             aria-busy={viewingId === d.id || undefined}
             aria-label={`View ${d.name}`}
+            title="View"
             onClick={() => onView(d)}
+            className={NARROW_ICON_ONLY}
           >
-            {viewingId === d.id ? "Opening..." : "View"}
+            <span className="hidden @3xl:inline">{viewingId === d.id ? "Opening..." : "View"}</span>
           </Button>
           <Button
             size="sm"
@@ -129,9 +138,11 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
             disabled={pendingId === d.id}
             aria-busy={pendingId === d.id || undefined}
             aria-label={`Download ${d.name}`}
+            title="Download"
             onClick={() => onDownload(d)}
+            className={NARROW_ICON_ONLY}
           >
-            {pendingId === d.id ? "Downloading..." : "Download"}
+            <span className="hidden @3xl:inline">{pendingId === d.id ? "Downloading..." : "Download"}</span>
           </Button>
           {canManage && (
             <Button size="sm" variant="ghost" iconOnly aria-label={`Delete ${d.name}`} onClick={() => setDeleting(d)}>
@@ -144,7 +155,8 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
   ];
 
   return (
-    <div className="flex flex-col gap-4">
+    // A size container: in narrow places (the tenant and unit drawers) View and Download show only their icons.
+    <div className="@container flex flex-col gap-4">
       {canManage && (
         <Card className="flex flex-col gap-4">
           <H3>Upload a document</H3>

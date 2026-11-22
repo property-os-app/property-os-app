@@ -3,9 +3,22 @@ import { ApiError, apiFetch, errorText } from "@/lib/api";
 import type { FileRule } from "@/lib/files";
 import { documentKeys } from "@/features/documents/keys";
 import { showInTab, type ViewTab } from "@/features/documents/view";
-import type { Document, DocumentDownload, DocumentOwner } from "@/types/document";
+import type { Document, DocumentCategories, DocumentDownload, DocumentOwner } from "@/types/document";
 
 const documentsPath = (owner: DocumentOwner, ownerId: string) => `/${owner}/${encodeURIComponent(ownerId)}/documents`;
+
+/**
+ * GET /documents/categories: `{ lease, tenant, unit, property }`, each `{ value, label }[]` in display order. Static data
+ * (changes only with an API release), so it is fetched once and kept for the session. Read it with `categories.ts`.
+ */
+export function useDocumentCategories() {
+  return useQuery({
+    queryKey: documentKeys.categories,
+    queryFn: ({ signal }) => apiFetch<DocumentCategories>("/documents/categories", { signal }),
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+}
 
 /** GET /{owner}/:id/documents: newest first, no pagination. 404 when the owner is out of scope (a manager on a tenant they can't see). */
 export function useDocuments(owner: DocumentOwner, ownerId: string, options: { enabled?: boolean } = {}) {

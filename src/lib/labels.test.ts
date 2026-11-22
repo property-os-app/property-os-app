@@ -1,20 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { documentCategoryLabel, documentCategoryLabels, unitLabel } from "@/lib/labels";
-
-describe("documentCategoryLabels", () => {
-  it("has exactly the API's categories per owner, in order", () => {
-    expect(Object.keys(documentCategoryLabels.leases)).toEqual(["SIGNED_LEASE", "RENEWAL", "ADDENDUM", "INSPECTION", "NOTICE", "OTHER"]);
-    expect(Object.keys(documentCategoryLabels.tenants)).toEqual(["ID", "APPLICATION", "OTHER"]);
-    expect(Object.keys(documentCategoryLabels.units)).toEqual(["INSPECTION", "PHOTO", "OTHER"]);
-    expect(Object.keys(documentCategoryLabels.properties)).toEqual(["OWNERSHIP", "INSURANCE", "TAX", "OTHER"]);
-  });
-
-  it("labels a stored category, and shows unknown text as is", () => {
-    expect(documentCategoryLabel("leases", "SIGNED_LEASE")).toBe("Signed lease");
-    expect(documentCategoryLabel("units", "PHOTO")).toBe("Photo");
-    expect(documentCategoryLabel("tenants", "LEGACY")).toBe("LEGACY");
-  });
-});
+import { unitLabel } from "@/lib/labels";
 
 describe("unitLabel", () => {
   it('adds "Unit " only when the number starts with a digit', () => {

@@ -32,7 +32,7 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 - `TenantCreateBody`: POST body. `TenantUpdateBody`: PATCH body (`idNumber`, `address`, `moveInDate`, `notes` may be null).
 
 ## document.ts
-- `DocumentOwner`: `leases | tenants | units | properties` (the path prefix). Category types per owner (`LeaseDocumentCategory`, `TenantDocumentCategory`, `UnitDocumentCategory`, `PropertyDocumentCategory`), `DocumentCategoryByOwner`, `DocumentCategory`.
+- `DocumentOwner`: `leases | tenants | units | properties` (the path prefix). `DocumentCategoryOption` (`{ value, label }`) and `DocumentCategories` (GET /documents/categories: `{ lease, tenant, unit, property }`, singular keys, each list in display order). `Document.category` is a plain string (the lists come from the API, never hard-coded).
 - `Document`: one uploaded file (`name`, `category`, `contentType`, `sizeBytes`, `uploadedBy { id, email }`, `createdAt`). `DocumentContentType`.
 - `DocumentDownload`: `{ url, expiresAt }`, a 5-minute signed link; open it at once, never store it.
 

@@ -1,22 +1,21 @@
-/** Types for the documents endpoints. Source: ../property-os-api/docs/frontend-handoff/API.md sections 2 and 4 ("Document", "DocumentDownload"). */
+/** Types for the documents endpoints. Source: ../property-os-api/docs/frontend-handoff/API.md section 4 ("Document", "DocumentDownload") and Documents (GET /documents/categories). */
 
 /** The record a document belongs to: the first part of its path (/leases/:id/documents, ...). */
 export type DocumentOwner = "leases" | "tenants" | "units" | "properties";
 
-export type LeaseDocumentCategory = "SIGNED_LEASE" | "RENEWAL" | "ADDENDUM" | "INSPECTION" | "NOTICE" | "OTHER";
-export type TenantDocumentCategory = "ID" | "APPLICATION" | "OTHER";
-export type UnitDocumentCategory = "INSPECTION" | "PHOTO" | "OTHER";
-export type PropertyDocumentCategory = "OWNERSHIP" | "INSURANCE" | "TAX" | "OTHER";
-
-/** The categories each owner type accepts (API.md section 2); anything else is 400. */
-export interface DocumentCategoryByOwner {
-  leases: LeaseDocumentCategory;
-  tenants: TenantDocumentCategory;
-  units: UnitDocumentCategory;
-  properties: PropertyDocumentCategory;
+/** One category of an owner type: send `value`, show `label`. */
+export interface DocumentCategoryOption {
+  value: string;
+  label: string;
 }
 
-export type DocumentCategory = DocumentCategoryByOwner[DocumentOwner];
+/** GET /documents/categories: each owner type's list in display order (OTHER last). Keys are singular, unlike `DocumentOwner`. */
+export interface DocumentCategories {
+  lease: DocumentCategoryOption[];
+  tenant: DocumentCategoryOption[];
+  unit: DocumentCategoryOption[];
+  property: DocumentCategoryOption[];
+}
 
 /** Detected from the file's content by the backend. */
 export type DocumentContentType = "application/pdf" | "image/jpeg" | "image/png";
@@ -26,7 +25,7 @@ export interface Document {
   id: string;
   /** Display name; the original file name when none was given. */
   name: string;
-  /** One of the owner type's categories (stored as text). */
+  /** One of the owner type's category values (stored as text); show its label from GET /documents/categories. */
   category: string;
   contentType: DocumentContentType;
   sizeBytes: number;
