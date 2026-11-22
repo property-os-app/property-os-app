@@ -30,6 +30,11 @@ export interface SheetGroup<Row> {
   rows: Row[];
   /** Subtotal row under the group: one node per column (the first one is the row's label). */
   subtotal?: React.ReactNode[];
+  /**
+   * A CSS colour for a 4px bar on the left of the group header only (e.g. "var(--group-3)" from lib/groupAccent). Never a
+   * status colour; the rows stay uncoloured.
+   */
+  accent?: string;
 }
 
 export interface SpreadsheetTableProps<Row> {
@@ -86,7 +91,8 @@ const rowHover =
  * the first column as `th scope="row"`, group headers as `th scope="rowgroup"`.
  * It scrolls inside its own box (both ways), so the sticky header, the sticky first column, an optional column pinned
  * right (`sticky: "right"`) and the sticky total row all work and the page itself never scrolls sideways. Groups get a
- * header row (a band) and an optional subtotal row. Five states like DataTable. Cells can carry their own background
+ * header row (a tinted band, a strong line above every group but the first, an optional `accent` bar) and an optional
+ * subtotal row. Five states like DataTable. Cells can carry their own background
  * (`cellClassName`); `columnClassName` styles a whole column (separators, a "current" outline). Hovering a row tints it
  * without hiding the cells' own colours. With `pageScroll` the box only scrolls sideways and the page scrolls down (one
  * vertical scrollbar); `scrollToColumn` brings a column (e.g. the current month) into view on load.
@@ -236,12 +242,22 @@ export function SpreadsheetTable<Row>({
           )}
 
           {state === "ideal" &&
-            groups.map((g) => (
+            groups.map((g, gi) => (
               <tbody key={g.key}>
                 <tr>
-                  <th scope="rowgroup" colSpan={span} className="border-b border-border-subtle bg-surface-2 p-0 text-left">
-                    {/* The label sticks to the left edge while the row scrolls sideways. */}
-                    <span className="sticky left-0 inline-block px-3 py-2 text-small font-semibold text-text-primary">{g.label}</span>
+                  {/* A band across the whole row; a strong line above every group but the first marks where the next one starts. */}
+                  <th
+                    scope="rowgroup"
+                    colSpan={span}
+                    className={cn("border-b border-border-subtle bg-surface-3 p-0 text-left", gi > 0 && "border-t-2 border-t-border-strong")}
+                  >
+                    {/* The label (and its accent bar) sticks to the left edge while the row scrolls sideways. */}
+                    <span
+                      className={cn("sticky left-0 inline-block py-2.5 pr-3 text-small font-semibold text-text-primary", g.accent ? "pl-4" : "pl-3")}
+                      style={g.accent ? { boxShadow: `inset 4px 0 0 ${g.accent}` } : undefined}
+                    >
+                      {g.label}
+                    </span>
                   </th>
                 </tr>
                 {g.rows.map((row) => {

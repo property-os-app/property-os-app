@@ -1,11 +1,12 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { Calendar, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Download, Maximize } from "lucide-react";
 import { Button, Select } from "@/components/atoms";
 import { ColumnsMenu, FilterChip, FormField, InlineError, SearchInput, SegmentedControl, toast } from "@/components/molecules";
 import { PageHeader, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { accentOrderOf } from "@/lib/groupAccent";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
 import { useProperties } from "@/features/properties/hooks";
@@ -13,6 +14,8 @@ import { useRentRollYear } from "@/features/rent-roll/hooks";
 import { RentRollViewSwitch } from "@/features/rent-roll/RentRollViewSwitch";
 import { downloadYearCsv, yearCsvFilename } from "@/features/rent-roll/yearCsv";
 import { YearCards } from "@/features/rent-roll/YearCards";
+import { YearFullscreen } from "@/features/rent-roll/YearFullscreen";
+import { useYearFullscreen } from "@/features/rent-roll/useYearFullscreen";
 import { YearLegend } from "@/features/rent-roll/YearLegend";
 import { YearSummary } from "@/features/rent-roll/YearSummary";
 import { YearTable } from "@/features/rent-roll/YearTable";
@@ -53,7 +56,7 @@ const FILTERED_TOTALS_NOTE = "Totals include all units in scope, not just the fi
  * scope), chips Ends soon / Unpaid months / Vacant (?q= and ?chips= in the URL), Columns menu (saved per browser).
  * A "By unit | By tenant" switch (?rows=lease; unit is the default and isn't written): one row per unit (its current tenant)
  * or one per lease (a unit that changed tenants shows twice, older first). Then the summary cards (YearSummary) and the
- * colour key. Desktop: YearTable; phones: YearCards. A row opens its lease (back returns to this year); a vacant / reserved
+ * colour key. Desktop: YearTable, with a Full screen button (YearFullscreen: the same table over the whole window); phones: YearCards. A row opens its lease (back returns to this year); a vacant / reserved
  * unit the Unit drawer. A response of unknown shape (older backend) shows "This page needs the latest backend" instead.
  */
 export function RentRollYearView() {
@@ -127,6 +130,9 @@ export function RentRollYearView() {
   const chipCounts = useMemo(() => Object.fromEntries(YEAR_CHIPS.map((c) => [c, rows.filter((r) => matchesChips(r, [c])).length])) as Record<YearChip, number>, [rows]);
   const isFiltered = search.trim() !== "" || chips.length > 0;
 
+  // Band colours by the full property list by name, then id (the groups' order, so neighbours differ): independent of the filters, same on every view.
+  const accentOrder = useMemo(() => accentOrderOf(properties.data ?? []), [properties.data]);
+
   const [openUnit, setOpenUnit] = useState<{ id: string; unitNumber: string; propertyName: string } | null>(null);
   // A row opens its lease on the Ledger tab (by unit: the current one); vacant / reserved units the Unit drawer.
   const openLease = (leaseId: string) => void navigate(yearLeasePath(leaseId, year, "ledger"), { state: { from: "rent-roll" } satisfies LeasePageState });
@@ -134,6 +140,10 @@ export function RentRollYearView() {
     if (r.lease) openLease(r.lease.id);
     else setOpenUnit({ id: r.unit.id, unitNumber: r.unit.unitNumber, propertyName: r.unit.property.name });
   };
+
+  // Full screen (desktop table only): same data, filters and columns; the Unit drawer opens over it, a lease page leaves it.
+  const fullscreenButton = useRef<HTMLButtonElement>(null);
+  const fullscreen = useYearFullscreen(fullscreenButton);
 
   const state: "loading" | "error" | "empty" | "ideal" = query.isError ? "error" : query.isPending ? "loading" : filtered.length === 0 ? "empty" : "ideal";
   const empty =
@@ -306,6 +316,11 @@ export function RentRollYearView() {
           {rowsSwitch}
           {/* ml-auto: stays at the right edge even when the toolbar wraps, so its right-aligned panel stays on screen. */}
           <ColumnsMenu className="ml-auto" options={[...YEAR_OPTIONAL_COLUMNS]} visible={columns.visible} onToggle={columns.toggle} onReset={columns.reset} />
+          {!outdated && (
+            <Button ref={fullscreenButton} icon={<Maximize size={16} strokeWidth={1.5} />} onClick={fullscreen.open}>
+              Full screen
+            </Button>
+          )}
         </Toolbar>
       )}
 
@@ -318,7 +333,7 @@ export function RentRollYearView() {
           <YearLegend />
 
           {isMobile ? (
-            <YearCards data={data} groups={groups} year={year} state={state} empty={empty} error={error} note={note} onOpen={onOpen} />
+            <YearCards data={data} groups={groups} year={year} state={state} empty={empty} error={error} note={note} onOpen={onOpen} accentOrder={accentOrder} />
           ) : (
             <YearTable
               data={data}
@@ -331,9 +346,29 @@ export function RentRollYearView() {
               error={error}
               footer={note}
               onOpen={onOpen}
+              accentOrder={accentOrder}
             />
           )}
         </>
+      )}
+
+      {fullscreen.isOpen && !isMobile && !outdated && (
+        <YearFullscreen year={year} onClose={fullscreen.close}>
+          <YearTable
+            data={data}
+            groups={groups}
+            year={year}
+            rowsBy={rowsBy}
+            visible={columns.visible}
+            state={state}
+            empty={empty}
+            error={error}
+            footer={note}
+            onOpen={onOpen}
+            accentOrder={accentOrder}
+            fill
+          />
+        </YearFullscreen>
       )}
 
       {openUnit && <YearUnitDrawer unitId={openUnit.id} unitNumber={openUnit.unitNumber} propertyName={openUnit.propertyName} onClose={() => setOpenUnit(null)} />}

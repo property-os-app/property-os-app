@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { Badge, Bar, Dash, Num } from "@/components/atoms";
 import { SpreadsheetTable, type SheetColumn } from "@/components/organisms";
 import { cn } from "@/lib/cn";
+import { groupAccent, type AccentOrder } from "@/lib/groupAccent";
 import { formatCurrency, formatCurrencyShort, formatDate, formatMonth, toCents } from "@/lib/format";
 import { plural, unitLabel } from "@/lib/labels";
 import { linkFocus } from "@/features/shared/linkClass";
@@ -75,8 +76,8 @@ function propertyBand(g: PropertyGroup) {
   const pct = collectedPercent(g.totals.totalPaid, g.totals.totalCharged);
   return (
     <span className="flex flex-wrap items-baseline gap-x-3">
-      <span>{g.property.name}</span>
-      <span className="font-normal text-text-secondary">
+      <span className="text-body font-bold text-text-primary">{g.property.name}</span>
+      <span className="text-small font-normal text-text-secondary">
         {plural(g.rows.length, "unit")} · Collected {formatCurrencyShort(g.totals.totalPaid)} of {formatCurrencyShort(g.totals.totalCharged)}
         {pct !== null && ` · ${pct}%`}
       </span>
@@ -98,6 +99,13 @@ export interface YearTableProps {
   footer?: ReactNode;
   /** A row opens its lease (by unit: the current one); a vacant or reserved unit the Unit drawer. */
   onOpen: (row: RentRollYearRow) => void;
+  /**
+   * Full screen: the table scrolls inside its own box filling the window under the slim header (sticky header row, first
+   * column and Total column), instead of the page scrolling (pageScroll).
+   */
+  fill?: boolean;
+  /** Property order for the band accent colours (`accentOrderOf` the property list), the same on every view. */
+  accentOrder?: AccentOrder;
 }
 
 /**
@@ -108,8 +116,9 @@ export interface YearTableProps {
  * vacancy, the renewal alert, optional days to end / renewal, and Collected % with a tiny bar. All money is short, exact in
  * the tooltip. Property bands carry the API's collected totals; subtotal rows and the sticky grand total come from the API.
  * The page is the only vertical scroller (pageScroll): the header and total row stay in view, the sideways scrollbar sticks to the bottom.
+ * With `fill` (full screen) it scrolls in its own box instead.
  */
-export function YearTable({ data, groups, year, rowsBy = "unit", visible, state, empty, error, footer, onOpen }: YearTableProps) {
+export function YearTable({ data, groups, year, rowsBy = "unit", visible, state, empty, error, footer, onOpen, fill = false, accentOrder }: YearTableProps) {
   const months = data?.months ?? Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, "0")}`);
   const shown = new Set(visible);
   const nowMonth = months.find((m) => isCurrentMonth(m));
@@ -260,11 +269,14 @@ export function YearTable({ data, groups, year, rowsBy = "unit", visible, state,
       groups={groups.map((g) => ({
         key: g.property.id,
         label: propertyBand(g),
+        accent: groupAccent(g.property.id, accentOrder).color,
         rows: g.rows,
         subtotal: totalsRow(`${g.property.name} total`, g.totals),
       }))}
       rowKey={yearRowKey}
-      pageScroll
+      pageScroll={!fill}
+      // Full screen: the window minus the slim header (3.5rem), the layer's padding (2rem) and the note under the table if any.
+      maxHeight={fill ? (footer ? "calc(100dvh - 9rem)" : "calc(100dvh - 6rem)") : undefined}
       scrollToColumn={nowMonth}
       onRowClick={onOpen}
       rowMuted={(r) => r.kind === "VACANT_UNIT"}

@@ -47,6 +47,15 @@ export const colors = {
 
 export type ThemeName = keyof typeof colors;
 
+/**
+ * Group accents (--group-1 ... --group-5): a thin bar marking each property's band in grouped grids. Never a status hue
+ * (green, red, amber) or grey, so status colours stay the only colours in the cells. Light and dark, same order.
+ */
+export const groupAccents = {
+  light: ["#2563eb", "#4f46e5", "#7c3aed", "#c026d3", "#0e7ba0"],
+  dark: ["#60a5fa", "#818cf8", "#a78bfa", "#e879f9", "#22c3f0"],
+} as const;
+
 /** Chart series order from the guideline: income green, expenses sky, then amber, red, grey. */
 export function chartPalette(theme: ThemeName = "light") {
   const c = colors[theme];

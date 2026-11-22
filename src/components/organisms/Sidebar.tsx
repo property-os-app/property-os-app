@@ -1,7 +1,8 @@
 import * as React from "react";
+import { createPortal } from "react-dom";
 import {
   X, LayoutGrid, Activity, Building2, DoorOpen, Users, FileText, DollarSign, Receipt, Landmark, BarChart3,
-  Wrench, Truck, Inbox, MessageCircle, ShieldCheck, Database, SlidersHorizontal, CircleHelp, ChevronDown, ChevronLeft, ChevronRight,
+  Wrench, Truck, Inbox, MessageCircle, ShieldCheck, Database, SlidersHorizontal, CircleHelp, ChevronDown, PanelLeftClose, PanelLeftOpen,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -81,7 +82,9 @@ export interface SidebarProps {
   scope: string;
   onScopeClick?: () => void;
   badges?: Partial<Record<ModuleKey, { count: number; tone?: "neutral" | "danger" }>>;
+  /** Desktop icon rail: names show as tooltips on hover and keyboard focus, counts as a dot. */
   collapsed?: boolean;
+  /** Shows the "Collapse menu" / "Expand menu" toggle (aria-expanded) above the user block. */
   onToggleCollapsed?: () => void;
   groups?: NavGroup[];
   /** Brand text next to the logo. Default "PropOS". */
@@ -95,17 +98,47 @@ export interface SidebarProps {
   className?: string;
 }
 
+/** The collapsed rail's tooltip: fixed to the right of the hovered or focused control, so the scrolling nav list can't clip it. */
+interface RailTip {
+  label: string;
+  top: number;
+  left: number;
+}
+
 export function Sidebar({ role, active, user, scope, onScopeClick, badges = {}, collapsed = false, onToggleCollapsed, groups = defaultNavGroups, brand = "PropOS", renderLink, onNavigate, onClose, className }: SidebarProps) {
   const allowed = roleModules[role];
   const link = renderLink ?? ((href, props) => <a href={href} {...props} />);
+  const [tip, setTip] = React.useState<RailTip | null>(null);
+  // Tooltips only exist on the collapsed rail; expanding hides any that is showing.
+  const shownTip = collapsed ? tip : null;
+  const showTip = (label: string) => (e: React.SyntheticEvent<HTMLElement>) => {
+    if (!collapsed) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    setTip({ label, top: r.top + r.height / 2, left: r.right + 8 });
+  };
+  const hideTip = () => setTip(null);
+  /** Hover and keyboard focus both show the name on the rail. */
+  const tipHandlers = (label: string) => ({ onMouseEnter: showTip(label), onMouseLeave: hideTip, onFocus: showTip(label), onBlur: hideTip });
+
   return (
     <nav
       aria-label="Main navigation"
-      className={cn("flex h-full shrink-0 flex-col border-r border-border-subtle bg-surface-1 transition-[width] duration-fast", collapsed ? "w-sidebar-collapsed" : "w-sidebar", className)}
+      className={cn(
+        "flex h-full shrink-0 flex-col border-r border-border-subtle bg-surface-1 transition-[width] duration-fast motion-reduce:transition-none",
+        collapsed ? "w-sidebar-collapsed" : "w-sidebar",
+        className,
+      )}
     >
       <div className={cn("flex h-topbar items-center gap-2.5", collapsed ? "justify-center" : "px-5")}>
-        <div className="flex size-7 items-center justify-center rounded-control bg-success text-body font-extrabold text-success-fg">P</div>
-        {!collapsed && <div className="text-h3 font-extrabold tracking-tight">{brand}</div>}
+        <div
+          role={collapsed ? "img" : undefined}
+          aria-label={collapsed ? brand : undefined}
+          aria-hidden={collapsed ? undefined : true}
+          className="flex size-7 shrink-0 items-center justify-center rounded-control bg-success text-body font-extrabold text-success-fg"
+        >
+          P
+        </div>
+        {!collapsed && <div className="truncate text-h3 font-extrabold tracking-tight">{brand}</div>}
         {onClose && (
           <button type="button" onClick={onClose} aria-label="Close menu" className="ml-auto rounded-control p-1.5 text-text-secondary hover:bg-surface-3 hover:text-text-primary focus-visible:focus-ring">
             <X size={20} strokeWidth={1.5} />
@@ -117,14 +150,14 @@ export function Sidebar({ role, active, user, scope, onScopeClick, badges = {}, 
         type="button"
         onClick={onScopeClick}
         aria-label={`Switch property scope, currently ${scope}`}
-        title={collapsed ? scope : undefined}
+        {...tipHandlers(scope)}
         className={cn("mx-4 mb-2 flex h-11 items-center gap-2.5 rounded-control border border-border-strong bg-surface-2 px-3 text-small font-semibold text-text-primary hover:bg-surface-3 focus-visible:focus-ring", collapsed && "mx-3 justify-center px-0")}
       >
-        <Building2 size={16} strokeWidth={1.5} />
+        <Building2 size={16} strokeWidth={1.5} className="shrink-0" />
         {!collapsed && <><span className="flex-1 truncate text-left">{scope}</span><ChevronDown size={16} strokeWidth={1.5} /></>}
       </button>
 
-      <div className="flex flex-1 flex-col gap-1 overflow-y-auto pb-3">
+      <div className="flex flex-1 flex-col gap-1 overflow-y-auto pb-3" onScroll={hideTip}>
         {groups.map((g) => {
           const items = g.items.filter((it) => allowed.includes(it.key));
           if (!items.length) return null;
@@ -134,12 +167,18 @@ export function Sidebar({ role, active, user, scope, onScopeClick, badges = {}, 
               {items.map((it) => {
                 const on = it.key === active;
                 const badge = badges[it.key];
+                // Collapsed: the text is hidden, so the link is named by aria-label (with the count, shown as a dot).
+                const name = badge ? `${it.label}, ${badge.count}` : it.label;
                 return (
                   <React.Fragment key={it.key}>
                     {link(it.href, {
                       "aria-current": on ? "page" : undefined,
-                      title: collapsed ? it.label : undefined,
-                      onClick: onNavigate,
+                      "aria-label": collapsed ? name : undefined,
+                      ...tipHandlers(name),
+                      onClick: () => {
+                        hideTip();
+                        onNavigate?.();
+                      },
                       className: cn(
                         "relative flex h-10 items-center gap-3 rounded-control px-3 text-body font-medium no-underline transition-colors duration-fast focus-visible:focus-ring",
                         on ? "bg-surface-3 text-text-primary shadow-[inset_2px_0_0_var(--success)]" : "text-text-secondary hover:bg-surface-3 hover:text-text-primary",
@@ -150,7 +189,7 @@ export function Sidebar({ role, active, user, scope, onScopeClick, badges = {}, 
                           {it.icon}
                           {!collapsed && <span className="flex-1 truncate">{it.label}</span>}
                           {badge && !collapsed && <Count tone={badge.tone}>{badge.count}</Count>}
-                          {badge && collapsed && <span aria-label={`${badge.count} unread`} className={cn("absolute right-2 top-2 size-2 rounded-full", badge.tone === "danger" ? "bg-danger" : "bg-success")} />}
+                          {badge && collapsed && <span aria-hidden className={cn("absolute right-2 top-2 size-2 rounded-full", badge.tone === "danger" ? "bg-danger" : "bg-success")} />}
                         </>
                       ),
                     })}
@@ -162,20 +201,56 @@ export function Sidebar({ role, active, user, scope, onScopeClick, badges = {}, 
         })}
       </div>
 
-      <div className={cn("flex items-center gap-3 border-t border-border-subtle px-4 py-3", collapsed && "justify-center px-0")}>
+      {onToggleCollapsed && (
+        <div className="px-3 pb-2">
+          <button
+            type="button"
+            onClick={() => {
+              hideTip();
+              onToggleCollapsed();
+            }}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? "Expand menu" : "Collapse menu"}
+            {...tipHandlers("Expand menu")}
+            className={cn(
+              "flex h-10 w-full items-center gap-3 rounded-control px-3 text-body font-medium text-text-secondary transition-colors duration-fast hover:bg-surface-3 hover:text-text-primary focus-visible:focus-ring",
+              collapsed && "justify-center px-0",
+            )}
+          >
+            {collapsed ? <PanelLeftOpen size={20} strokeWidth={1.5} /> : <PanelLeftClose size={20} strokeWidth={1.5} />}
+            {!collapsed && <span className="flex-1 truncate text-left">Collapse menu</span>}
+          </button>
+        </div>
+      )}
+
+      <div
+        className={cn("flex items-center gap-3 border-t border-border-subtle px-4 py-3", collapsed && "justify-center px-0")}
+        onMouseEnter={showTip(`${user.name} · ${user.roleLabel}`)}
+        onMouseLeave={hideTip}
+      >
         <Avatar name={user.name} src={user.avatarUrl} online />
-        {!collapsed && (
+        {collapsed ? (
+          <span className="sr-only">{`${user.name}, ${user.roleLabel}`}</span>
+        ) : (
           <div className="min-w-0 flex-1">
             <div className="truncate font-semibold">{user.name}</div>
             <div className="text-caption text-text-secondary">{user.roleLabel}</div>
           </div>
         )}
-        {onToggleCollapsed && (
-          <button type="button" onClick={onToggleCollapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} className="rounded-control p-1.5 text-text-secondary hover:bg-surface-3 hover:text-text-primary focus-visible:focus-ring">
-            {collapsed ? <ChevronRight size={16} strokeWidth={1.5} /> : <ChevronLeft size={16} strokeWidth={1.5} />}
-          </button>
-        )}
       </div>
+
+      {/* Portaled to <body>: the sidebar's sticky wrapper is its own stacking context, so the page would paint over it. */}
+      {shownTip &&
+        createPortal(
+          <span
+            aria-hidden
+            style={{ top: shownTip.top, left: shownTip.left }}
+            className="pointer-events-none fixed z-50 -translate-y-1/2 whitespace-nowrap rounded-control border border-border-subtle bg-overlay px-2.5 py-1.5 text-small font-semibold text-text-primary shadow-overlay"
+          >
+            {shownTip.label}
+          </span>,
+          document.body,
+        )}
     </nav>
   );
 }
