@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildYearCsv, csvField, csvMoney, csvText, yearCsvFilename, yearCsvHeader } from "@/features/rent-roll/yearCsv";
+import { csvField, csvMoney, csvText } from "@/features/rent-roll/rentRollCsv";
+import { buildYearCsv, yearCsvFilename, yearCsvHeader } from "@/features/rent-roll/yearCsv";
 import type { RentRollYearCell, RentRollYearLeaseRow, RentRollYearResponse, RentRollYearTotals, RentRollYearUnitCell, RentRollYearUnitRow } from "@/types/rentRoll";
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => `2026-${String(i + 1).padStart(2, "0")}`);

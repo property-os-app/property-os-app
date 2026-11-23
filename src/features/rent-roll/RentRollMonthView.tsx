@@ -1,12 +1,11 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router";
-import { Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { Button, Dash, Select, Skeleton } from "@/components/atoms";
-import { FormField, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
-import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
+import { Plus } from "lucide-react";
+import { Button, Dash, Skeleton } from "@/components/atoms";
+import { KpiCard, SegmentedControl, toast } from "@/components/molecules";
+import { KpiRow, PageHeader, Pagination } from "@/components/organisms";
 import { errorText } from "@/lib/api";
-import { cn } from "@/lib/cn";
 import { addMonthsYM, centsToAmount, currentMonthUTC, formatCompactCurrency, formatPercent, formatMonth } from "@/lib/format";
 import { plural, rentStatusLabels } from "@/lib/labels";
 import { useClientTable, type SortColumn } from "@/lib/useClientTable";
@@ -42,9 +41,10 @@ import {
 } from "@/features/rent-roll/stats";
 import { useScope } from "@/features/scope/scopeContext";
 import { useBillingSettings } from "@/features/settings/hooks";
-import { FilterGroup, MobileFilters, SortSelect, type SortOption } from "@/features/shared/MobileFilters";
+import { FilterGroup, SortSelect, type SortOption } from "@/features/shared/MobileFilters";
 import { useListView } from "@/features/shared/listView";
-import { RentRollViewSwitch } from "@/features/rent-roll/RentRollViewSwitch";
+import { downloadMonthCsv, monthCsvFilename } from "@/features/rent-roll/monthCsv";
+import { RentRollHeader } from "@/features/rent-roll/RentRollHeader";
 import { ViewToggle } from "@/features/shared/ViewToggle";
 import { NoProperties } from "@/features/shared/NoProperties";
 import type { RentRollRow } from "@/types/rentRoll";
@@ -73,8 +73,9 @@ const sortOptions: SortOption[] = [
 type PaymentOpen = { leaseId?: string };
 
 /**
- * /rent-roll Month view (the default; Year view is RentRollYearView): month switcher (?month=YYYY-MM), KPIs from the summary, status segments + search (client-side) + Property scope,
- * the table with totals, Add charge and Record Payment. Rent is billed automatically (Settings → Billing), so there is no generate button. A row (or "Open ledger") opens the lease page, Ledger tab.
+ * /rent-roll Month view (the default; Year view is RentRollYearView). The shared RentRollHeader (same layout as the Year view):
+ * Record Payment, Month | Year, month picker (?month=YYYY-MM), Export CSV (the whole month, monthCsv); search + Property, then
+ * the status segments, sort (cards) and table/cards toggle. Then the KPIs from the summary, the table with totals and Add charge. Rent is billed automatically (Settings → Billing), so there is no generate button. A row (or "Open ledger") opens the lease page, Ledger tab.
  */
 export function RentRollMonthView() {
   const { me } = useAuth();
@@ -90,7 +91,7 @@ export function RentRollMonthView() {
   // Phones always get cards; the saved choice is for wider screens.
   const [view, setView] = useListView("rent-roll", "table");
   const cards = view === "cards" && !isMobile;
-  const { propertyId: scope, setPropertyId } = useScope();
+  const { propertyId: scope } = useScope();
 
   const [params, setParams] = useSearchParams();
   const month = monthFromParam(params.get("month"));
@@ -210,35 +211,13 @@ export function RentRollMonthView() {
       </Button>
     ) : null;
   const isCurrent = month === currentMonthUTC();
-  // Phones: 44px month arrows and a month button that fills the row.
-  const monthSwitcher = (
-    <div className={cn("flex items-center gap-1", isMobile && "w-full")}>
-      <Button
-        variant="ghost"
-        iconOnly
-        className={cn(isMobile && "size-11")}
-        aria-label="Previous month"
-        icon={<ChevronLeft size={16} strokeWidth={1.5} />}
-        onClick={() => setMonth(addMonthsYM(month, -1))}
-      />
-      <Button
-        className={cn(isMobile && "h-11 flex-1")}
-        icon={<Calendar size={16} strokeWidth={1.5} />}
-        title={isCurrent ? undefined : "Back to the current month"}
-        onClick={() => setMonth(currentMonthUTC())}
-      >
-        {monthLabel}
-      </Button>
-      <Button
-        variant="ghost"
-        iconOnly
-        className={cn(isMobile && "size-11")}
-        aria-label="Next month"
-        icon={<ChevronRight size={16} strokeWidth={1.5} />}
-        onClick={() => setMonth(addMonthsYM(month, 1))}
-      />
-    </div>
-  );
+  const scopeName = scope ? (properties.data?.find((p) => p.id === scope)?.name ?? null) : null;
+  // The whole month for the scope (search and status are ignored), from the response already loaded.
+  const exportCsv = () => {
+    if (!rentRoll.data) return;
+    downloadMonthCsv(rentRoll.data, scopeName);
+    toast.success(`Downloaded ${monthCsvFilename(rentRoll.data.month, scopeName)}`);
+  };
   const statusControl = (
     <SegmentedControl<StatusFilter>
       aria-label="Rent status"
@@ -251,17 +230,6 @@ export function RentRollMonthView() {
       }))}
       className="max-w-full flex-wrap"
     />
-  );
-  const search = <SearchInput placeholder="Search tenant, unit or lease number" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />;
-  const propertySelect = (id?: string) => (
-    <Select id={id} aria-label={id ? undefined : "Property"} value={scope ?? "all"} onChange={(e) => setPropertyId(e.target.value === "all" ? null : e.target.value)}>
-      <option value="all">All properties</option>
-      {properties.data?.map((p) => (
-        <option key={p.id} value={p.id}>
-          {p.name}
-        </option>
-      ))}
-    </Select>
   );
 
   if (properties.data?.length === 0) {
@@ -276,24 +244,41 @@ export function RentRollMonthView() {
 
   return (
     <>
-      <PageHeader
-        title="Rent Roll"
-        description={`Unit-by-unit payment ledger for the ${monthLabel} collection period. Rent is billed automatically before each due date.`}
-        actions={
-          isMobile ? (
-            <div className="flex w-full flex-col gap-3">
-              <RentRollViewSwitch view="month" period={month} />
-              {monthSwitcher}
-              {paymentButton("h-11 w-full")}
+      <RentRollHeader
+        view="month"
+        period={month}
+        description={`Every lease billed in ${monthLabel}. Rent is billed automatically.`}
+        picker={{
+          label: monthLabel,
+          unit: "month",
+          isCurrent,
+          onPrev: () => setMonth(addMonthsYM(month, -1)),
+          onNext: () => setMonth(addMonthsYM(month, 1)),
+          onCurrent: () => setMonth(currentMonthUTC()),
+        }}
+        export={{
+          onClick: exportCsv,
+          disabled: !ready || allRows.length === 0,
+          title: scope ? "Exports the whole month for the selected property" : "Exports the whole month for all properties",
+        }}
+        primaryAction={canPay ? (className) => paymentButton(className) : undefined}
+        search={{ value: table.search, onChange: table.setSearch }}
+        controls={
+          <>
+            {statusControl}
+            <div className="ml-auto flex items-center gap-3">
+              {cards && <SortSelect compact id="rent-roll-sort-desktop" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />}
+              <ViewToggle value={view} onChange={setView} />
             </div>
-          ) : (
-            <>
-              <RentRollViewSwitch view="month" period={month} />
-              {monthSwitcher}
-              {paymentButton()}
-            </>
-          )
+          </>
         }
+        filters={{
+          count: table.activeFilterCount,
+          resultCount: ready ? table.total : undefined,
+          onClear: table.resetFilters,
+          before: <FilterGroup label="Rent status">{statusControl}</FilterGroup>,
+          after: <SortSelect id="rent-roll-sort" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />,
+        }}
       />
 
       <KpiRow>
@@ -331,28 +316,6 @@ export function RentRollMonthView() {
           note={ready ? `${plural(summary?.activeDepositCount ?? 0, "active lease")}${isCurrent ? "" : ", as of today"}` : undefined}
         />
       </KpiRow>
-
-      {isMobile ? (
-        <Toolbar className="flex-nowrap">
-          {search}
-          <MobileFilters count={table.activeFilterCount} resultCount={ready ? table.total : undefined} onClear={table.resetFilters}>
-            <FilterGroup label="Rent status">{statusControl}</FilterGroup>
-            <FormField label="Property (all pages)" htmlFor="rent-roll-property">
-              {propertySelect("rent-roll-property")}
-            </FormField>
-            <SortSelect id="rent-roll-sort" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />
-          </MobileFilters>
-        </Toolbar>
-      ) : (
-        <Toolbar>
-          {statusControl}
-          {search}
-          <div className="w-52">{propertySelect()}</div>
-          <div className="flex-1" />
-          {cards && <SortSelect compact id="rent-roll-sort-desktop" sort={table.sort} onSortChange={table.setSort} options={sortOptions} />}
-          <ViewToggle value={view} onChange={setView} />
-        </Toolbar>
-      )}
 
       <div id={table.listId} className="scroll-mt-24">
         <RentRollTable

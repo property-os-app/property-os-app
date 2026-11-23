@@ -3,31 +3,10 @@
  * per unit, or per lease "By tenant" (it follows the response's rowsBy).
  * Always the whole year for the selected property (search and chips are ignored), so the API's subtotals and total match.
  */
-import { toCents } from "@/lib/format";
-import { saveBlob } from "@/lib/pdf";
+import { csvLines, csvMoney, csvText, propertySuffix, saveCsv } from "@/features/rent-roll/rentRollCsv";
 import { unitLabel } from "@/lib/labels";
 import { isLeaseEnded, isUnitRow, otherLeases, renewalAlertLabels, renewalText, rowTitle, shortMonth, shownVacantMonths, tenantsWithMonths } from "@/features/rent-roll/yearStats";
 import type { RentRollYearCell, RentRollYearResponse, RentRollYearRow, RentRollYearRowsBy, RentRollYearTotals } from "@/types/rentRoll";
-
-/** Money as a plain number with 2 decimals ("3400.00", "-150.00"): no $, no commas, no float math. Empty stays empty. */
-export function csvMoney(value: string | null | undefined): string {
-  if (value === null || value === undefined || value.trim() === "") return "";
-  const cents = toCents(value);
-  if (Number.isNaN(cents)) return "";
-  const abs = Math.abs(cents);
-  return `${cents < 0 ? "-" : ""}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, "0")}`;
-}
-
-/** Text that a spreadsheet would run as a formula (=, +, -, @, tab, CR) gets a leading apostrophe. Money never goes through this. */
-export function csvText(value: string | null | undefined): string {
-  const text = value ?? "";
-  return /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
-}
-
-/** Quotes a field when it holds a comma, quote or line break (quotes doubled). */
-export function csvField(value: string): string {
-  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
-}
 
 /** A month cell: the paid amount; empty for VACANT and OUTSIDE_LEASE (no lease that month), so column sums stay numeric. */
 function cellValue(cell: RentRollYearCell): string {
@@ -101,7 +80,7 @@ export function buildYearCsv(data: RentRollYearResponse): string {
     lines.push(totalsCells(totals.property.name, "Subtotal", totals, data.rowsBy));
   }
   lines.push(totalsCells("Total", "", data.totals, data.rowsBy));
-  return lines.map((cells) => cells.map(csvField).join(",")).join("\r\n") + "\r\n";
+  return csvLines(lines);
 }
 
 /**
@@ -109,13 +88,10 @@ export function buildYearCsv(data: RentRollYearResponse): string {
  * (characters Windows forbids are removed).
  */
 export function yearCsvFilename(year: number, propertyName?: string | null, rowsBy: RentRollYearRowsBy = "unit"): string {
-  const name = propertyName?.replace(/[\\/:*?"<>|]/g, "").trim();
-  const base = `Rent roll ${year}${rowsBy === "lease" ? " by tenant" : ""}`;
-  return name ? `${base} - ${name}.csv` : `${base}.csv`;
+  return `Rent roll ${year}${rowsBy === "lease" ? " by tenant" : ""}${propertySuffix(propertyName)}.csv`;
 }
 
-/** Saves the CSV with a UTF-8 BOM, so Excel reads accents and the "·" correctly. */
+/** Saves the CSV (UTF-8 BOM, see saveCsv). */
 export function downloadYearCsv(data: RentRollYearResponse, propertyName?: string | null): void {
-  const blob = new Blob(["﻿", buildYearCsv(data)], { type: "text/csv;charset=utf-8" });
-  saveBlob(blob, yearCsvFilename(data.year, propertyName, data.rowsBy));
+  saveCsv(buildYearCsv(data), yearCsvFilename(data.year, propertyName, data.rowsBy));
 }

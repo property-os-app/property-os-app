@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { Calendar, ChevronLeft, ChevronRight, Download, Maximize } from "lucide-react";
-import { Button, Select } from "@/components/atoms";
-import { ColumnsMenu, FilterChip, FormField, InlineError, SearchInput, SegmentedControl, toast } from "@/components/molecules";
-import { PageHeader, Toolbar } from "@/components/organisms";
+import { Maximize } from "lucide-react";
+import { Button } from "@/components/atoms";
+import { ColumnsMenu, FilterChip, InlineError, SegmentedControl, toast } from "@/components/molecules";
+import { PageHeader } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { accentOrderOf } from "@/lib/groupAccent";
@@ -11,7 +11,7 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
 import { useProperties } from "@/features/properties/hooks";
 import { useRentRollYear } from "@/features/rent-roll/hooks";
-import { RentRollViewSwitch } from "@/features/rent-roll/RentRollViewSwitch";
+import { RentRollHeader } from "@/features/rent-roll/RentRollHeader";
 import { downloadYearCsv, yearCsvFilename } from "@/features/rent-roll/yearCsv";
 import { YearCards } from "@/features/rent-roll/YearCards";
 import { YearFullscreen } from "@/features/rent-roll/YearFullscreen";
@@ -42,7 +42,7 @@ import {
 } from "@/features/rent-roll/yearStats";
 import { useScope } from "@/features/scope/scopeContext";
 import { useColumnVisibility } from "@/features/shared/columnVisibility";
-import { FilterGroup, MobileFilters } from "@/features/shared/MobileFilters";
+import { FilterGroup } from "@/features/shared/MobileFilters";
 import { NoProperties } from "@/features/shared/NoProperties";
 import type { LeasePageState } from "@/features/leases/LeasePage";
 import type { RentRollYearRow, RentRollYearRowsBy } from "@/types/rentRoll";
@@ -51,9 +51,9 @@ import type { RentRollYearRow, RentRollYearRowsBy } from "@/types/rentRoll";
 const FILTERED_TOTALS_NOTE = "Totals include all units in scope, not just the filtered rows.";
 
 /**
- * /rent-roll?view=year&year=YYYY: the client's spreadsheet rent roll from GET /rent-roll/year. Header: Month | Year switch,
- * year picker (limited to `availableYears`), Export CSV (the whole year for the scope). Toolbar: search, Property (the app-wide
- * scope), chips Ends soon / Unpaid months / Vacant (?q= and ?chips= in the URL), Columns menu (saved per browser).
+ * /rent-roll?view=year&year=YYYY: the client's spreadsheet rent roll from GET /rent-roll/year. The shared RentRollHeader (same
+ * layout as the Month view): Month | Year switch, year picker (limited to `availableYears`), Export CSV (the whole year for the
+ * scope); search, Property (the app-wide scope), then chips Ends soon / Unpaid months / Vacant (?q= and ?chips= in the URL), Columns menu (saved per browser).
  * A "By unit | By tenant" switch (?rows=lease; unit is the default and isn't written): one row per unit (its current tenant)
  * or one per lease (a unit that changed tenants shows twice, older first). Then the summary cards (YearSummary) and the
  * colour key. Desktop: YearTable, with a Full screen button (YearFullscreen: the same table over the whole window); phones: YearCards. A row opens its lease (back returns to this year); a vacant / reserved
@@ -62,7 +62,7 @@ const FILTERED_TOTALS_NOTE = "Totals include all units in scope, not just the fi
 export function RentRollYearView() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { propertyId: scope, setPropertyId } = useScope();
+  const { propertyId: scope } = useScope();
   const properties = useProperties();
   const addProperty = useAddPropertyFlow();
 
@@ -171,59 +171,6 @@ export function RentRollYearView() {
     downloadYearCsv(data, scopeName);
     toast.success(`Downloaded ${yearCsvFilename(data.year, scopeName, data.rowsBy)}`);
   };
-  const exportButton = (className?: string) => (
-    <Button
-      className={className}
-      icon={<Download size={16} strokeWidth={1.5} />}
-      disabled={!data || rows.length === 0}
-      onClick={exportCsv}
-      aria-label="Export CSV"
-      title={scope ? "Exports the whole year for the selected property" : "Exports the whole year for all properties"}
-    >
-      Export CSV
-    </Button>
-  );
-
-  const yearPicker = (
-    <div className={cn("flex items-center gap-1", isMobile && "w-full")}>
-      <Button
-        variant="ghost"
-        iconOnly
-        className={cn(isMobile && "size-11")}
-        aria-label="Previous year"
-        disabled={year <= fromYear}
-        icon={<ChevronLeft size={16} strokeWidth={1.5} />}
-        onClick={() => setYear(year - 1)}
-      />
-      <Button
-        className={cn(isMobile && "h-11 flex-1")}
-        icon={<Calendar size={16} strokeWidth={1.5} />}
-        title={year === thisYear ? undefined : "Back to the current year"}
-        onClick={() => setYear(thisYear)}
-      >
-        {year}
-      </Button>
-      <Button
-        variant="ghost"
-        iconOnly
-        className={cn(isMobile && "size-11")}
-        aria-label="Next year"
-        disabled={year >= toYear}
-        icon={<ChevronRight size={16} strokeWidth={1.5} />}
-        onClick={() => setYear(year + 1)}
-      />
-    </div>
-  );
-
-  // At least 240px on desktop, so the chips and Property select don't squeeze it.
-  const searchBox = (
-    <SearchInput
-      containerClassName={cn(!isMobile && "min-w-60")}
-      placeholder="Search tenant, unit or lease number"
-      value={search}
-      onChange={(e) => setSearch(e.target.value)}
-    />
-  );
   const chipRow = (
     <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Quick filters">
       {YEAR_CHIPS.map((c) => (
@@ -250,17 +197,6 @@ export function RentRollYearView() {
       className={cn(isMobile && "w-full [&>button]:h-9 [&>button]:flex-1 [&>button]:justify-center")}
     />
   );
-  const propertySelect = (id?: string) => (
-    <Select id={id} aria-label={id ? undefined : "Property"} value={scope ?? "all"} onChange={(e) => setPropertyId(e.target.value === "all" ? null : e.target.value)}>
-      <option value="all">All properties</option>
-      {properties.data?.map((p) => (
-        <option key={p.id} value={p.id}>
-          {p.name}
-        </option>
-      ))}
-    </Select>
-  );
-
   if (properties.data?.length === 0) {
     return (
       <>
@@ -275,54 +211,46 @@ export function RentRollYearView() {
 
   return (
     <>
-      <PageHeader
-        title="Rent Roll"
-        description={`Every unit in ${year}, month by month. Cells show the amount paid; colour marks what still needs attention.`}
-        actions={
-          isMobile ? (
-            <div className="flex w-full flex-col gap-3">
-              <RentRollViewSwitch view="year" period={String(year)} />
-              {yearPicker}
-              {exportButton("h-11 w-full")}
-            </div>
-          ) : (
-            <>
-              <RentRollViewSwitch view="year" period={String(year)} />
-              {yearPicker}
-              {exportButton()}
-            </>
-          )
+      <RentRollHeader
+        view="year"
+        period={String(year)}
+        description={`Every unit in ${year}, month by month.`}
+        picker={{
+          label: String(year),
+          unit: "year",
+          isCurrent: year === thisYear,
+          onPrev: () => setYear(year - 1),
+          onNext: () => setYear(year + 1),
+          onCurrent: () => setYear(thisYear),
+          prevDisabled: year <= fromYear,
+          nextDisabled: year >= toYear,
+        }}
+        export={{
+          onClick: exportCsv,
+          disabled: !data || rows.length === 0,
+          title: scope ? "Exports the whole year for the selected property" : "Exports the whole year for all properties",
+        }}
+        search={{ value: search, onChange: setSearch }}
+        controls={
+          <>
+            {chipRow}
+            {rowsSwitch}
+            {/* ml-auto: stays at the right edge even when the toolbar wraps, so its right-aligned panel stays on screen. */}
+            <ColumnsMenu className="ml-auto" options={[...YEAR_OPTIONAL_COLUMNS]} visible={columns.visible} onToggle={columns.toggle} onReset={columns.reset} />
+            {!outdated && (
+              <Button ref={fullscreenButton} icon={<Maximize size={16} strokeWidth={1.5} />} onClick={fullscreen.open}>
+                Full screen
+              </Button>
+            )}
+          </>
         }
+        filters={{
+          count: chips.length,
+          resultCount: query.isSuccess ? filtered.length : undefined,
+          onClear: () => setChips([]),
+          before: <FilterGroup label="Show only">{chipRow}</FilterGroup>,
+        }}
       />
-
-      {isMobile ? (
-        <>
-          <Toolbar className="flex-nowrap">
-            {searchBox}
-            <MobileFilters count={chips.length} resultCount={query.isSuccess ? filtered.length : undefined} onClear={() => setChips([])}>
-              <FilterGroup label="Show only">{chipRow}</FilterGroup>
-              <FormField label="Property (all pages)" htmlFor="rent-roll-year-property">
-                {propertySelect("rent-roll-year-property")}
-              </FormField>
-            </MobileFilters>
-          </Toolbar>
-          <div className="mb-4">{rowsSwitch}</div>
-        </>
-      ) : (
-        <Toolbar>
-          {searchBox}
-          <div className="w-52">{propertySelect()}</div>
-          {chipRow}
-          {rowsSwitch}
-          {/* ml-auto: stays at the right edge even when the toolbar wraps, so its right-aligned panel stays on screen. */}
-          <ColumnsMenu className="ml-auto" options={[...YEAR_OPTIONAL_COLUMNS]} visible={columns.visible} onToggle={columns.toggle} onReset={columns.reset} />
-          {!outdated && (
-            <Button ref={fullscreenButton} icon={<Maximize size={16} strokeWidth={1.5} />} onClick={fullscreen.open}>
-              Full screen
-            </Button>
-          )}
-        </Toolbar>
-      )}
 
       {outdated ? (
         <InlineError title={OUTDATED_BACKEND_TITLE} description={OUTDATED_BACKEND_DESCRIPTION} />
@@ -333,7 +261,11 @@ export function RentRollYearView() {
           <YearLegend />
 
           {isMobile ? (
-            <YearCards data={data} groups={groups} year={year} state={state} empty={empty} error={error} note={note} onOpen={onOpen} accentOrder={accentOrder} />
+            <>
+              {/* Phones: below the summary cards, just above the property cards, so the KPIs sit where the Month view's do. */}
+              <div className="mb-4">{rowsSwitch}</div>
+              <YearCards data={data} groups={groups} year={year} state={state} empty={empty} error={error} note={note} onOpen={onOpen} accentOrder={accentOrder} />
+            </>
           ) : (
             <YearTable
               data={data}
