@@ -80,8 +80,9 @@ Links that open the user's own phone and email apps (no backend).
 - `cn(...classes)`: merges Tailwind class lists (clsx + tailwind-merge).
 
 ## labels.ts
-- One `...Labels` map per enum in ../property-os-api/docs/frontend-handoff/API.md section 2 (`propertyTypeLabels`, `unitTypeLabels` "1 BR", `paymentMethodLabels` "ACH bank transfer", `chargeTypeLabels`, `rentStatusLabels`, `priorityLabels`, `ticketStatusLabels` (flow order), ...). Status labels come from the design system `statusLabel`.
+- One `...Labels` map per enum in ../property-os-api/docs/frontend-handoff/API.md section 2 (`propertyTypeLabels`, `unitTypeLabels` "1 BR", `paymentMethodLabels` "ACH bank transfer" (the API's order, Other last), `chargeTypeLabels`, `rentStatusLabels`, `priorityLabels`, `ticketStatusLabels` (flow order), ...). Status labels come from the design system `statusLabel`.
 - `labelOptions(labels)`: `[{ value, label }]` for a Select.
+- `paymentMethodLabel(method)`: how a method is shown; an unknown value gets a readable fallback. `readableValue(value)`: "APPLE_PAY" -> "Apple pay". `referenceHint(method)`: "Transaction ID (optional)" for Venmo and Zelle.
 - `plural(count, singular, plural?)`: "1 unit" / "3 units".
 - `unitLabel(unitNumber)`: how a unit is named everywhere: "Unit " only when the number starts with a digit ("2" -> "Unit 2", "4B" -> "Unit 4B"); otherwise as entered ("Unit 1", "UNIT 1", "House", "Office"), so nothing reads "Unit Unit 1".
 - `unitLayout(unitType, bathrooms)`: "1 bd / 1 ba", "Studio / 1 ba", or "3 bd" when bathrooms is null.
@@ -141,6 +142,7 @@ Links that open the user's own phone and email apps (no backend).
 - `isMoveKey(key)`, `moveActive(key, active, count)`: the Combobox highlight after ↓ ↑ (wrap) Home End. `initialActive(typed, count, selectedIndex)`: the first match while typing, else the chosen option or none. `ComboboxMoveKey`: type.
 
 ## Tests (`npm test`)
+- `labels.test.ts`: `unitLabel`; the payment methods match the API's list and order, their labels and fallback, the transaction ID hint.
 - `textMatch.test.ts`: case, accents, punctuation, several words, unit / property / lease number, empty query.
 - `comboboxKeys.test.ts`: moving, wrapping, Home / End, no options, the first highlight.
 - `groupAccent.test.ts`: order by name A→Z ignoring case, then id (any input order; "746 …" before "8 …" like the API), 5 properties all different, neighbours in display order differ and the 6th wraps, the filter doesn't change a colour, the hash fallback; the palette (light and dark) is saturated and at least 30° of hue from the Paid, Overdue / Unpaid and Partial colours.

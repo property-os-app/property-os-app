@@ -7,7 +7,7 @@ import { Combobox, FormField, InlineError, toast, type ComboboxOption } from "@/
 import { Modal } from "@/components/organisms";
 import { applyServerError } from "@/lib/forms";
 import { centsToAmount, formatCurrency, todayISO, toCents } from "@/lib/format";
-import { labelOptions, paymentMethodLabels, unitLabel } from "@/lib/labels";
+import { labelOptions, paymentMethodLabels, referenceHint, unitLabel } from "@/lib/labels";
 import { useRecordPayment } from "@/features/ledger/hooks";
 import { balanceText } from "@/features/ledger/balance";
 import type { PaymentPrefill } from "@/features/ledger/reenter";
@@ -126,6 +126,7 @@ export function RecordPaymentModal({ targets, presetLeaseId, reentry, onClose }:
 
   const leaseId = useWatch({ control, name: "leaseId" });
   const amount = useWatch({ control, name: "amount" });
+  const transactionHint = referenceHint(useWatch({ control, name: "method" }));
   const target = targets.find((t) => t.leaseId === leaseId);
 
   const confirmClose = () => !isDirty || window.confirm("Discard changes?");
@@ -216,8 +217,8 @@ export function RecordPaymentModal({ targets, presetLeaseId, reentry, onClose }:
             ))}
           </Select>
         </FormField>
-        <FormField label="Reference" htmlFor="pay-reference" error={errors.referenceNumber?.message}>
-          <Input id="pay-reference" maxLength={MAX_REFERENCE} placeholder="Check number or confirmation ID" autoComplete="off" {...register("referenceNumber")} />
+        <FormField label="Reference" htmlFor="pay-reference" error={errors.referenceNumber?.message} help={transactionHint}>
+          <Input id="pay-reference" maxLength={MAX_REFERENCE} placeholder={transactionHint ? undefined : "Check number or confirmation ID"} autoComplete="off" {...register("referenceNumber")} />
         </FormField>
         <FormField label="Notes" htmlFor="pay-notes" error={errors.notes?.message}>
           <Textarea id="pay-notes" maxLength={MAX_NOTES} {...register("notes")} />

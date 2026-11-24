@@ -6,7 +6,7 @@ import { CardList, DataTable, type Column } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { currentMonthUTC, formatCurrency, formatDate } from "@/lib/format";
-import { paymentMethodLabels } from "@/lib/labels";
+import { paymentMethodLabel } from "@/lib/labels";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { AddChargeModal } from "@/features/ledger/AddChargeModal";
 import { useLedger } from "@/features/ledger/hooks";
@@ -85,7 +85,7 @@ export function LedgerView({ lease, canVoid, canCharge, canPay }: LedgerViewProp
           </div>
         ),
       },
-      { key: "method", header: "Method", cell: (e) => (e.method ? <span className={cn(e.voided && "text-text-muted")}>{paymentMethodLabels[e.method]}</span> : <Dash />) },
+      { key: "method", header: "Method", cell: (e) => (e.method ? <span className={cn(e.voided && "text-text-muted")}>{paymentMethodLabel(e.method)}</span> : <Dash />) },
       { key: "charge", header: "Charge", align: "right", cell: (e) => (e.kind === "CHARGE" ? <Amount entry={e} /> : <Dash />) },
       { key: "payment", header: "Payment", align: "right", cell: (e) => (e.kind === "PAYMENT" ? <Amount entry={e} className="text-success" /> : <Dash />) },
       { key: "balance", header: "Balance", align: "right", cell: (e) => <BalanceText value={e.runningBalance} className={cn(e.voided && "text-text-muted")} /> },
@@ -113,7 +113,7 @@ export function LedgerView({ lease, canVoid, canCharge, canPay }: LedgerViewProp
             <ListCard
               muted={e.voided}
               title={e.kind === "CHARGE" ? e.description : "Payment received"}
-              subtitle={[e.number, formatDate(e.date), e.method ? paymentMethodLabels[e.method] : null].filter(Boolean).join(" · ")}
+              subtitle={[e.number, formatDate(e.date), e.method ? paymentMethodLabel(e.method) : null].filter(Boolean).join(" · ")}
               badge={
                 <>
                   {e.kind === "CHARGE" ? <Badge tone="neutral">Charge</Badge> : <Badge tone="success">Payment</Badge>}

@@ -79,13 +79,32 @@ export const paymentFrequencyLabels: Record<PaymentFrequency, string> = {
   QUARTERLY: "Quarterly",
 };
 
+/** In the API's order (Other last): every Method select lists them like this. */
 export const paymentMethodLabels: Record<PaymentMethod, string> = {
   ACH: "ACH bank transfer",
   CHECK: "Check",
   CREDIT_CARD: "Credit card",
   CASH: "Cash",
+  VENMO: "Venmo",
+  ZELLE: "Zelle",
   OTHER: "Other",
 };
+
+/** A readable label made from an enum value we don't know yet: "APPLE_PAY" -> "Apple pay". */
+export function readableValue(value: string): string {
+  const text = value.trim().replace(/[_\s]+/g, " ").toLowerCase();
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** How a payment method is shown: its label, or a readable fallback for a value this app doesn't know (never the raw value). */
+export function paymentMethodLabel(method: string): string {
+  return Object.hasOwn(paymentMethodLabels, method) ? paymentMethodLabels[method as PaymentMethod] : readableValue(method);
+}
+
+/** The hint under a reference field for methods whose reference is an app's transaction ID; undefined for the others. */
+export function referenceHint(method: PaymentMethod | "" | null | undefined): string | undefined {
+  return method === "VENMO" || method === "ZELLE" ? "Transaction ID (optional)" : undefined;
+}
 
 export const chargeTypeLabels: Record<ChargeType, string> = {
   RENT: "Rent",

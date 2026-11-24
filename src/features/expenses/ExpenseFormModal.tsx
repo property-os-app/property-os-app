@@ -5,7 +5,7 @@ import { Button, CurrencyInput, Input, Select, Textarea } from "@/components/ato
 import { FormField, InlineError, toast } from "@/components/molecules";
 import { Modal } from "@/components/organisms";
 import { applyServerErrorBy } from "@/lib/forms";
-import { expenseTypeLabels, labelOptions, paymentMethodLabels, unitLabel } from "@/lib/labels";
+import { expenseTypeLabels, labelOptions, paymentMethodLabels, referenceHint, unitLabel } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
 import { createExpenseBody, expenseChanges, expenseDefaults, expenseErrorField, expenseSchema, PORTFOLIO, type ExpenseFormInput, type ExpenseFormOutput } from "@/features/expenses/form";
 import { propertyText } from "@/features/expenses/expenseText";
@@ -63,6 +63,7 @@ export function ExpenseFormModal({ expense, onSaved, onClose }: ExpenseFormModal
   });
 
   const propertyId = useWatch({ control, name: "propertyId" });
+  const paymentMethod = useWatch({ control, name: "paymentMethod" });
   const unitOptions = useMemo(() => (units.data ?? []).filter((u) => u.propertyId === propertyId), [units.data, propertyId]);
   const vendorOptions = useMemo(
     () => (vendors.data ?? []).filter((v) => v.archivedAt === null || v.id === expense?.vendorId),
@@ -229,7 +230,7 @@ export function ExpenseFormModal({ expense, onSaved, onClose }: ExpenseFormModal
             ))}
           </Select>
         </FormField>
-        <FormField label="Reference" htmlFor="ef-reference" error={errors.reference?.message} help="Vendor invoice or other number." className="md:col-span-2">
+        <FormField label="Reference" htmlFor="ef-reference" error={errors.reference?.message} help={referenceHint(paymentMethod) ?? "Vendor invoice or other number."} className="md:col-span-2">
           <Input id="ef-reference" autoComplete="off" {...register("reference")} />
         </FormField>
         <FormField label="Notes" htmlFor="ef-notes" error={errors.notes?.message} className="md:col-span-2">

@@ -53,6 +53,23 @@ describe("createExpenseBody", () => {
   });
 });
 
+describe("payment method and reference", () => {
+  it("accepts Venmo and Zelle and sends the transaction ID as the reference", () => {
+    for (const paymentMethod of ["VENMO", "ZELLE"] as const) {
+      const body = createExpenseBody(parse({ paymentMethod, reference: " 3847562910384756291 " }));
+      expect(body).toMatchObject({ paymentMethod, reference: "3847562910384756291" });
+    }
+  });
+  it("keeps the reference optional, at most 100 characters", () => {
+    expect(createExpenseBody(parse({ paymentMethod: "VENMO", reference: "" }))).not.toHaveProperty("reference");
+    expect(expenseSchema.safeParse({ ...expenseDefaults(saved), reference: "x".repeat(100) }).success).toBe(true);
+    expect(expenseSchema.safeParse({ ...expenseDefaults(saved), reference: "x".repeat(101) }).success).toBe(false);
+  });
+  it("rejects a method that isn't in the API's list", () => {
+    expect(expenseSchema.safeParse({ ...expenseDefaults(saved), paymentMethod: "APPLE_PAY" }).success).toBe(false);
+  });
+});
+
 describe("expenseChanges", () => {
   it("is empty when nothing changed", () => {
     expect(expenseChanges(parse({}), saved)).toEqual({});

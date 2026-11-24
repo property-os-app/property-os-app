@@ -52,7 +52,7 @@ Expenses: the /expenses page (summary KPIs, filters, the paginated list with a "
 - `ExpenseDrawer({ id, placeholder?, onClose })`: lg drawer: amount (struck through when voided), notes (a manager's own pending one: "Pending approval – waiting for the owner"; rejected with the reason and "edit to resubmit"; voided with the reason), details, history (recorded by; "Approved automatically (Owner)" or approved by; rejected by + reason; voided by + reason; waiting). Footer only from `allowedActions`: Delete, Void, Edit, Reject, Approve. "Expense not found" on 404.
 
 ## ExpenseFormModal.tsx
-- `ExpenseFormModal({ expense?, onSaved?, onClose })`: add / edit modal. Type follows the category's default until picked by hand; Unit lists the chosen property's units and clears with the property; Vendor lists active vendors (plus the expense's own archived one); "Portfolio-wide (no single property)" only for the Owner. A manager's rejected expense shows the reason and saves as "Save and resubmit" (even with no changes). Toasts say recorded / sent for approval / resubmitted.
+- `ExpenseFormModal({ expense?, onSaved?, onClose })`: add / edit modal. Type follows the category's default until picked by hand; Unit lists the chosen property's units and clears with the property; Vendor lists active vendors (plus the expense's own archived one); Reference hints "Transaction ID (optional)" for Venmo and Zelle; "Portfolio-wide (no single property)" only for the Owner. A manager's rejected expense shows the reason and saves as "Save and resubmit" (even with no changes). Toasts say recorded / sent for approval / resubmitted.
 
 ## ReasonModal.tsx
 - `ReasonModal`: the required reason (1–300) for Reject and Void (danger); errors stay inside.
