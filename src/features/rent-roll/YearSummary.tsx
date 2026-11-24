@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { Dash, Skeleton } from "@/components/atoms";
 import { KpiCard } from "@/components/molecules";
-import { KpiRow } from "@/components/organisms";
 import { formatCompactCurrency, formatCurrency, formatPercent } from "@/lib/format";
 import { plural } from "@/lib/labels";
+import { RentRollKpiRow } from "@/features/rent-roll/RentRollHeader";
 import { collectedPercent, yearSummary, type YearChip } from "@/features/rent-roll/yearStats";
 import type { RentRollYearResponse } from "@/types/rentRoll";
 
@@ -16,7 +16,7 @@ export interface YearSummaryProps {
 }
 
 /**
- * The summary row above the yearly grid (KpiRow, 2 columns on phones): Collected in {year} (the API's totals, "of $charged"
+ * The summary row above the yearly grid (RentRollKpiRow, 2 columns on phones): Collected in {year} (the API's totals, "of $charged"
  * and the %), vacant unit-months, leases ending soon and units with unpaid months. Counts cover every unit in scope (like the
  * totals, not the search / chips); the three count cards turn on their chip.
  */
@@ -25,7 +25,7 @@ export function YearSummary({ data, year, isError, onShow }: YearSummaryProps) {
   const counts = data ? yearSummary(data.rows) : null;
   const pct = data ? collectedPercent(data.totals.totalPaid, data.totals.totalCharged) : null;
   return (
-    <KpiRow>
+    <RentRollKpiRow>
       <KpiCard
         label={`Collected in ${year}`}
         tone="success"
@@ -36,7 +36,7 @@ export function YearSummary({ data, year, isError, onShow }: YearSummaryProps) {
       <KpiCard
         label="Vacant unit-months"
         value={kpi(counts?.vacantUnitMonths)}
-        note={data ? "Months with no lease, up to this month" : undefined}
+        note={data ? "Unleased months to date" : undefined}
         onClick={counts?.vacantUnitMonths ? () => onShow("vacant") : undefined}
       />
       <KpiCard
@@ -50,9 +50,9 @@ export function YearSummary({ data, year, isError, onShow }: YearSummaryProps) {
         label="Units with unpaid months"
         tone={counts?.unpaidUnits ? "danger" : "default"}
         value={kpi(counts?.unpaidUnits)}
-        note={data ? (counts?.unpaidUnits ? `${plural(counts.unpaidUnits, "unit")} partial, unpaid or overdue` : "Every billed month paid") : undefined}
+        note={data ? (counts?.unpaidUnits ? `${plural(counts.unpaidUnits, "unit")} not fully paid` : "Every billed month paid") : undefined}
         onClick={counts?.unpaidUnits ? () => onShow("unpaid") : undefined}
       />
-    </KpiRow>
+    </RentRollKpiRow>
   );
 }

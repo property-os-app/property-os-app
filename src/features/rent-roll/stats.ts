@@ -183,7 +183,15 @@ export const rowLabel = (r: RentRollRow) => `${r.primaryTenant?.fullName ?? "No 
 
 /** Record Payment choices from the month's rows (balance = the row's balance at month end). */
 export const paymentTargets = (rows: RentRollRow[]): PaymentTarget[] =>
-  rows.map((r) => ({ leaseId: r.leaseId, label: rowLabel(r), unitNumber: r.unit.unitNumber, balance: r.balance }));
+  rows.map((r) => ({
+    leaseId: r.leaseId,
+    label: rowLabel(r),
+    unitNumber: r.unit.unitNumber,
+    tenantName: r.primaryTenant?.fullName ?? "No tenant",
+    detail: `${unitLabel(r.unit.unitNumber)}, ${r.unit.property.name}`,
+    leaseNumber: r.leaseNumber,
+    balance: r.balance,
+  }));
 
 /** What part of the month's payments went to older balances or ahead of this month's charges (integer cents). */
 export interface CollectionBreakdown {

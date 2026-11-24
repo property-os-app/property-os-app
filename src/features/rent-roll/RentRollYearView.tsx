@@ -5,16 +5,21 @@ import { Button } from "@/components/atoms";
 import { ColumnsMenu, FilterChip, InlineError, SegmentedControl, toast } from "@/components/molecules";
 import { PageHeader } from "@/components/organisms";
 import { errorText } from "@/lib/api";
+import { currentMonthUTC } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { accentOrderOf } from "@/lib/groupAccent";
 import { useIsMobile } from "@/lib/useIsMobile";
+import { useAuth } from "@/features/auth/authContext";
+import { can } from "@/features/auth/permissions";
+import { RecordPaymentModal } from "@/features/ledger/RecordPaymentModal";
 import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
 import { useProperties } from "@/features/properties/hooks";
-import { useRentRollYear } from "@/features/rent-roll/hooks";
+import { useRentRoll, useRentRollYear } from "@/features/rent-roll/hooks";
 import { RentRollHeader } from "@/features/rent-roll/RentRollHeader";
 import { downloadYearCsv, yearCsvFilename } from "@/features/rent-roll/yearCsv";
 import { YearCards } from "@/features/rent-roll/YearCards";
 import { YearFullscreen } from "@/features/rent-roll/YearFullscreen";
+import { paymentTargets } from "@/features/rent-roll/stats";
 import { useYearFullscreen } from "@/features/rent-roll/useYearFullscreen";
 import { YearLegend } from "@/features/rent-roll/YearLegend";
 import { YearSummary } from "@/features/rent-roll/YearSummary";
@@ -52,7 +57,7 @@ const FILTERED_TOTALS_NOTE = "Totals include all units in scope, not just the fi
 
 /**
  * /rent-roll?view=year&year=YYYY: the client's spreadsheet rent roll from GET /rent-roll/year. The shared RentRollHeader (same
- * layout as the Month view): Month | Year switch, year picker (limited to `availableYears`), Export CSV (the whole year for the
+ * layout as the Month view): Record Payment, Month | Year switch, year picker (limited to `availableYears`), Export CSV (the whole year for the
  * scope); search, Property (the app-wide scope), then chips Ends soon / Unpaid months / Vacant (?q= and ?chips= in the URL), Columns menu (saved per browser).
  * A "By unit | By tenant" switch (?rows=lease; unit is the default and isn't written): one row per unit (its current tenant)
  * or one per lease (a unit that changed tenants shows twice, older first). Then the summary cards (YearSummary) and the
@@ -60,6 +65,8 @@ const FILTERED_TOTALS_NOTE = "Totals include all units in scope, not just the fi
  * unit the Unit drawer. A response of unknown shape (older backend) shows "This page needs the latest backend" instead.
  */
 export function RentRollYearView() {
+  const { me } = useAuth();
+  const canPay = can(me!, "payment.create");
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { propertyId: scope } = useScope();
@@ -121,6 +128,10 @@ export function RentRollYearView() {
 
   const columns = useColumnVisibility("rent-roll-year", YEAR_OPTIONAL_KEYS, []);
   const query = useRentRollYear(year, scope, rowsBy);
+  // Record Payment: the current month's leases and balances, the same request as the Month view (whatever year is shown).
+  const currentMonth = useRentRoll(currentMonthUTC(), scope, { enabled: canPay });
+  const targets = useMemo(() => paymentTargets(currentMonth.data?.rows ?? []), [currentMonth.data]);
+  const [paying, setPaying] = useState(false);
   // null: the response isn't a shape this page knows (older backend).
   const outdated = query.isSuccess && query.data === null;
   const data = query.data ?? undefined;
@@ -230,6 +241,11 @@ export function RentRollYearView() {
           disabled: !data || rows.length === 0,
           title: scope ? "Exports the whole year for the selected property" : "Exports the whole year for all properties",
         }}
+        recordPayment={
+          canPay
+            ? { onClick: () => setPaying(true), disabled: targets.length === 0, title: currentMonth.isError ? "Couldn't load the tenants. Reload the page to try again." : undefined }
+            : undefined
+        }
         search={{ value: search, onChange: setSearch }}
         controls={
           <>
@@ -303,6 +319,7 @@ export function RentRollYearView() {
         </YearFullscreen>
       )}
 
+      {paying && <RecordPaymentModal targets={targets} onClose={() => setPaying(false)} />}
       {openUnit && <YearUnitDrawer unitId={openUnit.id} unitNumber={openUnit.unitNumber} propertyName={openUnit.propertyName} onClose={() => setOpenUnit(null)} />}
     </>
   );

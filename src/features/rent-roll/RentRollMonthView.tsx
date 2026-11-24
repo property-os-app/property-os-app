@@ -1,10 +1,9 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router";
-import { Plus } from "lucide-react";
 import { Button, Dash, Skeleton } from "@/components/atoms";
 import { KpiCard, SegmentedControl, toast } from "@/components/molecules";
-import { KpiRow, PageHeader, Pagination } from "@/components/organisms";
+import { PageHeader, Pagination } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { addMonthsYM, centsToAmount, currentMonthUTC, formatCompactCurrency, formatPercent, formatMonth } from "@/lib/format";
 import { plural, rentStatusLabels } from "@/lib/labels";
@@ -44,7 +43,7 @@ import { useBillingSettings } from "@/features/settings/hooks";
 import { FilterGroup, SortSelect, type SortOption } from "@/features/shared/MobileFilters";
 import { useListView } from "@/features/shared/listView";
 import { downloadMonthCsv, monthCsvFilename } from "@/features/rent-roll/monthCsv";
-import { RentRollHeader } from "@/features/rent-roll/RentRollHeader";
+import { RentRollHeader, RentRollKpiRow } from "@/features/rent-roll/RentRollHeader";
 import { ViewToggle } from "@/features/shared/ViewToggle";
 import { NoProperties } from "@/features/shared/NoProperties";
 import type { RentRollRow } from "@/types/rentRoll";
@@ -204,12 +203,6 @@ export function RentRollMonthView() {
         };
   const error = { title: "Couldn't load the rent roll", description: rentRoll.isError ? errorText(rentRoll.error) : undefined, onRetry: () => void rentRoll.refetch() };
 
-  const paymentButton = (className?: string) =>
-    canPay ? (
-      <Button variant="primary" className={className} icon={<Plus size={16} strokeWidth={1.5} />} disabled={allRows.length === 0} onClick={() => setPayment({})}>
-        Record Payment
-      </Button>
-    ) : null;
   const isCurrent = month === currentMonthUTC();
   const scopeName = scope ? (properties.data?.find((p) => p.id === scope)?.name ?? null) : null;
   // The whole month for the scope (search and status are ignored), from the response already loaded.
@@ -261,7 +254,7 @@ export function RentRollMonthView() {
           disabled: !ready || allRows.length === 0,
           title: scope ? "Exports the whole month for the selected property" : "Exports the whole month for all properties",
         }}
-        primaryAction={canPay ? (className) => paymentButton(className) : undefined}
+        recordPayment={canPay ? { onClick: () => setPayment({}), disabled: allRows.length === 0 } : undefined}
         search={{ value: table.search, onChange: table.setSearch }}
         controls={
           <>
@@ -281,7 +274,7 @@ export function RentRollMonthView() {
         }}
       />
 
-      <KpiRow>
+      <RentRollKpiRow>
         <KpiCard
           label="Total collected"
           tone="success"
@@ -315,7 +308,7 @@ export function RentRollMonthView() {
           value={kpi(formatCompactCurrency(summary?.securityDepositsHeld))}
           note={ready ? `${plural(summary?.activeDepositCount ?? 0, "active lease")}${isCurrent ? "" : ", as of today"}` : undefined}
         />
-      </KpiRow>
+      </RentRollKpiRow>
 
       <div id={table.listId} className="scroll-mt-24">
         <RentRollTable

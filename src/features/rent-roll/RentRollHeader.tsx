@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { Calendar, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Download, Plus } from "lucide-react";
 import { Button, Select } from "@/components/atoms";
 import { FormField, SearchInput } from "@/components/molecules";
-import { PageHeader, Toolbar } from "@/components/organisms";
+import { KpiRow, PageHeader, Toolbar } from "@/components/organisms";
 import { cn } from "@/lib/cn";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useProperties } from "@/features/properties/hooks";
@@ -78,6 +78,15 @@ export function RentRollPropertySelect({ id }: { id?: string }) {
   );
 }
 
+/**
+ * The four KPI cards of either view. From lg (4 across) both rows are at least 208px, which fits the Month view's longest note
+ * ("of $X due" plus "Includes … toward earlier balances and … paid in advance"), so what's below doesn't move when the view,
+ * the month or the loading state changes. The spare height goes to the note line: labels and values still line up.
+ */
+export function RentRollKpiRow({ children }: { children: ReactNode }) {
+  return <KpiRow className="lg:min-h-52 lg:grid-rows-[auto_auto_auto_1fr]">{children}</KpiRow>;
+}
+
 export interface RentRollHeaderProps {
   view: RentRollView;
   /** The view's month ("YYYY-MM") or year ("YYYY"), for the Month | Year switch. */
@@ -86,8 +95,8 @@ export interface RentRollHeaderProps {
   description: string;
   picker: PeriodPickerProps;
   export: { onClick: () => void; disabled: boolean; title: string };
-  /** Month: Record Payment. Desktop: left of the switch (the other buttons keep their place); phones: shares the Export row. */
-  primaryAction?: (className: string) => ReactNode;
+  /** Record Payment (both views; leave out without payment.create). Desktop: left of the switch; phones: shares the Export row. */
+  recordPayment?: { onClick: () => void; disabled: boolean; title?: string };
   search: { value: string; onChange: (value: string) => void };
   /** Desktop row 2, after search and Property: the view's own chips and controls. */
   controls: ReactNode;
@@ -97,17 +106,23 @@ export interface RentRollHeaderProps {
 
 /**
  * The Rent Roll header shared by the Month and Year views, so switching only changes the content, never where the controls are.
- * Row 1: title and a one-line description; Record Payment (month), the Month | Year switch, the period picker, Export CSV.
+ * Row 1: title and a one-line description; Record Payment, the Month | Year switch, the period picker, Export CSV.
  * Row 2 (desktop): search and Property at fixed widths, then the view's `controls`. Phones: the switch, the picker and the
  * Export row stacked, then search + Filters (the sheet holds the view's filters and Property). The KPIs come after this, in each view.
  */
-export function RentRollHeader({ view, period, description, picker, export: exp, primaryAction, search, controls, filters }: RentRollHeaderProps) {
+export function RentRollHeader({ view, period, description, picker, export: exp, recordPayment, search, controls, filters }: RentRollHeaderProps) {
   const isMobile = useIsMobile();
   const exportButton = (className?: string) => (
     <Button className={className} icon={<Download size={16} strokeWidth={1.5} />} disabled={exp.disabled} onClick={exp.onClick} aria-label="Export CSV" title={exp.title}>
       Export CSV
     </Button>
   );
+  const paymentButton = (className?: string) =>
+    recordPayment && (
+      <Button variant="primary" className={className} icon={<Plus size={16} strokeWidth={1.5} />} disabled={recordPayment.disabled} title={recordPayment.title} onClick={recordPayment.onClick}>
+        Record Payment
+      </Button>
+    );
   const searchBox = (
     <SearchInput
       containerClassName={cn(!isMobile && "w-72 flex-none")}
@@ -129,13 +144,13 @@ export function RentRollHeader({ view, period, description, picker, export: exp,
               <RentRollViewSwitch view={view} period={period} />
               <PeriodPicker {...picker} />
               <div className="flex gap-3">
-                {primaryAction?.("h-11 flex-1")}
+                {paymentButton("h-11 flex-1")}
                 {exportButton("h-11 flex-1")}
               </div>
             </div>
           ) : (
             <>
-              {primaryAction?.("")}
+              {paymentButton()}
               <RentRollViewSwitch view={view} period={period} />
               <PeriodPicker {...picker} />
               {exportButton()}

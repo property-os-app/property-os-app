@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, CurrencyInput, Input, Select, Textarea } from "@/components/atoms";
-import { FormField, InlineError, toast } from "@/components/molecules";
+import { Combobox, FormField, InlineError, toast, type ComboboxOption } from "@/components/molecules";
 import { Modal } from "@/components/organisms";
 import { applyServerError } from "@/lib/forms";
 import { centsToAmount, formatCurrency, todayISO, toCents } from "@/lib/format";
@@ -41,9 +41,22 @@ export interface PaymentTarget {
   /** "{tenant}, Unit {n}, {property}". */
   label: string;
   unitNumber: string;
+  /** For the searchable picker: the name, "Unit 2, 746 SPW LLC" under it, and the lease number (searched, not shown). Without them it shows `label`. */
+  tenantName?: string;
+  detail?: string;
+  leaseNumber?: string;
   /** Money string; negative = credit. Rent Roll: the row balance; lease page: the ledger summary balance. */
   balance: string;
 }
+
+/** The picker's option for a target: name and detail in the list, the full label in the field once chosen. */
+const targetOption = (t: PaymentTarget): ComboboxOption => ({
+  value: t.leaseId,
+  label: t.tenantName ?? t.label,
+  description: t.detail,
+  selectedLabel: t.label,
+  keywords: t.leaseNumber,
+});
 
 /** Amount prefill: the balance when something is owed, else empty. */
 const prefill = (balance: string | undefined): number | "" => {
@@ -131,7 +144,7 @@ export function RecordPaymentModal({ targets, presetLeaseId, reentry, onClose }:
     }
   });
 
-  const tenantField = register("leaseId");
+  const options = useMemo(() => targets.map(targetOption), [targets]);
 
   return (
     <Modal
@@ -153,28 +166,34 @@ export function RecordPaymentModal({ targets, presetLeaseId, reentry, onClose }:
       <form id="payment-form" onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {formErrors.length > 0 && <InlineError title={formErrors.join(". ")} />}
 
-        <FormField label="Tenant" htmlFor="pay-tenant" required error={errors.leaseId?.message} help={target ? balanceHelp(target.balance) : undefined}>
-          {preset ? (
-            <Input id="pay-tenant" value={preset.label} readOnly disabled />
-          ) : (
-            <Select
-              id="pay-tenant"
-              {...tenantField}
-              onChange={(e) => {
-                void tenantField.onChange(e);
-                // A new tenant: prefill their balance.
-                setValue("amount", prefill(targets.find((t) => t.leaseId === e.target.value)?.balance), { shouldDirty: true });
-              }}
-            >
-              <option value="">Choose a tenant</option>
-              {targets.map((t) => (
-                <option key={t.leaseId} value={t.leaseId}>
-                  {t.label}
-                </option>
-              ))}
-            </Select>
+        <Controller
+          control={control}
+          name="leaseId"
+          // The FormField is inside, so its error / help id reaches the field itself.
+          render={({ field }) => (
+            <FormField label="Tenant" htmlFor="pay-tenant" required error={errors.leaseId?.message} help={target ? balanceHelp(target.balance) : undefined}>
+              {preset ? (
+                <Input id="pay-tenant" value={preset.label} readOnly disabled />
+              ) : (
+                <Combobox
+                  id="pay-tenant"
+                  ref={field.ref}
+                  name={field.name}
+                  options={options}
+                  value={field.value}
+                  onBlur={field.onBlur}
+                  onChange={(next) => {
+                    field.onChange(next);
+                    // A new tenant: prefill their balance.
+                    setValue("amount", prefill(targets.find((t) => t.leaseId === next)?.balance), { shouldDirty: true });
+                  }}
+                  listLabel="Tenant"
+                  placeholder="Choose a tenant"
+                />
+              )}
+            </FormField>
           )}
-        </FormField>
+        />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <FormField label="Amount" htmlFor="pay-amount" required error={errors.amount?.message} help={target ? amountNote(target.balance, amount) : undefined}>
             <Controller

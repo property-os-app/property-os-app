@@ -133,7 +133,16 @@ Links that open the user's own phone and email apps (no backend).
 - `groupAccent(id, order?)`: `{ slot, color, barClass }` from the 5 design system group accents (`var(--group-1…5)`, never a status colour): position mod 5, so properties next to each other on screen always differ (adding a property may shift the ones after it); an id not in `order` falls back to `hashId`. `barClass`: a 4px left bar for cards.
 - `hashId(id)`: FNV-1a 32-bit, the stable fallback. `GROUP_ACCENT_COUNT` (5), `AccentOrder`, `GroupAccent`: types.
 
+## textMatch.ts
+- `foldText(text)`: lower case, no accents, no punctuation, single spaces.
+- `matchesQuery(query, texts)`: every typed word is somewhere in the texts, after folding both ("chamara" finds "Cha'Mara"); nothing typed matches everything. Used by the design system's `Combobox`.
+
+## comboboxKeys.ts
+- `isMoveKey(key)`, `moveActive(key, active, count)`: the Combobox highlight after ↓ ↑ (wrap) Home End. `initialActive(typed, count, selectedIndex)`: the first match while typing, else the chosen option or none. `ComboboxMoveKey`: type.
+
 ## Tests (`npm test`)
+- `textMatch.test.ts`: case, accents, punctuation, several words, unit / property / lease number, empty query.
+- `comboboxKeys.test.ts`: moving, wrapping, Home / End, no options, the first highlight.
 - `groupAccent.test.ts`: order by name A→Z ignoring case, then id (any input order; "746 …" before "8 …" like the API), 5 properties all different, neighbours in display order differ and the 6th wraps, the filter doesn't change a colour, the hash fallback; the palette (light and dark) is saturated and at least 30° of hue from the Paid, Overdue / Unpaid and Partial colours.
 - `sidebarPref.test.ts`: expanded by default, a saved choice, garbage, storage that throws on read and write, missing storage.
 - `fullscreen.test.ts`: request succeeds / refused / unsupported (not called), exit only when in full screen and never throws, the left-full-screen check (browser vs in-app only).
