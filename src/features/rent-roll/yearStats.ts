@@ -311,6 +311,14 @@ export const renewalAlertLabels: Record<RenewalAlert, string> = { ENDS_SOON: "En
 /** Badge tone of the renewal alert: Ends soon warns, Ended is neutral (like an ENDED lease). */
 export const renewalAlertTone: Record<RenewalAlert, "warning" | "neutral"> = { ENDS_SOON: "warning", ENDED: "neutral" };
 
+/**
+ * The alert badge in the table's first column: "Ends soon" in both modes; "Ended" only by unit (the unit's latest lease is
+ * over). By tenant, past tenants would all carry it. The CSV keeps every alert.
+ */
+export function shownRenewalAlert(row: RentRollYearRow): RenewalAlert | null {
+  return row.renewalAlert === "ENDED" && !isUnitRow(row) ? null : row.renewalAlert;
+}
+
 /** "Renewed" / "Renewal drafted" (same tenant, DRAFT) / "Next tenant" (no tenant in common). */
 export function renewalText(next: Pick<RentRollYearNextLease, "status" | "sharesTenant">): string {
   if (!next.sharesTenant) return "Next tenant";
@@ -469,7 +477,7 @@ export function yearSummary(rows: readonly RentRollYearRow[]): { vacantUnitMonth
 
 /* ---------- Columns ---------- */
 
-/** Optional desktop columns (the Columns menu), in table order. Unit / tenants, current rent, the months, Total and Renewal alert always show. */
+/** Optional desktop columns (the Columns menu), in table order. Unit / tenants (with the renewal alert badge), rent, the months and Total paid (with the collected bar) always show. */
 export const YEAR_OPTIONAL_COLUMNS = [
   { key: "market", label: "Market rent" },
   { key: "start", label: "Lease start" },

@@ -25,6 +25,7 @@ import {
   shortMonth,
   shortMonthYear,
   shownCell,
+  shownRenewalAlert,
   shownVacantMonths,
   tenantColumnHeader,
   tenantNames,
@@ -52,22 +53,36 @@ const money = (value: string | null | undefined) => (value ? <Num title={formatC
 function paidOfCharged(paid: string, charged: string) {
   const short = toCents(paid) < toCents(charged);
   return (
-    <span className="inline-flex flex-col items-end py-1 leading-tight" title={`Paid ${formatCurrency(paid)} of ${formatCurrency(charged)}`}>
+    <span className="inline-flex flex-col items-end py-1 text-small leading-tight [font-weight:inherit]" title={`Paid ${formatCurrency(paid)} of ${formatCurrency(charged)}`}>
       <Num>{formatCurrencyShort(paid)}</Num>
-      {short && <span className="text-caption font-normal text-text-muted">of {formatCurrencyShort(charged)}</span>}
+      {short && <span className="text-overline font-normal normal-case tracking-tight text-text-secondary">of {formatCurrencyShort(charged)}</span>}
     </span>
   );
 }
 
-/** "97%" with a tiny bar (tone by how much is missing); a Dash when nothing was charged. */
-function Collected({ paid, charged }: { paid: string; charged: string }) {
+/**
+ * The Total paid column, in rows, subtotals and the grand total: the paid amount, under it a thin bar and the % of charged
+ * (tone by how much is missing; nothing when nothing was charged). The exact amounts are in the tooltip and for screen readers.
+ */
+function TotalPaid({ paid, charged, year }: { paid: string; charged: string; year: number }) {
   const pct = collectedPercent(paid, charged);
-  if (pct === null) return <Dash />;
+  const text = `Paid ${formatCurrency(paid)} of ${formatCurrency(charged)} charged`;
   return (
-    <span className="flex items-center justify-end gap-2" title={`Collected ${formatCurrency(paid)} of ${formatCurrency(charged)} (${pct}%)`}>
-      <Bar value={pct} tone={collectedTone(pct)} className="h-1.5 w-12" />
-      <Num className="w-10 text-right">{collectedLabel(pct)}</Num>
-    </span>
+    <>
+      <span aria-hidden className="inline-flex flex-col items-end gap-0.5 py-1" title={pct === null ? text : `${text} (${pct}%)`}>
+        <Num>{formatCurrencyShort(paid)}</Num>
+        {pct !== null && (
+          <span className="flex items-center gap-1.5 text-caption font-normal text-text-secondary">
+            <Bar value={pct} tone={collectedTone(pct)} className="h-1 w-9" />
+            <Num className="w-9 text-right">{collectedLabel(pct)}</Num>
+          </span>
+        )}
+      </span>
+      <span className="sr-only">
+        {text} in {year}
+        {pct !== null && `, ${pct}% collected`}
+      </span>
+    </>
   );
 }
 
@@ -84,6 +99,12 @@ function propertyBand(g: PropertyGroup) {
     </span>
   );
 }
+
+/** px. With the months' minimum they keep the whole year in view at 1440 (menu expanded) and 1280 (menu collapsed). */
+const FIRST_WIDTH = 176;
+const RENT_WIDTH = 60;
+const TOTAL_WIDTH = 96;
+const MONTH_MIN_WIDTH = 60;
 
 export interface YearTableProps {
   data: RentRollYearResponse | undefined;
@@ -110,11 +131,12 @@ export interface YearTableProps {
 
 /**
  * The yearly grid on desktop (SpreadsheetTable), one row per unit or, By tenant, per lease (months outside it a muted "-"):
- * tenant and unit (sticky left), current rent, optional
- * lease columns, Jan–Dec (short paid amounts; colour only on problems; vacant striped; the current month tagged "Now",
- * outlined and scrolled into view on load; thin lines after Mar, Jun, Sep), Total paid (pinned right), optional late fees /
- * vacancy, the renewal alert, optional days to end / renewal, and Collected % with a tiny bar. All money is short, exact in
- * the tooltip. Property bands carry the API's collected totals; subtotal rows and the sticky grand total come from the API.
+ * tenant and unit with the renewal alert badge (sticky left), rent, optional lease columns, Jan–Dec (short paid amounts;
+ * colour only on problems; vacant striped; the current month tagged "Now", outlined and scrolled into view on load; thin
+ * lines after Mar, Jun, Sep), Total paid with the collected bar and % (pinned right), optional late fees / vacancy / days to
+ * end / renewal. The months share the width the other columns leave; it only scrolls sideways when their minimum doesn't
+ * fit. All money is short, exact in the tooltip. Property bands carry the API's collected totals; subtotal rows and the
+ * sticky grand total come from the API.
  * The page is the only vertical scroller (pageScroll): the header and total row stay in view, the sideways scrollbar sticks to the bottom.
  * With `fill` (full screen) it scrolls in its own box instead.
  */
@@ -127,13 +149,16 @@ export function YearTable({ data, groups, year, rowsBy = "unit", visible, state,
     {
       key: "unit",
       header: tenantColumnHeader(rowsBy),
-      minWidth: 220,
+      minWidth: FIRST_WIDTH,
+      width: FIRST_WIDTH,
+      columnClassName: "px-2",
       cell: (r) => {
         const names = tenantNames(r);
         const reserved = isReservedRow(r);
+        const alert = shownRenewalAlert(r);
         const label = r.lease ? `Open lease ${r.lease.leaseNumber}, ${names}` : `Open ${unitLabel(r.unit.unitNumber)}, ${reserved ? "reserved" : "vacant"}`;
         return (
-          <div className="flex min-w-0 flex-col py-1.5">
+          <div className="flex min-w-0 max-w-40 flex-col py-1.5">
             <button
               type="button"
               aria-label={label}
@@ -142,16 +167,25 @@ export function YearTable({ data, groups, year, rowsBy = "unit", visible, state,
                 e.stopPropagation();
                 onOpen(r);
               }}
-              className={cn("max-w-[260px] truncate text-left font-semibold", linkFocus, r.lease ? "text-text-primary" : "text-text-muted")}
+              className={cn("max-w-full self-start truncate text-left font-semibold", linkFocus, r.lease ? "text-text-primary" : "text-text-muted")}
             >
               {r.lease ? leaseTenantLabel(r.lease, true) : reserved ? <Badge tone="neutral">Reserved</Badge> : "Vacant"}
             </button>
-            <span className="text-small text-text-secondary">{unitLabel(r.unit.unitNumber)}</span>
+            <span className="flex min-w-0 items-center gap-1.5 text-small text-text-secondary">
+              <span className="min-w-0 truncate" title={unitLabel(r.unit.unitNumber)}>
+                {unitLabel(r.unit.unitNumber)}
+              </span>
+              {alert && (
+                <Badge tone={renewalAlertTone[alert]} dot={false} className="shrink-0 px-1.5 py-0">
+                  {renewalAlertLabels[alert]}
+                </Badge>
+              )}
+            </span>
           </div>
         );
       },
     },
-    { key: "rent", header: "Current rent", align: "right", cell: (r) => money(r.lease?.rent) },
+    { key: "rent", header: "Rent", headerLabel: "Current rent", align: "right", minWidth: RENT_WIDTH, width: RENT_WIDTH, className: "text-small", columnClassName: "px-1.5", cell: (r) => money(r.lease?.rent) },
     { key: "market", optional: "market", header: "Market rent", align: "right", cell: (r) => money(r.unit.monthlyRent) },
     { key: "start", optional: "start", header: "Lease start", cell: (r) => (r.lease?.startDate ? formatDate(r.lease.startDate) : <Dash />) },
     { key: "end", optional: "end", header: "Lease end", cell: (r) => (r.lease?.endDate ? formatDate(r.lease.endDate) : <Dash />) },
@@ -161,7 +195,7 @@ export function YearTable({ data, groups, year, rowsBy = "unit", visible, state,
       return {
         key: m,
         header: now ? (
-          <span className="inline-flex items-center gap-1.5">
+          <span className="inline-flex flex-col items-end gap-0.5">
             {shortMonth(m)}
             <span className="rounded-pill bg-info-soft px-1.5 py-px text-caption font-semibold normal-case tracking-normal text-info">Now</span>
           </span>
@@ -170,10 +204,11 @@ export function YearTable({ data, groups, year, rowsBy = "unit", visible, state,
         ),
         headerLabel: now ? `${formatMonth(m)}, this month` : formatMonth(m),
         align: "right",
-        minWidth: now ? 112 : 92,
-        className: "px-2",
+        // No width: the months share the space the other columns leave. Narrower than this, the table scrolls sideways.
+        minWidth: MONTH_MIN_WIDTH,
+        className: "text-small",
         // Thin separators after Mar, Jun and Sep; the current month gets a soft outline down the whole column.
-        columnClassName: cn(isQuarterEnd(i) && "border-r border-r-border-strong", now && "border-x border-x-info/50"),
+        columnClassName: cn("px-1", isQuarterEnd(i) && "border-r border-r-border-strong", now && "border-x border-x-info/50"),
         cell: (r) => {
           const raw = r.months[i];
           if (!raw) return <Dash />;
@@ -191,20 +226,13 @@ export function YearTable({ data, groups, year, rowsBy = "unit", visible, state,
       key: "total",
       header: "Total paid",
       align: "right",
-      minWidth: 120,
+      minWidth: TOTAL_WIDTH,
+      width: TOTAL_WIDTH,
       sticky: "right",
       className: "font-semibold",
-      cell: (r) => (
-        <>
-          <Num aria-hidden title={`Paid ${formatCurrency(r.totalPaid)} of ${formatCurrency(r.totalCharged)} charged`}>
-            {formatCurrencyShort(r.totalPaid)}
-          </Num>
-          <span className="sr-only">
-            Paid {formatCurrency(r.totalPaid)} of {formatCurrency(r.totalCharged)} charged in {year}
-          </span>
-        </>
-      ),
-      total: (t) => paidOfCharged(t.totalPaid, t.totalCharged),
+      columnClassName: "px-2",
+      cell: (r) => <TotalPaid paid={r.totalPaid} charged={r.totalCharged} year={year} />,
+      total: (t) => <TotalPaid paid={t.totalPaid} charged={t.totalCharged} year={year} />,
     },
     {
       key: "lateFees",
@@ -223,11 +251,6 @@ export function YearTable({ data, groups, year, rowsBy = "unit", visible, state,
         const vacant = shownVacantMonths(r);
         return vacant.length === 0 ? <Dash /> : <span title={vacant.map(shortMonthYear).join(", ")}>{plural(vacant.length, "month")}</span>;
       },
-    },
-    {
-      key: "alert",
-      header: "Renewal alert",
-      cell: (r) => (r.renewalAlert ? <Badge tone={renewalAlertTone[r.renewalAlert]}>{renewalAlertLabels[r.renewalAlert]}</Badge> : <Dash />),
     },
     { key: "daysToEnd", optional: "daysToEnd", header: "Lease ends", cell: (r) => daysToEndText(r) ?? <Dash /> },
     {
@@ -249,18 +272,18 @@ export function YearTable({ data, groups, year, rowsBy = "unit", visible, state,
           <Dash />
         ),
     },
-    {
-      key: "collected",
-      header: "Collected",
-      align: "right",
-      minWidth: 120,
-      cell: (r) => <Collected paid={r.totalPaid} charged={r.totalCharged} />,
-      total: (t) => <Collected paid={t.totalPaid} charged={t.totalCharged} />,
-    },
   ];
   const columns = allColumns.filter((c) => !c.optional || shown.has(c.optional));
 
-  const totalsRow = (label: string, t: RentRollYearTotals) => columns.map((c, i) => (i === 0 ? label : (c.total?.(t) ?? null)));
+  const totalsRow = (label: string, t: RentRollYearTotals) => columns.map((c, i) =>
+      i === 0 ? (
+        <span className="block max-w-40 truncate" title={label}>
+          {label}
+        </span>
+      ) : (
+        (c.total?.(t) ?? null)
+      ),
+    );
 
   return (
     <SpreadsheetTable<RentRollYearRow>

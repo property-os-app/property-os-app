@@ -15,6 +15,11 @@ export interface SheetColumn<Row> {
   align?: "left" | "right";
   /** Minimum width (px or CSS). */
   minWidth?: number | string;
+  /**
+   * Keeps the column this wide (px or CSS; wider only when its content needs it) when the table has room to spare: the
+   * columns without a `width` share the spare room. Without any `width` every column grows, as before.
+   */
+  width?: number | string;
   /** Extra classes for the body cells of this column. */
   className?: string;
   /** Extra classes for EVERY cell of the column: header, rows, subtotals and total (separators, a "current" outline). Theme tokens only. */
@@ -93,7 +98,8 @@ const rowHover =
  * right (`sticky: "right"`) and the sticky total row all work and the page itself never scrolls sideways. Groups get a
  * header row (a tinted band, a strong line above every group but the first, an optional `accent` bar) and an optional
  * subtotal row. Five states like DataTable. Cells can carry their own background
- * (`cellClassName`); `columnClassName` styles a whole column (separators, a "current" outline). Hovering a row tints it
+ * (`cellClassName`); columns with a `width` keep it while the others share the spare room, and it only scrolls sideways when the
+ * columns' own minimums don't fit; `columnClassName` styles a whole column (separators, a "current" outline). Hovering a row tints it
  * without hiding the cells' own colours. With `pageScroll` the box only scrolls sideways and the page scrolls down (one
  * vertical scrollbar); `scrollToColumn` brings a column (e.g. the current month) into view on load.
  */
@@ -206,7 +212,7 @@ export function SpreadsheetTable<Row>({
                   data-col={c.key}
                   data-pinned={c.sticky}
                   title={c.headerLabel}
-                  style={{ minWidth: c.minWidth, transform: pageScroll ? "translateY(var(--sheet-head-y, 0px))" : undefined }}
+                  style={{ minWidth: c.minWidth, width: c.width, transform: pageScroll ? "translateY(var(--sheet-head-y, 0px))" : undefined }}
                   className={cn(
                     "sticky top-0 whitespace-nowrap border-b border-border-subtle bg-surface-2 px-3 py-2.5 text-overline uppercase text-text-secondary",
                     alignClass(c),

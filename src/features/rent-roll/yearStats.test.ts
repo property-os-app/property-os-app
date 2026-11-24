@@ -38,6 +38,7 @@ import {
   rowsFromParam,
   rowsSwitchParams,
   shownCell,
+  shownRenewalAlert,
   tenantColumnHeader,
 } from "@/features/rent-roll/yearStats";
 import type {
@@ -539,6 +540,22 @@ describe("rows by tenant (one row per lease)", () => {
   it("groups both leases of a unit under its property, older first (the API's order)", () => {
     const groups = groupByProperty([older, newer, vacant], [{ ...totals(), property: { id: "p1", name: "Fieldstone" } }]);
     expect(groups[0]!.rows).toEqual([older, newer, vacant]);
+  });
+});
+
+describe("shownRenewalAlert (the badge in the table's first column)", () => {
+  const unitRow = makeRow();
+  const leaseRow = Object.fromEntries(Object.entries(makeRow()).filter(([key]) => key !== "leases")) as unknown as RentRollYearLeaseRow;
+  it("shows Ends soon by unit and by tenant", () => {
+    expect(shownRenewalAlert({ ...unitRow, renewalAlert: "ENDS_SOON" })).toBe("ENDS_SOON");
+    expect(shownRenewalAlert({ ...leaseRow, renewalAlert: "ENDS_SOON" })).toBe("ENDS_SOON");
+  });
+  it("shows Ended by unit only", () => {
+    expect(shownRenewalAlert({ ...unitRow, renewalAlert: "ENDED" })).toBe("ENDED");
+    expect(shownRenewalAlert({ ...leaseRow, renewalAlert: "ENDED" })).toBeNull();
+  });
+  it("shows nothing without an alert", () => {
+    expect(shownRenewalAlert({ ...unitRow, renewalAlert: null })).toBeNull();
   });
 });
 
