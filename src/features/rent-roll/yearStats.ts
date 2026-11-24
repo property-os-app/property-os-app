@@ -17,7 +17,7 @@ import type {
   RentRollYearUnitLease,
   RentRollYearUnitRow,
 } from "@/types/rentRoll";
-import { unitLabel } from "@/lib/labels";
+import { plural, unitLabel } from "@/lib/labels";
 
 /* ---------- Year ---------- */
 
@@ -434,6 +434,16 @@ export function groupByProperty(rows: RentRollYearRow[], propertyTotals: RentRol
     const groupRows = byProperty.get(totals.property.id);
     return groupRows ? [{ property: totals.property, rows: groupRows, totals }] : [];
   });
+}
+
+/**
+ * The band's count: "4 units" by unit; by tenant "4 units · 8 leases" (a unit can have several lease rows, and a renewal is
+ * a second lease of the same tenant, so rows aren't tenants). Vacant rows count as a unit, not a lease. Shown rows only.
+ */
+export function groupCountText(rows: readonly RentRollYearRow[]): string {
+  const units = plural(new Set(rows.map((r) => r.unit.id)).size, "unit");
+  if (rows.every(isUnitRow)) return units;
+  return `${units} · ${plural(rows.filter((r) => r.lease !== null).length, "lease")}`;
 }
 
 /* ---------- Collected and the summary row ---------- */

@@ -18,6 +18,7 @@ import {
   daysToEndText,
   filterYearRows,
   groupByProperty,
+  groupCountText,
   hasUnpaidMonths,
   hasVacancy,
   isLeaseEnded,
@@ -540,6 +541,22 @@ describe("rows by tenant (one row per lease)", () => {
   it("groups both leases of a unit under its property, older first (the API's order)", () => {
     const groups = groupByProperty([older, newer, vacant], [{ ...totals(), property: { id: "p1", name: "Fieldstone" } }]);
     expect(groups[0]!.rows).toEqual([older, newer, vacant]);
+  });
+});
+
+describe("groupCountText (the property band's count)", () => {
+  const asLease = (row: RentRollYearUnitRow) => Object.fromEntries(Object.entries(row).filter(([key]) => key !== "leases")) as unknown as RentRollYearLeaseRow;
+  const unit = (id: string) => makeRow({ unit: { ...makeRow().unit, id } });
+  it("counts units by unit", () => {
+    expect(groupCountText([unit("u1"), unit("u2")])).toBe("2 units");
+    expect(groupCountText([unit("u1")])).toBe("1 unit");
+  });
+  it("counts each unit once by tenant, and its leases", () => {
+    expect(groupCountText([unit("u1"), unit("u1"), unit("u2")].map(asLease))).toBe("2 units · 3 leases");
+    expect(groupCountText([asLease(unit("u1"))])).toBe("1 unit · 1 lease");
+  });
+  it("counts a vacant unit as a unit without a lease", () => {
+    expect(groupCountText([asLease(unit("u1")), asLease(vacantRow())])).toBe("2 units · 1 lease");
   });
 });
 

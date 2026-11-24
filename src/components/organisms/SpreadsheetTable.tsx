@@ -75,8 +75,12 @@ export interface SpreadsheetTableProps<Row> {
 
 const cellBase = "whitespace-nowrap border-b border-border-subtle px-3 tabular";
 const alignClass = (c: { align?: "left" | "right" } | undefined) => (c?.align === "right" ? "text-right" : "text-left");
-/** The pinned-right column's left edge: a strong border and a soft shadow, so the columns scrolling under it look intentional. */
-const pinEdge = "border-l border-l-border-strong shadow-[-8px_0_8px_-8px_color-mix(in_srgb,var(--text-primary)_35%,transparent)]";
+/**
+ * The pinned-right column's left edge: a strong border, and while the table is wider than its box (`data-scroll-x`) a soft
+ * shadow, so the columns scrolling under it look intentional.
+ */
+const pinEdge =
+  "border-l border-l-border-strong group-data-[scroll-x=true]/sheet:shadow-[-8px_0_8px_-8px_color-mix(in_srgb,var(--text-primary)_35%,transparent)]";
 /** A pinned-right cell: opaque (set by the caller), the edge, above the scrolling cells. */
 const stickyRight = (c: { sticky?: "right" } | undefined) => (c?.sticky === "right" ? cn("sticky right-0", pinEdge) : undefined);
 /** pageScroll: the bottom of the page's sticky top bar (a sticky <header>), else 0. */
@@ -152,6 +156,20 @@ export function SpreadsheetTable<Row>({
     };
   }, [pageScroll]);
 
+  // Is the table wider than its box? Only then does the pinned-right column get its shadow.
+  const [scrollsX, setScrollsX] = React.useState(false);
+  React.useLayoutEffect(() => {
+    const box = boxRef.current;
+    if (!box) return;
+    const update = () => setScrollsX(box.scrollWidth > box.clientWidth);
+    update();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(box);
+    if (tableRef.current) observer.observe(tableRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   // The rail and the box scroll sideways together.
   const syncing = React.useRef(false);
   const follow = (from: HTMLDivElement | null, to: HTMLDivElement | null) => {
@@ -190,8 +208,9 @@ export function SpreadsheetTable<Row>({
       {/* relative: sr-only text inside the table uses this box, so it scrolls with it instead of widening the page. */}
       <div
         ref={boxRef}
+        data-scroll-x={scrollsX}
         className={cn(
-          "relative overflow-auto overscroll-x-contain",
+          "group/sheet relative overflow-auto overscroll-x-contain",
           // pageScroll: the rail below is the visible horizontal scrollbar (trackpads and Shift+wheel still scroll the box).
           pageScroll && "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         )}

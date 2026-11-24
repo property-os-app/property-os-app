@@ -184,8 +184,9 @@ export function RecordPaymentModal({ targets, presetLeaseId, reentry, onClose }:
                   onBlur={field.onBlur}
                   onChange={(next) => {
                     field.onChange(next);
-                    // A new tenant: prefill their balance.
-                    setValue("amount", prefill(targets.find((t) => t.leaseId === next)?.balance), { shouldDirty: true });
+                    // A new tenant: prefill their balance. A prefilled amount is checked at once, so an earlier "enter an amount" error goes.
+                    const amount = prefill(targets.find((t) => t.leaseId === next)?.balance);
+                    setValue("amount", amount, { shouldDirty: true, shouldValidate: amount !== "" });
                   }}
                   listLabel="Tenant"
                   placeholder="Choose a tenant"

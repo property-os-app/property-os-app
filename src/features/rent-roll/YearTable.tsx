@@ -14,6 +14,7 @@ import {
   collectedPercent,
   collectedTone,
   daysToEndText,
+  groupCountText,
   isCurrentMonth,
   isQuarterEnd,
   isReservedRow,
@@ -93,7 +94,7 @@ function propertyBand(g: PropertyGroup) {
     <span className="flex flex-wrap items-baseline gap-x-3">
       <span className="text-body font-bold text-text-primary">{g.property.name}</span>
       <span className="text-small font-normal text-text-secondary">
-        {plural(g.rows.length, "unit")} · Collected {formatCurrencyShort(g.totals.totalPaid)} of {formatCurrencyShort(g.totals.totalCharged)}
+        {groupCountText(g.rows)} · Collected {formatCurrencyShort(g.totals.totalPaid)} of {formatCurrencyShort(g.totals.totalCharged)}
         {pct !== null && ` · ${pct}%`}
       </span>
     </span>
