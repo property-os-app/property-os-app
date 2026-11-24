@@ -5,7 +5,7 @@ Files (PDF, JPEG, PNG; max 20 MB) attached to one lease, tenant, unit or propert
 ## categories.ts
 - `categoryOptions(categories, owner)`: that owner type's list in the API order (`leases` → `lease`, ...); `[]` while loading.
 - `categoryLabel(categories, owner, value)`: the label from that owner type's own list (INSPECTION is "Other inspection" on leases, "Inspection" on units); while loading or for an unknown value, `fallbackCategoryLabel`. Never blank.
-- `fallbackCategoryLabel(value)`: readable text from a value (`OLD_LEASE` → "Old lease").
+- `fallbackCategoryLabel(value)`: readable text from a value (`readableValue` in lib/labels) (`OLD_LEASE` → "Old lease").
 
 ## keys.ts
 - `documentKeys`: `all`, `list(owner, ownerId)` (one list per record), `categories`.

@@ -2,7 +2,8 @@
 
 export type ChargeType = "RENT" | "LATE_FEE" | "OTHER";
 
-export type PaymentMethod = "ACH" | "CHECK" | "CREDIT_CARD" | "CASH" | "OTHER";
+/** In the order to show them (API.md section 2). Payments, expenses and the ticket resolve form share it. */
+export type PaymentMethod = "ACH" | "CHECK" | "CREDIT_CARD" | "CASH" | "VENMO" | "ZELLE" | "OTHER";
 
 /** POST /leases/:id/charges answer (ChargeResponse). */
 export interface Charge {

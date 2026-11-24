@@ -1,4 +1,5 @@
 /** Document category lists from GET /documents/categories: the list per owner type and the label of a stored value. No API import, so it is unit-testable. */
+import { readableValue } from "@/lib/labels";
 import type { DocumentCategories, DocumentCategoryOption, DocumentOwner } from "@/types/document";
 
 /** Our owner (the path prefix, plural) -> the key of its list in the categories response (singular). */
@@ -11,8 +12,7 @@ export function categoryOptions(categories: DocumentCategories | undefined, owne
 
 /** A readable label made from a value, for when the list isn't there: "OLD_LEASE" -> "Old lease", "ID" -> "Id". */
 export function fallbackCategoryLabel(value: string): string {
-  const words = value.trim().replace(/_+/g, " ").toLowerCase();
-  return words ? words.charAt(0).toUpperCase() + words.slice(1) : "Uncategorised";
+  return readableValue(value) || "Uncategorised";
 }
 
 /**

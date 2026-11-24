@@ -126,6 +126,10 @@ describe("resolveBody", () => {
       vendorRating: 4,
     });
   });
+  it("sends Venmo and Zelle with the transaction ID as the reference", () => {
+    for (const paymentMethod of ["VENMO", "ZELLE"] as const)
+      expect(resolveBody({ ...input, paymentMethod, reference: " 3847562910384756291 " }, { canRecordCost: true, hasVendor: true })).toMatchObject({ paymentMethod, reference: "3847562910384756291" });
+  });
   it("no cost fields without expenses.record", () => {
     expect(resolveBody(input, { canRecordCost: false, hasVendor: true })).toEqual({ resolutionNote: "Replaced valve", vendorRating: 4 });
   });

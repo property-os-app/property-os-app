@@ -74,7 +74,7 @@ Maintenance: the /maintenance page (summary KPIs, filters, Board or Table view),
 - `ExpiredInsuranceNote({ vendor })`: amber "insurance expired … you can still assign them" (also on the Add form).
 
 ## ResolveModal.tsx
-- `ResolveModal({ ticket, onSaved?, onClose })`: note; actual cost (only with `expenses.record`) with the expense it records (Owner: approved; manager: "goes to the owner for approval"), payment method and reference once there is a cost; vendor rating (`RatingInput`) only with a vendor. Errors under their field or at the top.
+- `ResolveModal({ ticket, onSaved?, onClose })`: note; actual cost (only with `expenses.record`) with the expense it records (Owner: approved; manager: "goes to the owner for approval"), payment method and reference (hint "Transaction ID (optional)" for Venmo and Zelle) once there is a cost; vendor rating (`RatingInput`) only with a vendor. Errors under their field or at the top.
 
 ## TicketFormModal.tsx
 - `TicketFormModal({ ticket?, onSaved?, onClose })`: Add (title, description, property, unit of that property, location note with suggestions, priority, vendor → starts Assigned, estimated cost) or Edit an active ticket (no vendor; property and unit locked once expenses are linked); a RESOLVED ticket edits only its resolution note and rating. "Discard changes?" on close.

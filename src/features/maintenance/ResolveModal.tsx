@@ -4,7 +4,7 @@ import { FormField, InlineError, toast } from "@/components/molecules";
 import { Modal } from "@/components/organisms";
 import { ApiError, errorText } from "@/lib/api";
 import { formatCurrency, toCents } from "@/lib/format";
-import { labelOptions, paymentMethodLabels } from "@/lib/labels";
+import { labelOptions, paymentMethodLabels, referenceHint } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
 import { can } from "@/features/auth/permissions";
 import { RatingInput } from "@/features/shared/Rating";
@@ -140,7 +140,7 @@ export function ResolveModal({ ticket, onSaved, onClose }: { ticket: Maintenance
                   ))}
                 </Select>
               </FormField>
-              <FormField label="Reference" htmlFor="resolve-reference" error={errors.reference} help="Vendor invoice or other number.">
+              <FormField label="Reference" htmlFor="resolve-reference" error={errors.reference} help={referenceHint(values.paymentMethod) ?? "Vendor invoice or other number."}>
                 <Input
                   id="resolve-reference"
                   autoComplete="off"
