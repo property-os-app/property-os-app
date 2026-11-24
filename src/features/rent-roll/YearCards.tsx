@@ -5,9 +5,9 @@ import { CardList } from "@/components/organisms";
 import { cn } from "@/lib/cn";
 import { formatCurrency, formatCurrencyShort, toCents } from "@/lib/format";
 import { groupAccent, type AccentOrder } from "@/lib/groupAccent";
-import { plural, unitLabel } from "@/lib/labels";
+import { unitLabel } from "@/lib/labels";
 import { MonthStrip } from "@/features/rent-roll/MonthStrip";
-import { isReservedRow, leaseTenantLabel, renewalAlertLabels, renewalAlertTone, rowTitle, yearRowKey, type PropertyGroup } from "@/features/rent-roll/yearStats";
+import { groupCountText, isReservedRow, leaseTenantLabel, renewalAlertLabels, renewalAlertTone, rowTitle, yearRowKey, type PropertyGroup } from "@/features/rent-roll/yearStats";
 import type { RentRollYearResponse, RentRollYearRow, RentRollYearTotals } from "@/types/rentRoll";
 
 /** One item of the phone list: a property's subtotal card (before its rows) or a row card. */
@@ -65,7 +65,7 @@ export function YearCards({ data, groups, year, state, empty, error, note, onOpe
               <ListCard
                 className={cn("bg-surface-3", groupAccent(g.property.id, accentOrder).barClass, !first && "mt-4")}
                 title={g.property.name}
-                subtitle={`Property total · ${plural(g.rows.length, "unit")}`}
+                subtitle={`Property total · ${groupCountText(g.rows)}`}
                 amount={totalsAmount(g.totals)}
               />
             );

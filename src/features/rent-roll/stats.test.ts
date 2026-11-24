@@ -9,6 +9,7 @@ import {
   notBilledCaption,
   owingCount,
   paidCaption,
+  paymentTargets,
   rowFilterStatus,
   rowTotals,
   statusCounts,
@@ -16,6 +17,7 @@ import {
   upcomingCaption,
   upcomingRows,
 } from "@/features/rent-roll/stats";
+import { rentRollKeys } from "@/features/rent-roll/keys";
 import { toCents } from "@/lib/format";
 import type { Lease } from "@/types/lease";
 import type { RentRollRow } from "@/types/rentRoll";
@@ -325,5 +327,40 @@ describe("months", () => {
       expect(monthFromParam(null)).toBe("2026-11");
       expect(isPastMonth("2026-10")).toBe(true);
     });
+  });
+});
+
+describe("paymentTargets (the Record Payment picker)", () => {
+  const row = {
+    leaseId: "l1",
+    leaseNumber: "LSE-0012",
+    unit: { id: "u1", unitNumber: "2", property: { id: "p1", name: "746 SPW LLC" } },
+    primaryTenant: { id: "t1", fullName: "Cha'Mara M Holman" },
+    balance: "125.00",
+  } as RentRollRow;
+
+  it("keeps the lease id, label and balance, and adds the name, unit and property, and lease number", () => {
+    expect(paymentTargets([row])).toEqual([
+      {
+        leaseId: "l1",
+        label: "Cha'Mara M Holman, Unit 2, 746 SPW LLC",
+        unitNumber: "2",
+        tenantName: "Cha'Mara M Holman",
+        detail: "Unit 2, 746 SPW LLC",
+        leaseNumber: "LSE-0012",
+        balance: "125.00",
+      },
+    ]);
+  });
+
+  it("says No tenant when the lease has no primary tenant", () => {
+    expect(paymentTargets([{ ...row, primaryTenant: null }])[0]!.tenantName).toBe("No tenant");
+  });
+});
+
+describe("rentRollKeys", () => {
+  it("keeps the month and year queries under the prefix that a saved payment refreshes", () => {
+    for (const key of [rentRollKeys.month("2026-11", null), rentRollKeys.year(2026, "p1"), rentRollKeys.year(2026, null, "lease")])
+      expect(key.slice(0, rentRollKeys.all.length)).toEqual([...rentRollKeys.all]);
   });
 });

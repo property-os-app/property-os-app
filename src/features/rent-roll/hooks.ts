@@ -8,8 +8,8 @@ import type { RentRollResponse, RentRollYearResponse, RentRollYearRowsBy } from 
  * GET /rent-roll?month=&propertyId=. Status and search are filtered on the client, so the summary,
  * the segment counts and the KPIs always describe the same rows.
  */
-export function useRentRoll(month: string, propertyId: string | null) {
-  return useQuery(rentRollQuery(month, propertyId));
+export function useRentRoll(month: string, propertyId: string | null, options: { enabled?: boolean } = {}) {
+  return useQuery({ ...rentRollQuery(month, propertyId), enabled: options.enabled });
 }
 
 /** The GET /rent-roll query options (key + fetch), shared by useRentRoll and the dashboard's several months (useQueries). */

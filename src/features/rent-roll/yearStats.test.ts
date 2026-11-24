@@ -18,6 +18,7 @@ import {
   daysToEndText,
   filterYearRows,
   groupByProperty,
+  groupCountText,
   hasUnpaidMonths,
   hasVacancy,
   isLeaseEnded,
@@ -38,6 +39,7 @@ import {
   rowsFromParam,
   rowsSwitchParams,
   shownCell,
+  shownRenewalAlert,
   tenantColumnHeader,
 } from "@/features/rent-roll/yearStats";
 import type {
@@ -539,6 +541,38 @@ describe("rows by tenant (one row per lease)", () => {
   it("groups both leases of a unit under its property, older first (the API's order)", () => {
     const groups = groupByProperty([older, newer, vacant], [{ ...totals(), property: { id: "p1", name: "Fieldstone" } }]);
     expect(groups[0]!.rows).toEqual([older, newer, vacant]);
+  });
+});
+
+describe("groupCountText (the property band's count)", () => {
+  const asLease = (row: RentRollYearUnitRow) => Object.fromEntries(Object.entries(row).filter(([key]) => key !== "leases")) as unknown as RentRollYearLeaseRow;
+  const unit = (id: string) => makeRow({ unit: { ...makeRow().unit, id } });
+  it("counts units by unit", () => {
+    expect(groupCountText([unit("u1"), unit("u2")])).toBe("2 units");
+    expect(groupCountText([unit("u1")])).toBe("1 unit");
+  });
+  it("counts each unit once by tenant, and its leases", () => {
+    expect(groupCountText([unit("u1"), unit("u1"), unit("u2")].map(asLease))).toBe("2 units · 3 leases");
+    expect(groupCountText([asLease(unit("u1"))])).toBe("1 unit · 1 lease");
+  });
+  it("counts a vacant unit as a unit without a lease", () => {
+    expect(groupCountText([asLease(unit("u1")), asLease(vacantRow())])).toBe("2 units · 1 lease");
+  });
+});
+
+describe("shownRenewalAlert (the badge in the table's first column)", () => {
+  const unitRow = makeRow();
+  const leaseRow = Object.fromEntries(Object.entries(makeRow()).filter(([key]) => key !== "leases")) as unknown as RentRollYearLeaseRow;
+  it("shows Ends soon by unit and by tenant", () => {
+    expect(shownRenewalAlert({ ...unitRow, renewalAlert: "ENDS_SOON" })).toBe("ENDS_SOON");
+    expect(shownRenewalAlert({ ...leaseRow, renewalAlert: "ENDS_SOON" })).toBe("ENDS_SOON");
+  });
+  it("shows Ended by unit only", () => {
+    expect(shownRenewalAlert({ ...unitRow, renewalAlert: "ENDED" })).toBe("ENDED");
+    expect(shownRenewalAlert({ ...leaseRow, renewalAlert: "ENDED" })).toBeNull();
+  });
+  it("shows nothing without an alert", () => {
+    expect(shownRenewalAlert({ ...unitRow, renewalAlert: null })).toBeNull();
   });
 });
 

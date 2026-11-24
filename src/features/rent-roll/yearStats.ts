@@ -17,7 +17,7 @@ import type {
   RentRollYearUnitLease,
   RentRollYearUnitRow,
 } from "@/types/rentRoll";
-import { unitLabel } from "@/lib/labels";
+import { plural, unitLabel } from "@/lib/labels";
 
 /* ---------- Year ---------- */
 
@@ -311,6 +311,14 @@ export const renewalAlertLabels: Record<RenewalAlert, string> = { ENDS_SOON: "En
 /** Badge tone of the renewal alert: Ends soon warns, Ended is neutral (like an ENDED lease). */
 export const renewalAlertTone: Record<RenewalAlert, "warning" | "neutral"> = { ENDS_SOON: "warning", ENDED: "neutral" };
 
+/**
+ * The alert badge in the table's first column: "Ends soon" in both modes; "Ended" only by unit (the unit's latest lease is
+ * over). By tenant, past tenants would all carry it. The CSV keeps every alert.
+ */
+export function shownRenewalAlert(row: RentRollYearRow): RenewalAlert | null {
+  return row.renewalAlert === "ENDED" && !isUnitRow(row) ? null : row.renewalAlert;
+}
+
 /** "Renewed" / "Renewal drafted" (same tenant, DRAFT) / "Next tenant" (no tenant in common). */
 export function renewalText(next: Pick<RentRollYearNextLease, "status" | "sharesTenant">): string {
   if (!next.sharesTenant) return "Next tenant";
@@ -428,6 +436,16 @@ export function groupByProperty(rows: RentRollYearRow[], propertyTotals: RentRol
   });
 }
 
+/**
+ * The band's count: "4 units" by unit; by tenant "4 units · 8 leases" (a unit can have several lease rows, and a renewal is
+ * a second lease of the same tenant, so rows aren't tenants). Vacant rows count as a unit, not a lease. Shown rows only.
+ */
+export function groupCountText(rows: readonly RentRollYearRow[]): string {
+  const units = plural(new Set(rows.map((r) => r.unit.id)).size, "unit");
+  if (rows.every(isUnitRow)) return units;
+  return `${units} · ${plural(rows.filter((r) => r.lease !== null).length, "lease")}`;
+}
+
 /* ---------- Collected and the summary row ---------- */
 
 /** Paid ÷ charged as a percentage with one decimal (integer cents, rounded half up), or null when nothing was charged. */
@@ -469,7 +487,7 @@ export function yearSummary(rows: readonly RentRollYearRow[]): { vacantUnitMonth
 
 /* ---------- Columns ---------- */
 
-/** Optional desktop columns (the Columns menu), in table order. Unit / tenants, current rent, the months, Total and Renewal alert always show. */
+/** Optional desktop columns (the Columns menu), in table order. Unit / tenants (with the renewal alert badge), rent, the months and Total paid (with the collected bar) always show. */
 export const YEAR_OPTIONAL_COLUMNS = [
   { key: "market", label: "Market rent" },
   { key: "start", label: "Lease start" },

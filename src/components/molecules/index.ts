@@ -10,3 +10,4 @@ export * from "./FileDropzone";
 export * from "./Menu";
 export * from "./ThemeSwitch";
 export * from "./ColumnsMenu";
+export * from "./Combobox";

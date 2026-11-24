@@ -22,7 +22,7 @@ export function MonthCell({ cell, reserved = false, tenants }: MonthCellProps) {
   const description = cellDescription(cell, { reserved, tenants });
   return (
     <>
-      <span aria-hidden title={description} className="flex min-h-5 items-center justify-end gap-1">
+      <span aria-hidden title={description} className="flex min-h-5 items-center justify-end gap-0.5">
         {cell.status === "OVERDUE" && <AlertCircle size={12} strokeWidth={2} className="shrink-0" />}
         {text === null ? <Dash /> : text}
       </span>

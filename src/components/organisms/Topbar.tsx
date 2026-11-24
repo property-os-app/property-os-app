@@ -91,20 +91,29 @@ export interface PageHeaderProps {
   /** Exactly one primary button per view; put secondary actions first. */
   actions?: React.ReactNode;
   breadcrumb?: React.ReactNode;
+  /**
+   * Keep a text description on one line (cut with "…", the full text on hover). The title side then shrinks instead of
+   * pushing the actions to a new line, so views that share a header keep their buttons in place.
+   */
+  singleLineDescription?: boolean;
   className?: string;
 }
 
-export function PageHeader({ title, description, actions, breadcrumb, className }: PageHeaderProps) {
+export function PageHeader({ title, description, actions, breadcrumb, singleLineDescription = false, className }: PageHeaderProps) {
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       {breadcrumb}
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
+        <div className={cn("min-w-0", singleLineDescription && "flex-1 basis-40")}>
           <h1 className="m-0 text-h1">{title}</h1>
-          {description && <div className="mt-1 text-text-secondary">{description}</div>}
+          {description && (
+            <div className={cn("mt-1 text-text-secondary", singleLineDescription && "truncate")} title={singleLineDescription && typeof description === "string" ? description : undefined}>
+              {description}
+            </div>
+          )}
         </div>
         {/* Full width under md, so phone actions marked w-full (month / year switchers, primary button) really fill the row. */}
-        {actions && <div className="flex flex-wrap items-center gap-3 max-md:w-full">{actions}</div>}
+        {actions && <div className={cn("flex flex-wrap items-center gap-3 max-md:w-full", singleLineDescription && "ml-auto")}>{actions}</div>}
       </div>
     </div>
   );

@@ -15,6 +15,11 @@ export interface SheetColumn<Row> {
   align?: "left" | "right";
   /** Minimum width (px or CSS). */
   minWidth?: number | string;
+  /**
+   * Keeps the column this wide (px or CSS; wider only when its content needs it) when the table has room to spare: the
+   * columns without a `width` share the spare room. Without any `width` every column grows, as before.
+   */
+  width?: number | string;
   /** Extra classes for the body cells of this column. */
   className?: string;
   /** Extra classes for EVERY cell of the column: header, rows, subtotals and total (separators, a "current" outline). Theme tokens only. */
@@ -70,8 +75,12 @@ export interface SpreadsheetTableProps<Row> {
 
 const cellBase = "whitespace-nowrap border-b border-border-subtle px-3 tabular";
 const alignClass = (c: { align?: "left" | "right" } | undefined) => (c?.align === "right" ? "text-right" : "text-left");
-/** The pinned-right column's left edge: a strong border and a soft shadow, so the columns scrolling under it look intentional. */
-const pinEdge = "border-l border-l-border-strong shadow-[-8px_0_8px_-8px_color-mix(in_srgb,var(--text-primary)_35%,transparent)]";
+/**
+ * The pinned-right column's left edge: a strong border, and while the table is wider than its box (`data-scroll-x`) a soft
+ * shadow, so the columns scrolling under it look intentional.
+ */
+const pinEdge =
+  "border-l border-l-border-strong group-data-[scroll-x=true]/sheet:shadow-[-8px_0_8px_-8px_color-mix(in_srgb,var(--text-primary)_35%,transparent)]";
 /** A pinned-right cell: opaque (set by the caller), the edge, above the scrolling cells. */
 const stickyRight = (c: { sticky?: "right" } | undefined) => (c?.sticky === "right" ? cn("sticky right-0", pinEdge) : undefined);
 /** pageScroll: the bottom of the page's sticky top bar (a sticky <header>), else 0. */
@@ -93,7 +102,8 @@ const rowHover =
  * right (`sticky: "right"`) and the sticky total row all work and the page itself never scrolls sideways. Groups get a
  * header row (a tinted band, a strong line above every group but the first, an optional `accent` bar) and an optional
  * subtotal row. Five states like DataTable. Cells can carry their own background
- * (`cellClassName`); `columnClassName` styles a whole column (separators, a "current" outline). Hovering a row tints it
+ * (`cellClassName`); columns with a `width` keep it while the others share the spare room, and it only scrolls sideways when the
+ * columns' own minimums don't fit; `columnClassName` styles a whole column (separators, a "current" outline). Hovering a row tints it
  * without hiding the cells' own colours. With `pageScroll` the box only scrolls sideways and the page scrolls down (one
  * vertical scrollbar); `scrollToColumn` brings a column (e.g. the current month) into view on load.
  */
@@ -146,6 +156,20 @@ export function SpreadsheetTable<Row>({
     };
   }, [pageScroll]);
 
+  // Is the table wider than its box? Only then does the pinned-right column get its shadow.
+  const [scrollsX, setScrollsX] = React.useState(false);
+  React.useLayoutEffect(() => {
+    const box = boxRef.current;
+    if (!box) return;
+    const update = () => setScrollsX(box.scrollWidth > box.clientWidth);
+    update();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(box);
+    if (tableRef.current) observer.observe(tableRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   // The rail and the box scroll sideways together.
   const syncing = React.useRef(false);
   const follow = (from: HTMLDivElement | null, to: HTMLDivElement | null) => {
@@ -184,8 +208,9 @@ export function SpreadsheetTable<Row>({
       {/* relative: sr-only text inside the table uses this box, so it scrolls with it instead of widening the page. */}
       <div
         ref={boxRef}
+        data-scroll-x={scrollsX}
         className={cn(
-          "relative overflow-auto overscroll-x-contain",
+          "group/sheet relative overflow-auto overscroll-x-contain",
           // pageScroll: the rail below is the visible horizontal scrollbar (trackpads and Shift+wheel still scroll the box).
           pageScroll && "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         )}
@@ -206,7 +231,7 @@ export function SpreadsheetTable<Row>({
                   data-col={c.key}
                   data-pinned={c.sticky}
                   title={c.headerLabel}
-                  style={{ minWidth: c.minWidth, transform: pageScroll ? "translateY(var(--sheet-head-y, 0px))" : undefined }}
+                  style={{ minWidth: c.minWidth, width: c.width, transform: pageScroll ? "translateY(var(--sheet-head-y, 0px))" : undefined }}
                   className={cn(
                     "sticky top-0 whitespace-nowrap border-b border-border-subtle bg-surface-2 px-3 py-2.5 text-overline uppercase text-text-secondary",
                     alignClass(c),
