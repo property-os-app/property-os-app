@@ -27,9 +27,11 @@ export function TenantsTab({ lease }: { lease: Lease }) {
             <Avatar name={t.fullName} size={32} />
             <div className="min-w-0 flex-1">
               <div className="truncate font-semibold text-text-primary">{t.fullName}</div>
-              <Caption className="block truncate">
-                <ContactLink kind="email" value={t.email} />
-              </Caption>
+              {t.email && (
+                <Caption className="block truncate">
+                  <ContactLink kind="email" value={t.email} />
+                </Caption>
+              )}
               {phoneOf(t.id) && (
                 <Caption className="block truncate">
                   <ContactLink kind="phone" value={phoneOf(t.id)} />

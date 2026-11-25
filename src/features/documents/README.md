@@ -8,13 +8,13 @@ Files (PDF, JPEG, PNG; max 20 MB) attached to one lease, tenant, unit or propert
 - `fallbackCategoryLabel(value)`: readable text from a value (`readableValue` in lib/labels) (`OLD_LEASE` → "Old lease").
 
 ## keys.ts
-- `documentKeys`: `all`, `list(owner, ownerId)` (one list per record), `categories`.
+- `documentKeys`: `all`, `list(owner, ownerId)` (one list per record), `categories`. `units`: prefix of every unit's list.
 
 ## hooks.ts
 - `useDocumentCategories()`: GET /documents/categories (`{ lease, tenant, unit, property }`, each `{ value, label }[]` in display order). Static data, so fetched once per session (`staleTime`/`gcTime` Infinity). Used by the upload form and the list.
-- `useDocuments(owner, ownerId)`: GET /{owner}/:id/documents, newest first. 404 when the record is out of scope (a manager on a tenant they can't see).
+- `useDocuments(owner, ownerId)`: GET /{owner}/:id/documents, newest first. 404 when the record is out of scope (a manager on a tenant they can't see). A unit's list is asked with `includeLeases=true`: its leases' documents too, each with its `source`.
 - `useUploadDocument()`: POST /{owner}/:id/documents with a `documentForm` body (`{ owner, ownerId, form }`); refreshes that list.
-- `useDeleteDocument()`: DELETE /{owner}/:id/documents/:docId (`{ owner, ownerId, docId }`); refreshes that list.
+- `useDeleteDocument()`: DELETE /{owner}/:id/documents/:docId (`{ owner, ownerId, docId }`); refreshes that list. A lease's change (upload too) also refreshes the units' lists.
 - `useDownloadDocument()`: GET /documents/:id/download on the click, then `window.location.assign(url)` (the signed link is an attachment, valid 5 minutes, never stored).
 - `useViewDocument()`: `{ docId, tab }`: GET /documents/:id/download?inline=true (via `showInTab`), then points the already-open tab at the link (PDF viewer or image). On failure the tab is closed and the error goes to `onError`. Never stored.
 - `uploadErrorText(err, rule)`: 413 becomes "File too large (max 20 MB)."; other errors keep the backend message.
@@ -30,8 +30,12 @@ Files (PDF, JPEG, PNG; max 20 MB) attached to one lease, tenant, unit or propert
 - `photoForm(file)`: PUT /properties/:id/photo body (only `file`).
 - `nameError(name)`, `MAX_NAME_LENGTH`: optional display name, max 200, no `/`, `\` or control characters.
 
+## source.ts
+- `ownerOfDocument(doc, list)`: the record a row belongs to (its category list, permission and delete path): the source lease, else the list's record. `DocumentOwnerRef`: `{ owner, ownerId }`.
+- `sourceText(doc)`: "Unit", "Lease LSE-2026-021", or null without sources. `source.test.ts` covers both.
+
 ## DocumentsPanel.tsx
-- `DocumentsPanel({ owner, ownerId, canManage, emptyText })`: "Upload a document" card (only with `canManage`) and the list: DataTable from md (icon by type, name, category badge (`categoryLabel`), size, uploaded date and email, View, Download, Delete), CardList on phones (card tap views; kebab View / Download / Delete). The panel is a size container: under 48rem wide (the tenant and unit drawers) View and Download are icon-only (name in aria-label and title) and the name and uploader email are capped and truncate, so the table never scrolls sideways. View errors and a blocked tab show as a toast "Couldn't open {name}". 5 states.
+- `DocumentsPanel({ owner, ownerId, canManage, emptyText })`: "Upload a document" card (only with `canManage`) and the list: DataTable from md (icon by type, name, category badge (`categoryLabel`), size, uploaded date and email, View, Download, Delete), CardList on phones (card tap views; kebab View / Download / Delete). The panel is a size container: under 48rem wide (the tenant and unit drawers) View and Download are icon-only (name in aria-label and title) and the name and uploader email are capped and truncate, so the table never scrolls sideways. View errors and a blocked tab show as a toast "Couldn't open {name}". 5 states. A unit's list shows each row's source ("Unit", or a link to the lease's Documents tab with `leaseState`); a lease's row deletes through the lease, with `canManageLeases`.
 
 ## DocumentUpload.tsx
 - `DocumentUpload({ owner, ownerId })`: drop zone + "Choose file" (one file), Category (that owner type's list from `useDocumentCategories`, API order, required; "Loading categories…" and disabled while loading; on error an InlineError with Retry and Upload disabled until it loads), Name (optional, file name as placeholder), "Uploading..." state, backend errors in an InlineError, toast "Uploaded {name}". The file is checked first with `checkFile(DOCUMENT_RULE)`.

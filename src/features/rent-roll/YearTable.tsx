@@ -8,6 +8,7 @@ import { formatCurrency, formatCurrencyShort, formatDate, formatMonth, toCents }
 import { plural, unitLabel } from "@/lib/labels";
 import { linkFocus } from "@/features/shared/linkClass";
 import { MonthCell } from "@/features/rent-roll/MonthCell";
+import { NotSet } from "@/features/shared/Missing";
 import {
   cellTenants,
   collectedLabel,
@@ -187,7 +188,7 @@ export function YearTable({ data, groups, year, rowsBy = "unit", visible, state,
       },
     },
     { key: "rent", header: "Rent", headerLabel: "Current rent", align: "right", minWidth: RENT_WIDTH, width: RENT_WIDTH, className: "text-small", columnClassName: "px-1.5", cell: (r) => money(r.lease?.rent) },
-    { key: "market", optional: "market", header: "Market rent", align: "right", cell: (r) => money(r.unit.monthlyRent) },
+    { key: "market", optional: "market", header: "Market rent", align: "right", cell: (r) => (r.unit.monthlyRent === null ? <NotSet /> : money(r.unit.monthlyRent)) },
     { key: "start", optional: "start", header: "Lease start", cell: (r) => (r.lease?.startDate ? formatDate(r.lease.startDate) : <Dash />) },
     { key: "end", optional: "end", header: "Lease end", cell: (r) => (r.lease?.endDate ? formatDate(r.lease.endDate) : <Dash />) },
     { key: "deposit", optional: "deposit", header: "Deposit", align: "right", cell: (r) => money(r.lease?.deposit) },

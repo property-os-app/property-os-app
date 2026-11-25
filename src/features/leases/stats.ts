@@ -91,6 +91,11 @@ export function coTenants(lease: Lease): LeaseTenant[] {
   return lease.tenants.filter((t) => !t.isPrimary);
 }
 
+/** The co-tenants' emails, for CC; co-tenants without one are left out. */
+export function coTenantEmails(lease: Pick<Lease, "tenants">): string[] {
+  return lease.tenants.flatMap((t) => (!t.isPrimary && t.email ? [t.email] : []));
+}
+
 /** ENDED or TERMINATED: final, only notes, tags and the day it ended (`canEditEndDate`) can change. */
 export function isClosed(lease: Pick<Lease, "status">): boolean {
   return lease.status === "ENDED" || lease.status === "TERMINATED";

@@ -1,9 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { ApiError, apiFetch, errorText } from "@/lib/api";
 import type { FileRule } from "@/lib/files";
 import { documentKeys } from "@/features/documents/keys";
 import { showInTab, type ViewTab } from "@/features/documents/view";
-import type { Document, DocumentCategories, DocumentDownload, DocumentOwner } from "@/types/document";
+import type { Document, DocumentCategories, DocumentDownload, DocumentOwner, ListedDocument } from "@/types/document";
 
 const documentsPath = (owner: DocumentOwner, ownerId: string) => `/${owner}/${encodeURIComponent(ownerId)}/documents`;
 
@@ -20,13 +20,22 @@ export function useDocumentCategories() {
   });
 }
 
-/** GET /{owner}/:id/documents: newest first, no pagination. 404 when the owner is out of scope (a manager on a tenant they can't see). */
+/**
+ * GET /{owner}/:id/documents: newest first, no pagination. A unit's list includes its leases' documents (includeLeases=true), each
+ * with its `source`. 404 when the owner is out of scope (a manager on a tenant they can't see).
+ */
 export function useDocuments(owner: DocumentOwner, ownerId: string, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: documentKeys.list(owner, ownerId),
-    queryFn: ({ signal }) => apiFetch<Document[]>(documentsPath(owner, ownerId), { signal }),
+    queryFn: ({ signal }) => apiFetch<ListedDocument[]>(documentsPath(owner, ownerId), { query: { includeLeases: owner === "units" ? "true" : undefined }, signal }),
     enabled: options.enabled,
   });
+}
+
+/** Refreshes that owner's list; a lease's documents are in its unit's list too. */
+function refreshDocuments(qc: QueryClient, owner: DocumentOwner, ownerId: string) {
+  void qc.invalidateQueries({ queryKey: documentKeys.list(owner, ownerId) });
+  if (owner === "leases") void qc.invalidateQueries({ queryKey: documentKeys.units });
 }
 
 /** POST /{owner}/:id/documents with a multipart body from `documentForm`. Refreshes that owner's list. */
@@ -35,7 +44,7 @@ export function useUploadDocument() {
   return useMutation({
     mutationFn: ({ owner, ownerId, form }: { owner: DocumentOwner; ownerId: string; form: FormData }) =>
       apiFetch<Document>(documentsPath(owner, ownerId), { method: "POST", form }),
-    onSuccess: (_doc, { owner, ownerId }) => void qc.invalidateQueries({ queryKey: documentKeys.list(owner, ownerId) }),
+    onSuccess: (_doc, { owner, ownerId }) => refreshDocuments(qc, owner, ownerId),
   });
 }
 
@@ -45,7 +54,7 @@ export function useDeleteDocument() {
   return useMutation({
     mutationFn: ({ owner, ownerId, docId }: { owner: DocumentOwner; ownerId: string; docId: string }) =>
       apiFetch<Document>(`${documentsPath(owner, ownerId)}/${encodeURIComponent(docId)}`, { method: "DELETE" }),
-    onSuccess: (_doc, { owner, ownerId }) => void qc.invalidateQueries({ queryKey: documentKeys.list(owner, ownerId) }),
+    onSuccess: (_doc, { owner, ownerId }) => refreshDocuments(qc, owner, ownerId),
   });
 }
 

@@ -11,13 +11,13 @@ export interface Unit {
   /** Not unique, sorted numeric-aware by the API ("2" before "10"). */
   unitNumber: string;
   unitType: UnitType;
-  /** Square feet (float). */
-  floorArea: number;
+  /** Square feet (float); null = not set. */
+  floorArea: number | null;
   /** Integer, can be negative. */
   floor: number | null;
   bathrooms: number | null;
-  /** Money string with 2 decimals, e.g. "1200.00". */
-  monthlyRent: string;
+  /** Listed rent, money string with 2 decimals ("1200.00"); null = not set. "0.00" is a real rent. */
+  monthlyRent: string | null;
   status: UnitStatus;
   description: string | null;
   /** ISO timestamp. */
@@ -31,16 +31,19 @@ export interface UnitCreateBody {
   propertyId: string;
   unitNumber: string;
   unitType: UnitType;
-  floorArea: number;
-  monthlyRent: number;
+  floorArea?: number;
+  /** 0 to 99,999,999.99. */
+  monthlyRent?: number;
   floor?: number;
   bathrooms?: number;
   status?: Exclude<UnitStatus, "OCCUPIED">;
   description?: string;
 }
 
-/** PATCH /units/:id body: any subset, never propertyId. Only floor, bathrooms and description may be null (clears them). */
-export type UnitUpdateBody = Partial<Omit<UnitCreateBody, "propertyId" | "floor" | "bathrooms" | "description">> & {
+/** PATCH /units/:id body: any subset, never propertyId. floorArea, monthlyRent, floor, bathrooms and description may be null (clears them). */
+export type UnitUpdateBody = Partial<Omit<UnitCreateBody, "propertyId" | "floorArea" | "monthlyRent" | "floor" | "bathrooms" | "description">> & {
+  floorArea?: number | null;
+  monthlyRent?: number | null;
   floor?: number | null;
   bathrooms?: number | null;
   description?: string | null;

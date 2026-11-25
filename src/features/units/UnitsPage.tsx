@@ -4,7 +4,7 @@ import { Button, Dash, Select, Skeleton } from "@/components/atoms";
 import { FormField, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
 import { KpiRow, PageHeader, Pagination, Toolbar } from "@/components/organisms";
 import { errorText } from "@/lib/api";
-import { centsToAmount, formatCompactCurrency, formatPercent } from "@/lib/format";
+import { formatPercent } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import { useClientTable, type SortColumn } from "@/lib/useClientTable";
 import { useIsMobile } from "@/lib/useIsMobile";
@@ -13,7 +13,7 @@ import { can } from "@/features/auth/permissions";
 import { useLeases } from "@/features/leases/hooks";
 import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
 import { useProperties } from "@/features/properties/hooks";
-import { countUnits, occupancy, sumCents } from "@/features/properties/stats";
+import { countUnits, occupancy } from "@/features/properties/stats";
 import { useScope } from "@/features/scope/scopeContext";
 import { FilterGroup, MobileFilters, SortSelect, type SortOption } from "@/features/shared/MobileFilters";
 import { useListView } from "@/features/shared/listView";
@@ -24,7 +24,7 @@ import { UnitDrawer } from "@/features/units/UnitDrawer";
 import { UnitFormModal } from "@/features/units/UnitFormModal";
 import { UnitsTable } from "@/features/units/UnitsTable";
 import { useUnits } from "@/features/units/hooks";
-import { buildUnitListRows, maintenanceNote, unitSearchText, type UnitListRow } from "@/features/units/stats";
+import { buildUnitListRows, maintenanceNote, unitSearchText, vacantListedText, type UnitListRow } from "@/features/units/stats";
 import type { Unit, UnitStatus } from "@/types/unit";
 
 type StatusFilter = "all" | UnitStatus;
@@ -92,10 +92,7 @@ export function UnitsPage() {
 
   const counts = useMemo(() => countUnits(units.data ?? []), [units.data]);
   const occ = occupancy(counts);
-  const vacantListedCents = useMemo(
-    () => sumCents(units.data?.filter((u) => u.status === "VACANT").map((u) => u.monthlyRent) ?? []),
-    [units.data],
-  );
+  const vacantListed = useMemo(() => vacantListedText(units.data ?? []), [units.data]);
   const propertyCount = scope ? 1 : (properties.data?.length ?? 0);
   const kpi = (value: ReactNode) => (ready ? value : failed ? <Dash /> : <Skeleton className="h-10 w-24" />);
 
@@ -180,7 +177,7 @@ export function UnitsPage() {
         <KpiCard
           label="Vacant"
           value={kpi(counts.VACANT)}
-          delta={ready ? { direction: "down", label: `${formatCompactCurrency(centsToAmount(vacantListedCents))} / mo listed` } : undefined}
+          delta={ready ? { direction: "down", label: vacantListed } : undefined}
         />
         <KpiCard
           label="Under maintenance"

@@ -34,6 +34,19 @@ export interface Document {
   createdAt: string;
 }
 
+/** Where a row of a unit's list comes from: the unit itself, or one of its leases. */
+export interface DocumentSource {
+  type: "UNIT" | "LEASE";
+  /** Both null for UNIT. */
+  leaseId: string | null;
+  leaseNumber: string | null;
+}
+
+/** One listed document; `source` only in a unit's list (GET /units/:id/documents?includeLeases=true). */
+export interface ListedDocument extends Document {
+  source?: DocumentSource;
+}
+
 /** GET /documents/:id/download: a signed link (no auth header) valid 5 minutes. Open it right away; never store it. */
 export interface DocumentDownload {
   url: string;

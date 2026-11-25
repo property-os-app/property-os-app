@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import { Download, Eye, FileImage, FileText, Trash2 } from "lucide-react";
 import { Badge, Button, Caption, H3, Small } from "@/components/atoms";
 import { Card, KebabMenu, ListCard, toast } from "@/components/molecules";
 import { CardList, DataTable, type Column } from "@/components/organisms";
 import { errorText } from "@/lib/api";
+import { cn } from "@/lib/cn";
 import { formatFileSize } from "@/lib/files";
 import { formatTimestampDate } from "@/lib/format";
 import { useIsMobile } from "@/lib/useIsMobile";
@@ -11,14 +13,20 @@ import { DocumentDeleteDialog } from "@/features/documents/DocumentDeleteDialog"
 import { DocumentUpload } from "@/features/documents/DocumentUpload";
 import { categoryLabel } from "@/features/documents/categories";
 import { useDocumentCategories, useDocuments, useDownloadDocument, useViewDocument } from "@/features/documents/hooks";
+import { ownerOfDocument, sourceText } from "@/features/documents/source";
 import { openBlankTab, POPUP_BLOCKED_MESSAGE } from "@/features/documents/view";
-import type { Document, DocumentOwner } from "@/types/document";
+import { textLink } from "@/features/shared/linkClass";
+import type { DocumentOwner, ListedDocument } from "@/types/document";
 
 export interface DocumentsPanelProps {
   owner: DocumentOwner;
   ownerId: string;
   /** Upload and delete (the owner record's edit permission, `canManageDocuments`). Hidden, never disabled, without it. */
   canManage: boolean;
+  /** A unit's list: delete its leases' documents (the lease permission). */
+  canManageLeases?: boolean;
+  /** A unit's list: router state for the links to the leases. */
+  leaseState?: unknown;
   /** Empty-state text, e.g. "No documents on this lease yet." */
   emptyText?: string;
 }
@@ -27,7 +35,7 @@ export interface DocumentsPanelProps {
 const NARROW_ICON_ONLY = "@max-3xl:w-8 @max-3xl:px-0";
 
 /** PDF or image icon by content type. */
-function DocIcon({ doc }: { doc: Document }) {
+function DocIcon({ doc }: { doc: ListedDocument }) {
   const Icon = doc.contentType === "application/pdf" ? FileText : FileImage;
   return (
     <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-control border border-border-subtle bg-surface-3 text-text-muted">
@@ -39,23 +47,39 @@ function DocIcon({ doc }: { doc: Document }) {
 /**
  * The documents of one lease, tenant, unit or property: upload card (with permission) and the list (DataTable from md,
  * CardList on phones, 5 states). View opens a new tab and Download saves the file, each with a fresh signed link on the
- * click (a phone card tap views); Delete confirms first.
+ * click (a phone card tap views); Delete confirms first. A unit's list has its leases' documents too: each row shows "Unit" or a
+ * link to the lease's documents, and deletes through its own record.
  */
-export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No documents yet." }: DocumentsPanelProps) {
+export function DocumentsPanel({ owner, ownerId, canManage, canManageLeases = false, leaseState, emptyText = "No documents yet." }: DocumentsPanelProps) {
   const docs = useDocuments(owner, ownerId);
   // Labels from the owner type's own list; a readable fallback while it loads (or fails), never blank.
   const categories = useDocumentCategories();
-  const label = (d: Document) => categoryLabel(categories.data, owner, d.category);
+  const list = { owner, ownerId };
+  const label = (d: ListedDocument) => categoryLabel(categories.data, ownerOfDocument(d, list).owner, d.category);
+  const canDelete = (d: ListedDocument) => (ownerOfDocument(d, list).owner === owner ? canManage : canManageLeases);
+  const source = (d: ListedDocument) =>
+    d.source?.leaseId ? (
+      // Sits on top of a phone card's stretched button.
+      <Link
+        to={`/leases/${encodeURIComponent(d.source.leaseId)}?tab=documents`}
+        state={leaseState}
+        className={cn(textLink, "pointer-events-auto relative")}
+      >
+        {sourceText(d)}
+      </Link>
+    ) : (
+      sourceText(d)
+    );
   const download = useDownloadDocument();
   const view = useViewDocument();
   const isMobile = useIsMobile();
-  const [deleting, setDeleting] = useState<Document | null>(null);
+  const [deleting, setDeleting] = useState<ListedDocument | null>(null);
 
-  const onDownload = (doc: Document) => download.mutate(doc.id, { onError: (err) => toast.error(`Couldn't download ${doc.name}`, { description: errorText(err) }) });
+  const onDownload = (doc: ListedDocument) => download.mutate(doc.id, { onError: (err) => toast.error(`Couldn't download ${doc.name}`, { description: errorText(err) }) });
   const pendingId = download.isPending ? download.variables : null;
 
   // The tab must open in the click itself (before any await) or popup blockers stop it.
-  const onView = (doc: Document) => {
+  const onView = (doc: ListedDocument) => {
     const tab = openBlankTab();
     if (!tab) {
       toast.error(`Couldn't open ${doc.name}`, { description: POPUP_BLOCKED_MESSAGE });
@@ -76,14 +100,14 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
   const state = docs.isError ? "error" : docs.isPending ? "loading" : docs.data.length === 0 ? "empty" : "ideal";
   const empty = { title: "No documents", description: canManage ? `${emptyText} Upload one above.` : emptyText };
   const error = { title: "Couldn't load documents", description: errorText(docs.error), onRetry: () => void docs.refetch() };
-  const meta = (d: Document) => `${label(d)} · ${formatFileSize(d.sizeBytes)}`;
+  const meta = (d: ListedDocument) => `${label(d)} · ${formatFileSize(d.sizeBytes)}`;
 
-  const columns: Column<Document>[] = [
+  const columns: Column<ListedDocument>[] = [
     {
       key: "name",
       header: "Document",
       cell: (d) => (
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3 py-1.5">
           <DocIcon doc={d} />
           {/* Capped in narrow panels (drawers) so long names and labels truncate instead of widening the table. */}
           <div className="flex min-w-0 flex-col gap-1 @max-3xl:max-w-[180px]">
@@ -96,6 +120,7 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
               </Badge>
               <Caption className="tabular">{formatFileSize(d.sizeBytes)}</Caption>
             </span>
+            {d.source && <Caption className="truncate">{source(d)}</Caption>}
           </div>
         </div>
       ),
@@ -144,7 +169,7 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
           >
             <span className="hidden @3xl:inline">{pendingId === d.id ? "Downloading..." : "Download"}</span>
           </Button>
-          {canManage && (
+          {canDelete(d) && (
             <Button size="sm" variant="ghost" iconOnly aria-label={`Delete ${d.name}`} onClick={() => setDeleting(d)}>
               <Trash2 size={16} strokeWidth={1.5} />
             </Button>
@@ -181,6 +206,7 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
                 { label: "Uploaded", value: formatTimestampDate(d.createdAt) },
                 { label: "By", value: d.uploadedBy.email },
               ]}
+              note={d.source ? source(d) : undefined}
               onOpen={() => onView(d)}
               openLabel={`View ${d.name}`}
               actions={
@@ -189,7 +215,7 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
                   items={[
                     { label: "View", icon: <Eye strokeWidth={1.5} />, onSelect: () => onView(d) },
                     { label: "Download", icon: <Download strokeWidth={1.5} />, onSelect: () => onDownload(d) },
-                    ...(canManage ? [{ label: "Delete", icon: <Trash2 strokeWidth={1.5} />, destructive: true, onSelect: () => setDeleting(d) }] : []),
+                    ...(canDelete(d) ? [{ label: "Delete", icon: <Trash2 strokeWidth={1.5} />, destructive: true, onSelect: () => setDeleting(d) }] : []),
                   ]}
                 />
               }
@@ -199,7 +225,7 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
       ) : (
         <DataTable columns={columns} rows={docs.data ?? []} rowKey={(d) => d.id} density="compact" caption="Documents" state={state} empty={empty} error={error} />
       )}
-      <DocumentDeleteDialog owner={owner} ownerId={ownerId} doc={deleting} onClose={() => setDeleting(null)} />
+      <DocumentDeleteDialog {...(deleting ? ownerOfDocument(deleting, list) : list)} doc={deleting} onClose={() => setDeleting(null)} />
     </div>
   );
 }

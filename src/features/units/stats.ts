@@ -1,7 +1,8 @@
 /** Numbers and notes the frontend computes for units and their active lease. All money math in integer cents. */
-import { centsToAmount, formatCurrency, toCents } from "@/lib/format";
+import { centsToAmount, formatCompactCurrency, formatCurrency, toCents } from "@/lib/format";
 import { plural, unitLayout, unitLabel } from "@/lib/labels";
 import { compareNatural } from "@/lib/sort";
+import { sumCents } from "@/features/properties/stats";
 import type { Lease } from "@/types/lease";
 import type { Unit, UnitStatus } from "@/types/unit";
 
@@ -37,18 +38,32 @@ export function maintenanceNote(rows: UnitListRow[]): string {
   return plural(list.length, "unit");
 }
 
+/** "Vacant" KPI: "$4.5K / mo listed" over the known listed rents, plus how many aren't set (never counted as $0). */
+export function vacantListedText(units: Unit[]): string {
+  const vacant = units.filter((u) => u.status === "VACANT");
+  const known = vacant.flatMap((u) => (u.monthlyRent === null ? [] : [u.monthlyRent]));
+  const unknown = vacant.length - known.length;
+  const total = known.length > 0 || unknown === 0 ? `${formatCompactCurrency(centsToAmount(sumCents(known)))} / mo listed` : null;
+  return [total, unknown > 0 ? `${unknown} not set` : null].filter(Boolean).join(" · ");
+}
+
 /** Text for searching a row: unit number, property name and every tenant on the active lease. */
 export function unitSearchText(row: UnitListRow): string[] {
   return [row.unit.unitNumber, `${unitLabel(row.unit.unitNumber)}`, row.propertyName, ...(row.active?.tenants.map((t) => t.fullName) ?? [])];
+}
+
+/** "1,250 sq ft"; null when not set. */
+export function floorAreaText(floorArea: number | null): string | null {
+  return floorArea === null ? null : `${floorArea.toLocaleString("en-US")} sq ft`;
 }
 
 /** Drawer description: "1 bd / 1 ba · 750 sq ft · Floor 3 · Listed rent $1,450.00" (null parts skipped). */
 export function unitSummary(unit: Unit): string {
   return [
     unitLayout(unit.unitType, unit.bathrooms),
-    `${unit.floorArea.toLocaleString("en-US")} sq ft`,
+    floorAreaText(unit.floorArea),
     unit.floor !== null ? `Floor ${unit.floor}` : null,
-    `Listed rent ${formatCurrency(unit.monthlyRent)}`,
+    unit.monthlyRent !== null ? `Listed rent ${formatCurrency(unit.monthlyRent)}` : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -56,8 +71,9 @@ export function unitSummary(unit: Unit): string {
 
 /* ---------- Active lease (due state, period and end notes live in features/leases/stats.ts) ---------- */
 
-/** "Current rent" card note: "$35.00 under listed rent", "$20.00 over listed rent" or "Same as listed rent". */
-export function rentDiffNote(leaseRent: string | null, listedRent: string): string {
+/** "Current rent" card note: "$35.00 under listed rent", "$20.00 over listed rent" "Same as listed rent" or "Listed rent not set". */
+export function rentDiffNote(leaseRent: string | null, listedRent: string | null): string {
+  if (listedRent === null) return "Listed rent not set";
   const diff = toCents(leaseRent) - toCents(listedRent);
   if (diff === 0) return "Same as listed rent";
   return `${formatCurrency(centsToAmount(Math.abs(diff)))} ${diff < 0 ? "under" : "over"} listed rent`;

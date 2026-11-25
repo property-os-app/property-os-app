@@ -5,7 +5,7 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 ## keys.ts
 - `leaseKeys`: `all`, `lists`, `list({ propertyId?, unitId?, status?, historical? })`, `detail(id)`, `tagSuggestions`.
 - `leaseKeys.ledger(id)`: GET /leases/:id/ledger, under `["leases"]` so every lease refresh also refreshes ledgers.
-- `LeaseListParams`: the list filters. `rentRollPrefix`: `["rent-roll"]`, invalidated after lease and money changes.
+- `LeaseListParams`: the list filters. `rentRollPrefix`: `["rent-roll"]`, invalidated after lease and money changes. `tenantId`: leases the tenant is on (primary or co-tenant).
 
 ## hooks.ts
 - `useLeases(params, { enabled? })`: GET /leases (OWNER all, manager assigned), newest first; `historical: false` leaves old leases out, `true` only old leases.
@@ -13,7 +13,7 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 - `useTagSuggestions()`: GET /leases/tag-suggestions.
 - `useLeaseDocument()`: GET /leases/:id/document as a blob (`{ id, download }`), a mutation so it runs only on a click; 409 when the lease has no template.
 - `useCreateLease()`: POST /leases (DRAFT, or status ACTIVE to create and activate in one call).
-- `useCreateOldLease()`: POST /leases/history (an old lease: ENDED + SIGNED, `isHistorical`, never billed); 409 when it overlaps another lease on the unit.
+- `useCreateOldLease()`: POST /leases/history, multipart (`{ body, file }`): the old lease (ENDED + SIGNED, `isHistorical`, never billed), its new tenants and the signed lease, all or nothing. Refreshes leases, units, tenants, rent roll and the units' documents. 409 when it overlaps another lease on the unit, or a new tenant's email exists (`TENANT_EMAIL_EXISTS`).
 - `useUpdateLease()`: PATCH /leases/:id. `useActivateLease()`: POST /leases/:id/activate. `useEndLease()`: POST /leases/:id/end. `useDeleteLease()`: DELETE /leases/:id (DRAFT and old leases, only with no documents).
 - `leaseErrorText(err)`: like `errorText`, with friendly field names in lease messages (lease page signature and tag saves).
 - `ActivateError`, `activateErrorOf(err)`: a failed activation as an InlineError (friendly missing field names; `fixable` shows "Edit lease").
@@ -22,7 +22,7 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 ## stats.ts
 - `leasePeriod` (start to `leaseEndDate`; "Cancelled Nov 25, 2026" when cancelled), `DueState`, `dueState`, `dueNote`, `leaseEndsNote`: card and tile notes (overdue = oldest unpaid due date before UTC today; a balance above $0 alone is never late).
 - `notDueCaption(lease)`: "Due Nov 1" / "Due today" under a list balance when nothing of it is late yet (e.g. rent billed early); null otherwise.
-- `primaryTenant`, `coTenants`, `isClosed` (ENDED / TERMINATED), `isPastEnd` (ACTIVE, end before UTC today), `expiresWithin(lease, days)`, `startedThisMonth`, `leaseUnitLine`, `pastEndNote`: page and drawer helpers.
+- `primaryTenant`, `coTenants`, `isClosed` (ENDED / TERMINATED), `isPastEnd` (ACTIVE, end before UTC today), `expiresWithin(lease, days)`, `startedThisMonth`, `leaseUnitLine`, `pastEndNote`: page and drawer helpers. `coTenantEmails(lease)`: for CC, without the missing ones.
 - `compareLeasesDefault`: ACTIVE by soonest end, then DRAFT newest first, then ENDED / TERMINATED latest end (`leaseEndDate`) first.
 - `isOldLease(lease)`, `hasLedger(lease)` (not DRAFT, not old), `canDeleteLease(lease, documentCount)` (DRAFT or old, and 0 documents; false while the count is unknown): the old-lease rules.
 - `activationFieldLabels`, `missingToActivate(parts)`, `leaseMissing(lease)`, `parseMissingMessage(msg)`: what activation still needs, with friendly names.
@@ -55,14 +55,18 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 - `serverErrorStep`: the step to show after a server error (field, overlap or template message: Terms, missing, ACTIVE-needs / closed: first named field).
 
 ## oldLeaseForm.ts
-- `OldLeaseValues`, `OldLeaseField`, `OldLeaseErrors`, `emptyOldLease(preset)`: the Add old lease form state.
-- `validateOldLease(values, today)`: unit, primary tenant and both dates required; end after start and before UTC today; money and tag limits.
-- `oldLeaseBody(values)`: POST /leases/history body, optional fields only when filled (money as numbers, notes trimmed); never the property.
+- `OldLeaseValues`, `OldLeaseField`, `OldLeaseErrors`, `NewTenantErrors`, `emptyOldLease(preset)`: the Add old lease form state. `OldLeaseTenant`: an `ExistingTenantRow` or a `NewTenantRow`; `primaryKey` is the primary's row. `MAX_OLD_LEASE_TENANTS` (10 in all).
+- `addExistingTenant`, `addNewTenant`, `removeTenant`, `swapForExisting`: change the rows; a single tenant is always primary, a removed primary is cleared, a swap keeps Primary.
+- `validateOldLease(values, today)`: unit, both dates, at least one tenant and one primary; new tenants need a name, a valid email when filled, no email twice; end after start and before UTC today; money and tag limits.
+- `oldLeaseBody(values)`: the JSON, optional fields only when filled (money as numbers, notes trimmed); never the property. The primary is `primaryTenantId` or one new tenant's `isPrimary`. `oldLeaseRequest(body, file)`: the multipart body (`data`, optional `file`).
 - `lastOldLeaseEnd(today)`: yesterday (UTC), the end date input's `max`.
-- `oldLeaseErrorField(message)`: where a backend message goes (dates and the 409 overlap under End date, tenant messages under Primary tenant; others at the top).
+- `oldLeaseErrorField(message)`: where a backend message goes (dates and the 409 overlap under End date, tenant messages under Tenants, file messages under the file; others at the top). `oldLeaseServerErrors(err, tenants)`: a whole failed save: `newTenants.N` messages and TENANT_EMAIL_EXISTS under that new tenant's row. `OldLeaseServerError`: its input.
 
 ## OldLeaseModal.tsx
-- `OldLeaseModal({ presetUnit, presetUnitLine, presetPropertyId, leaseFrom, onClose })`: "Add old lease": unit (locked from the unit drawer, else Property → Unit), primary tenant and co-tenants (`TenantPicker`, "Add new tenant" opens `TenantFormModal` over it), start, end (before today), rent, deposit, notes, tags, optional "Signed lease (PDF)" (`PDF_RULE`). Saves, then uploads the PDF as `SIGNED_LEASE`; if only the upload fails, the lease stays saved, an error toast says so and the lease page opens on its Documents tab. Asks before discarding a filled form.
+- `OldLeaseModal({ presetUnit, presetUnitLine, presetPropertyId, onClose })`: "Add old lease": unit (locked from the unit drawer, else Property → Unit), `OldLeaseTenants`, start, end (before today), rent, deposit, notes, tags, optional signed lease (`DOCUMENT_RULE`). One request; after saving it stays where you are with a toast. Asks before discarding a filled form.
+
+## OldLeaseTenants.tsx
+- `OldLeaseTenants({ value, onChange, errors, canAddNew })`: the tenants section: existing tenants with the searchable `Combobox`, new ones typed in place ("Add new tenant" with `tenant.create`), one Primary (`Radio`). An email someone has already offers "Use existing tenant".
 
 ## templatePrefill.ts
 - `templateEndDate({ start, end, autoEnd, months })`: the end date to write from a template's `defaultTermMonths` (start + months − 1 day), or null. Only with a start and a term, and only when the end date is empty or still the one the prefill wrote (`autoEnd`); a typed or term-button end date is never overwritten. `TemplateEndInput`: its input.
@@ -105,7 +109,7 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 - `PartiesStep`, `TermsStep`, `DepositStep`, `ReviewStep`: the 4 step bodies. `StepContext`: what they get from the wizard. Terms starts with "Lease template" (select with "No template", help says whether it sets the end date, "+ New template" action; read-only when signed or closed). Review shows the template. Terms: the due day follows the start date's day (date field and term buttons) until edited by hand; help "Rent is billed on the {nth} of each month, starting {date}." and a first-rent note when it differs from the start. Review: "Rent: {amount}, billed on the {nth} of each month, first rent {date}".
 
 ## TenantPicker.tsx
-- `TenantPicker`: primary tenant (search, results, chosen card with Change). `CoTenantPicker`: co-tenants as removable tags + search. `PickedTenant`: id, name, email.
+- `TenantPicker`: primary tenant (search, results, chosen card with Change). `CoTenantPicker`: co-tenants as removable tags + search. `PickedTenant`: id, name, email. Only the lease wizard uses it.
 
 ## TagEditor.tsx
 - `TagEditor`: tag chips with remove, "+ Add tag" input and suggestion chips; enforces the tag rules.
@@ -130,4 +134,4 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 - `templatePrefill.test.ts`: `templateEndDate` (2025-12-01 + 12 → 2026-11-30, month-end clamp, never over a hand-set end, follows a new start or another term while still prefilled).
 - `templateOptions.test.ts`: `templateOptions` (default label, pinned and newer version, archived current on top, wizard-made templates once).
 - `stats.test.ts` also covers the old-lease rules (`isOldLease`, `hasLedger`, `canDeleteLease`).
-- `oldLeaseForm.test.ts`: `validateOldLease` (required fields, end before today and after start, primary not a co-tenant), `lastOldLeaseEnd`, `oldLeaseBody` (only filled optional fields), `oldLeaseErrorField`.
+- `oldLeaseForm.test.ts`: the tenant rows and their primary, `validateOldLease`, `lastOldLeaseEnd`, `oldLeaseBody`, `oldLeaseRequest`, and where backend errors go (TENANT_EMAIL_EXISTS included).

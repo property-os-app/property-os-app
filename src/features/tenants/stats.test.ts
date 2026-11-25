@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
-import { buildTenantRows, currentLease, recentMoveOuts } from "@/features/tenants/stats";
+import { buildTenantRows, currentLease, preferredContactText, recentMoveOuts, tenantSearchText } from "@/features/tenants/stats";
 import type { Lease } from "@/types/lease";
 import type { TenantListItem } from "@/types/tenant";
 
@@ -35,6 +35,19 @@ describe("currentLease", () => {
     const active = lease({ id: "active", status: "ACTIVE" });
     expect(currentLease([cancelled(), lease({ endedOn: "2026-11-01" }), active])?.id).toBe("active");
     expect(currentLease([lease({ endedOn: "2026-11-01" }), lease({ id: "draft", status: "DRAFT" })])?.id).toBe("draft");
+  });
+});
+
+describe("tenants without an email or phone", () => {
+  it("search text keeps the name and skips the missing ones", () => {
+    const [row] = buildTenantRows([{ id: "t1", fullName: "Ann", email: null, phone: null } as TenantListItem], []);
+    expect(tenantSearchText(row)).toEqual(["Ann", null, null]);
+  });
+
+  it("the preferred contact says when it isn't there", () => {
+    expect(preferredContactText({ email: null, phone: "555", preferredContactMethod: "EMAIL" })).toBe("Email (no email on file)");
+    expect(preferredContactText({ email: "a@b.co", phone: null, preferredContactMethod: "EMAIL" })).toBe("Email");
+    expect(preferredContactText({ email: "a@b.co", phone: null, preferredContactMethod: "PHONE" })).toMatch(/\(no phone on file\)$/);
   });
 });
 

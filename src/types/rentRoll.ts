@@ -120,8 +120,8 @@ export interface RentRollYearNextLease {
 interface RentRollYearRowBase {
   /** rows=unit: LEASE when `leases` is not empty. rows=lease: VACANT_UNIT is a unit with no lease row that year. */
   kind: RentRollYearRowKind;
-  /** status is the unit's status now; monthlyRent is the listed ("market") rent. */
-  unit: { id: string; unitNumber: string; status: UnitStatus; monthlyRent: string; property: { id: string; name: string } };
+  /** status is the unit's status now; monthlyRent is the listed ("market") rent, null = not set. */
+  unit: { id: string; unitNumber: string; status: UnitStatus; monthlyRent: string | null; property: { id: string; name: string } };
   /** rows=lease: the row's lease. rows=unit: the current lease (the ACTIVE one covering today, else the latest to start). null without one. */
   lease: RentRollYearLease | null;
   totalCharged: string;

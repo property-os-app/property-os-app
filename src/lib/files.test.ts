@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { acceptOf, checkFile, DOCUMENT_RULE, formatFileSize, PDF_RULE, PHOTO_RULE } from "@/lib/files";
+import { acceptOf, checkFile, DOCUMENT_RULE, formatFileSize, PHOTO_RULE } from "@/lib/files";
 
 const MB = 1024 * 1024;
 const file = (name: string, size: number, type: string) => ({ name, size, type });
@@ -28,11 +28,6 @@ describe("checkFile", () => {
     expect(checkFile(file("p.png", 5 * MB + 1, "image/png"), PHOTO_RULE)).toBe("This file is too large (5.0 MB). The limit is 5 MB.");
     expect(checkFile(file("p.pdf", 10, "application/pdf"), PHOTO_RULE)).toBe("This file type isn't allowed. Choose a JPEG, PNG or WebP file.");
   });
-
-  it("signed lease: PDF only", () => {
-    expect(checkFile(file("lease.pdf", 10, "application/pdf"), PDF_RULE)).toBeNull();
-    expect(checkFile(file("lease.png", 10, "image/png"), PDF_RULE)).toBe("This file type isn't allowed. Choose a PDF file.");
-  });
 });
 
 describe("formatFileSize", () => {
@@ -46,6 +41,6 @@ describe("formatFileSize", () => {
 
 describe("acceptOf", () => {
   it("lists MIME types and extensions", () => {
-    expect(acceptOf(PDF_RULE)).toBe("application/pdf,.pdf");
+    expect(acceptOf(DOCUMENT_RULE)).toBe("application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png");
   });
 });

@@ -24,16 +24,19 @@ export class ApiError extends Error {
   readonly messages: string[];
   /** Backend "error" field, e.g. "Bad Request". */
   readonly error?: string;
-  /** Backend "code" field. Only the auth errors have one, FORBIDDEN_PERMISSION included (see AuthErrorCode in types/auth.ts). */
+  /** Backend "code" field: the auth errors, FORBIDDEN_PERMISSION included (see AuthErrorCode in types/auth.ts), and TENANT_EMAIL_EXISTS. */
   readonly code?: string;
+  /** The whole JSON error body, for errors that carry more (409 TENANT_EMAIL_EXISTS: `tenant`, `newTenantIndex`). */
+  readonly details?: unknown;
 
-  constructor(status: number, messages: string[], error?: string, code?: string) {
+  constructor(status: number, messages: string[], error?: string, code?: string, details?: unknown) {
     super(messages.join(" ") || error || `Request failed (${status})`);
     this.name = "ApiError";
     this.status = status;
     this.messages = messages;
     this.error = error;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -185,6 +188,7 @@ function toApiError(res: Response, data: unknown): ApiError {
     friendlyMessages(res.status, code, messages),
     typeof obj.error === "string" ? obj.error : res.statusText || undefined,
     code,
+    obj,
   );
 }
 

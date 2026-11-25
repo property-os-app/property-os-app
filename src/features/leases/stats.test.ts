@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canDeleteLease, dueState, hasLedger, isOldLease, notDueCaption } from "@/features/leases/stats";
+import { canDeleteLease, coTenantEmails, dueState, hasLedger, isOldLease, notDueCaption } from "@/features/leases/stats";
 import type { Lease } from "@/types/lease";
 
 const TODAY = "2026-10-24";
@@ -26,6 +26,14 @@ describe("dueState: a balance above $0 is not late by itself", () => {
   it("credit and nothing owed", () => {
     expect(dueState(lease("-50.00", null), TODAY)).toEqual({ kind: "credit" });
     expect(dueState(lease("0.00", null), TODAY)).toEqual({ kind: "none" });
+  });
+});
+
+describe("coTenantEmails", () => {
+  it("leaves out the primary and co-tenants without an email", () => {
+    const t = (fullName: string, email: string | null, isPrimary = false) => ({ id: fullName, fullName, email, isPrimary });
+    expect(coTenantEmails({ tenants: [t("Ann", "ann@example.com", true), t("Bo", null), t("Cy", "cy@example.com")] })).toEqual(["cy@example.com"]);
+    expect(coTenantEmails({ tenants: [t("Ann", null, true)] })).toEqual([]);
   });
 });
 

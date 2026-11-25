@@ -15,7 +15,7 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 ## api.ts
 - `apiFetch<T>(path, { method, body, query, signal })`: calls `VITE_API_URL + path`, adds `Authorization: Bearer <token>` when signed in, sends `body` as JSON, builds the query string (skips undefined, null, ""), returns `undefined` for 204 or empty bodies.
 - `form` option (FormData): sent as multipart/form-data with no Content-Type set by hand (the browser adds the boundary); used for document uploads and the property photo. Errors (400, 403, 404, 409, 413, 415) are `ApiError`s like any other.
-- `ApiError`: thrown on error responses: `status`, `messages: string[]` (backend message is a string or an array), `error`, `code` (only on the 6 auth errors, e.g. `INVALID_TOKEN`, `FORBIDDEN_PERMISSION`; switch on it, never on message text). `status` 0 means the server could not be reached.
+- `ApiError`: thrown on error responses: `status`, `messages: string[]` (backend message is a string or an array), `error`, `code` (only on the 6 auth errors, e.g. `INVALID_TOKEN`, `FORBIDDEN_PERMISSION`; switch on it, never on message text). `status` 0 means the server could not be reached. `details`: the whole JSON error body (409 `TENANT_EMAIL_EXISTS` has `tenant` and `newTenantIndex`).
 - `errorText(err)`: one display text for any error.
 - Friendly texts instead of the backend's: `OFFLINE_MESSAGE` (status 0: server unreachable, or Firebase `auth/network-request-failed` while getting the token), `SERVER_ERROR_MESSAGE` (any 5xx), `FORBIDDEN_MESSAGE` (403 `FORBIDDEN_ROLE`). Other errors keep the backend message, so 403 `FORBIDDEN_PERMISSION` says which switch to ask the owner for.
 - `ApiFetchOptions`: options type.
@@ -88,7 +88,7 @@ Links that open the user's own phone and email apps (no backend).
 - `unitLayout(unitType, bathrooms)`: "1 bd / 1 ba", "Studio / 1 ba", or "3 bd" when bathrooms is null.
 
 ## files.ts
-- `FileRule`: allowed types (MIME and extensions), inclusive byte limit and the words for messages. `DOCUMENT_RULE` (PDF, JPEG, PNG, 20 MB), `PDF_RULE` (the old lease's signed copy), `PHOTO_RULE` (JPEG, PNG, WebP, 5 MB).
+- `FileRule`: allowed types (MIME and extensions), inclusive byte limit and the words for messages. `DOCUMENT_RULE` (PDF, JPEG, PNG, 20 MB), `PHOTO_RULE` (JPEG, PNG, WebP, 5 MB).
 - `checkFile(file, rule)`: null or a message (wrong type; extension used when the browser gives no type; empty; too large). The backend checks the real content again (415).
 - `acceptOf(rule)`: the file input `accept` value. `formatFileSize(bytes)`: "980 B", "482 KB", "2.3 MB".
 

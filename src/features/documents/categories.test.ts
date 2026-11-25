@@ -6,6 +6,7 @@ import type { DocumentCategories } from "@/types/document";
 const CATEGORIES: DocumentCategories = {
   lease: [
     { value: "SIGNED_LEASE", label: "Signed lease" },
+    { value: "PET_AGREEMENT", label: "Pet agreement" },
     { value: "INSPECTION", label: "Other inspection" },
     { value: "OTHER", label: "Other" },
   ],
@@ -26,7 +27,7 @@ const CATEGORIES: DocumentCategories = {
 
 describe("categoryOptions", () => {
   it("gives the owner type's own list in the API order", () => {
-    expect(categoryOptions(CATEGORIES, "leases").map((c) => c.value)).toEqual(["SIGNED_LEASE", "INSPECTION", "OTHER"]);
+    expect(categoryOptions(CATEGORIES, "leases").map((c) => c.value)).toEqual(["SIGNED_LEASE", "PET_AGREEMENT", "INSPECTION", "OTHER"]);
     expect(categoryOptions(CATEGORIES, "units").map((c) => c.value)).toEqual(["INSPECTION", "OLD_LEASE", "OTHER"]);
     expect(categoryOptions(CATEGORIES, "properties")[0].label).toBe("Service contract (snow, lawn, etc.)");
   });

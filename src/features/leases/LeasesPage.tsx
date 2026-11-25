@@ -327,7 +327,7 @@ function LeasesList() {
       </div>
 
       {adding && <LeaseWizard onClose={() => setAdding(false)} />}
-      {addingOld && <OldLeaseModal presetPropertyId={scope ?? undefined} leaseFrom={{ from: "leases" }} onClose={() => setAddingOld(false)} />}
+      {addingOld && <OldLeaseModal presetPropertyId={scope ?? undefined} onClose={() => setAddingOld(false)} />}
       {editLease && <LeaseWizard lease={editLease} onClose={() => setEditLease(null)} />}
       {endLease && <LeaseEndModal lease={endLease} onClose={() => setEndLease(null)} />}
       <LeaseDeleteDialog lease={deleteLease} onClose={() => setDeleteLease(null)} />

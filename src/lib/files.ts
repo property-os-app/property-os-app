@@ -21,9 +21,6 @@ export const DOCUMENT_RULE: FileRule = {
   maxText: "20 MB",
 };
 
-/** The signed copy picked in the Add old lease form: PDF only, max 20 MB. */
-export const PDF_RULE: FileRule = { types: { "application/pdf": ["pdf"] }, maxBytes: 20 * MB, typesText: "PDF", maxText: "20 MB" };
-
 /** The property cover photo: JPEG, PNG or WebP, max 5 MB. */
 export const PHOTO_RULE: FileRule = {
   types: { "image/jpeg": ["jpg", "jpeg"], "image/png": ["png"], "image/webp": ["webp"] },

@@ -25,7 +25,10 @@ Pieces of the detail pages (`/properties/:id`, `/leases/:id`).
 - `RentReminderInput`, `RentReminderLinks`: its types.
 
 ## ContactLink.tsx
-- `ContactLink({ kind, value, wrap })`: a tenant's phone (`tel:` via `telHref`) or email (`mailto:` via `mailtoHref`) as a link to the user's own phone / email app, plus a 28px copy button (44px tap area) that shows "Phone number copied" / "Email copied" (`copyText`, works on plain http too; "Couldn't copy" info toast if both ways fail). Clicks and keys stop there, so it never opens the card or table row it sits in; `pointer-events-auto` makes it tappable inside a `ListCard`. Truncates with a tooltip, or wraps with `wrap`. Dash when empty. Used by the Tenants table, cards and drawer, the lease Tenants tab and the unit drawer.
+- `ContactLink({ kind, value, wrap, empty })` (`empty`: shown without a value, a dash by default): a tenant's phone (`tel:` via `telHref`) or email (`mailto:` via `mailtoHref`) as a link to the user's own phone / email app, plus a 28px copy button (44px tap area) that shows "Phone number copied" / "Email copied" (`copyText`, works on plain http too; "Couldn't copy" info toast if both ways fail). Clicks and keys stop there, so it never opens the card or table row it sits in; `pointer-events-auto` makes it tappable inside a `ListCard`. Truncates with a tooltip, or wraps with `wrap`. Dash when empty. Used by the Tenants table, cards and drawer, the lease Tenants tab and the unit drawer.
+
+## Missing.tsx
+- `NotSet`: muted "Not set" (a unit's null rent or floor area). `NotProvided({ what })`: muted "Not provided", or "Email not provided" where there is no label.
 
 ## ContactActions.tsx
 - `ContactActions({ name, phone, email })`: `ContactLink` as icon buttons: call (`tel:`), email (`mailto:`) and a ⋮ menu with "Copy phone number" / "Copy email". What is missing is left out; a phone without digits can only be copied. 44px on phones; sits on top of a row's stretched button. Used by the lease page's People card. `ContactActionsProps`.

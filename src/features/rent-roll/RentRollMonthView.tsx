@@ -19,7 +19,7 @@ import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
 import { useProperties } from "@/features/properties/hooks";
 import { useRentRoll } from "@/features/rent-roll/hooks";
 import { useLeases } from "@/features/leases/hooks";
-import { coTenants } from "@/features/leases/stats";
+import { coTenantEmails } from "@/features/leases/stats";
 import { rentReminderLinks } from "@/features/shared/rentReminder";
 import { useTenants } from "@/features/tenants/hooks";
 import { RentRollTable, type RowReminder } from "@/features/rent-roll/RentRollTable";
@@ -137,7 +137,7 @@ export function RentRollMonthView() {
         rentReminderLinks({
           tenantName: tenant.fullName,
           email: tenant.email,
-          cc: lease ? coTenants(lease).map((t) => t.email).filter(Boolean) : [],
+          cc: lease ? coTenantEmails(lease) : [],
           phone: tenant.phone,
           propertyName: r.unit.property.name,
           unitNumber: r.unit.unitNumber,

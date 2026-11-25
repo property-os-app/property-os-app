@@ -3,19 +3,21 @@ import { toast } from "@/components/molecules";
 import { ApiError, apiFetch, apiFetchBlob, errorText, type ApiBlob } from "@/lib/api";
 import { friendlyLeaseMessage, parseMissingMessage } from "@/features/leases/stats";
 import { leaseKeys, rentRollPrefix, type LeaseListParams } from "@/features/leases/keys";
+import { documentKeys } from "@/features/documents/keys";
+import { oldLeaseRequest } from "@/features/leases/oldLeaseForm";
 import { tenantKeys } from "@/features/tenants/keys";
 import { unitKeys } from "@/features/units/keys";
-import type { Lease, LeaseCreateBody, LeaseEndBody, LeaseHistoryBody, LeaseUpdateBody } from "@/types/lease";
+import type { Lease, LeaseCreateBody, LeaseEndBody, LeaseHistoryBody, LeaseUpdateBody, OldLeaseCreated } from "@/types/lease";
 import { unitLabel } from "@/lib/labels";
 
 const leasePath = (id: string) => `/leases/${encodeURIComponent(id)}`;
 
-/** GET /leases (?propertyId=&unitId=&status=&historical=): OWNER sees all, PROPERTY_MANAGER only assigned. Newest first. */
+/** GET /leases (?propertyId=&unitId=&tenantId=&status=&historical=): OWNER sees all, PROPERTY_MANAGER only assigned. Newest first. */
 export function useLeases(params: LeaseListParams = {}, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: leaseKeys.list(params),
     queryFn: ({ signal }) =>
-      apiFetch<Lease[]>("/leases", { query: { propertyId: params.propertyId, unitId: params.unitId, status: params.status, historical: params.historical }, signal }),
+      apiFetch<Lease[]>("/leases", { query: { propertyId: params.propertyId, unitId: params.unitId, tenantId: params.tenantId, status: params.status, historical: params.historical }, signal }),
     enabled: options.enabled,
   });
 }
@@ -65,12 +67,19 @@ export function useCreateLease() {
   });
 }
 
-/** POST /leases/history: an old lease (ENDED + SIGNED, isHistorical). 400 dates, 409 when it overlaps another lease on the unit. */
+/**
+ * POST /leases/history (multipart): an old lease (ENDED + SIGNED, isHistorical), its new tenants and the signed lease, all or
+ * nothing. 400 dates and tenants, 409 when it overlaps another lease on the unit or a new tenant's email exists.
+ */
 export function useCreateOldLease() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: LeaseHistoryBody) => apiFetch<Lease>("/leases/history", { method: "POST", body }),
-    onSuccess: () => refreshAfterLeaseChange(qc),
+    mutationFn: ({ body, file }: { body: LeaseHistoryBody; file: File | null }) =>
+      apiFetch<OldLeaseCreated>("/leases/history", { method: "POST", form: oldLeaseRequest(body, file) }),
+    onSuccess: () => {
+      refreshAfterLeaseChange(qc);
+      void qc.invalidateQueries({ queryKey: documentKeys.units });
+    },
   });
 }
 

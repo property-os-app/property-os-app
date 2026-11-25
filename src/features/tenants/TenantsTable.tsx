@@ -5,6 +5,7 @@ import { KebabMenu, ListCard, type MenuItem } from "@/components/molecules";
 import { CardList, DataTable, type Column, type DataTableProps } from "@/components/organisms";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { ContactLink } from "@/features/shared/ContactLink";
+import { NotProvided } from "@/features/shared/Missing";
 import { BalanceValue, RentStatusBadge, TenantLeaseBadge } from "@/features/tenants/TenantParts";
 import { rentStatus, unitLine, type TenantRow } from "@/features/tenants/stats";
 import { unitLabel } from "@/lib/labels";
@@ -45,7 +46,7 @@ export function TenantsTable({ onOpen, onEdit, onDelete, ...props }: Props) {
             <div className="min-w-0">
               <div className="truncate font-semibold">{tenant.fullName}</div>
               <Caption className="block max-w-64 truncate">
-                <ContactLink kind="email" value={tenant.email} />
+                <ContactLink kind="email" value={tenant.email} empty={<NotProvided what="Email" />} />
               </Caption>
             </div>
           </div>
@@ -53,7 +54,7 @@ export function TenantsTable({ onOpen, onEdit, onDelete, ...props }: Props) {
       },
       { key: "phone", header: "Phone", cell: ({ tenant }) => (
           <Small>
-            <ContactLink kind="phone" value={tenant.phone} />
+            <ContactLink kind="phone" value={tenant.phone} empty={<NotProvided />} />
           </Small>
         ),
       },
@@ -119,10 +120,10 @@ export function TenantsTable({ onOpen, onEdit, onDelete, ...props }: Props) {
               strip={rentStatus(current) === "overdue"}
               facts={[
                 { label: "Rent status", value: <RentStatusBadge lease={current} /> },
-                { label: "Phone", value: <ContactLink kind="phone" value={tenant.phone} /> },
+                { label: "Phone", value: <ContactLink kind="phone" value={tenant.phone} empty={<NotProvided />} /> },
               ]}
               // Email on its own line: a third of the card would cut most addresses off.
-              note={<ContactLink kind="email" value={tenant.email} />}
+              note={<ContactLink kind="email" value={tenant.email} empty={<NotProvided what="Email" />} />}
               actions={menu(row)}
             />
           );

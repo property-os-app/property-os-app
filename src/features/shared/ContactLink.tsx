@@ -1,4 +1,4 @@
-import type { SyntheticEvent } from "react";
+import type { ReactNode, SyntheticEvent } from "react";
 import { Copy } from "lucide-react";
 import { Button, Dash } from "@/components/atoms";
 import { cn } from "@/lib/cn";
@@ -11,6 +11,8 @@ export interface ContactLinkProps {
   value: string | null | undefined;
   /** Wrap a long value onto more lines (drawer details) instead of cutting it off with an ellipsis. */
   wrap?: boolean;
+  /** Shown instead of the link when there is no value. Default: a dash. */
+  empty?: ReactNode;
   className?: string;
 }
 
@@ -23,11 +25,11 @@ const stop = (e: SyntheticEvent) => e.stopPropagation();
  * A phone (tel:) or email (mailto:) link that opens the user's own phone or email app, and a copy button next to it
  * ("Phone number copied" toast; works on plain http too, see copyWithToast). Neither opens the card or row it sits in;
  * `pointer-events-auto relative` lets it be tapped inside a ListCard. Text color and size come from the parent.
- * Dash when empty; plain text when a phone has no digits.
+ * `empty` (a dash) without a value; plain text when a phone has no digits.
  */
-export function ContactLink({ kind, value, wrap, className }: ContactLinkProps) {
+export function ContactLink({ kind, value, wrap, empty = <Dash />, className }: ContactLinkProps) {
   const text = value?.trim() ?? "";
-  if (!text) return <Dash />;
+  if (!text) return <>{empty}</>;
   const href = kind === "phone" ? telHref(text) : mailtoHref({ to: text });
   const label = LABELS[kind];
 

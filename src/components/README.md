@@ -27,6 +27,7 @@ Small building blocks with no domain knowledge.
 | `Input`, `Textarea` | Text fields; 16px text under md (no iPhone zoom), 14px from md | `invalid`, `mobile` (Input) | Form fields, inside `FormField`. |
 | `Select` | Native select with chevron | `invalid`, `<option>` children | Single choice from a short list. |
 | `CurrencyInput` | "$" prefix, right-aligned, formats on blur; digits and one dot, max 2 decimals, never `NaN` | `value: number \| ""`, `onChange(number \| "")` | Money inputs (rent, deposit, payment). Use with react-hook-form `Controller`. |
+| `Radio` | Styled radio button with label | `label`, native radio props (same `name` in a group, inside a labelled `role="radiogroup"`) | One choice among rows, e.g. the primary tenant. |
 | `Checkbox` | Styled checkbox with label | `label`, native checkbox props | Yes/no inside a form. |
 | `Toggle` | 40×22 switch | `checked`, `onChange(boolean)`, needs `aria-label` | On/off settings (auto-renew). |
 | `Kbd` | Keyboard hint (⌘K) | - | Shortcut hints. |
@@ -143,7 +144,7 @@ Page layouts.
 Based on docs/BRIEF.md (admin portal: login, Properties, Units, Tenants, Leases, Rent Roll; Dashboard is a bonus).
 
 **Used**
-- Atoms: Button, LinkButton, Badge, Tag, Count, Delta, Typography (H1-H3, Body, Small, Caption, Overline, Display, Num, Dash), Input, Textarea, Select, CurrencyInput, Checkbox, Toggle, Avatar, Skeleton, Divider, CollectionProgress, Bar
+- Atoms: Button, LinkButton, Badge, Tag, Count, Delta, Typography (H1-H3, Body, Small, Caption, Overline, Display, Num, Dash), Input, Textarea, Select, CurrencyInput, Checkbox, Radio, Toggle, Avatar, Skeleton, Divider, CollectionProgress, Bar
 - Molecules: StatusBadge, FormField, SearchInput, SegmentedControl, Tabs, FilterChip, Card, CardHeader, KpiCard, HeroStatCard, KeyValueList, EmptyState, InlineError, Toaster + toast, KebabMenu, Stepper (Add Lease wizard), ThemeSwitch (Topbar), TimelineItem (ticket history)
 - Organisms: Sidebar, Topbar, PageHeader, Toolbar, KpiRow, DataTable, Pagination, Drawer, Modal, ConfirmDialog, BarChart, StackedBar
 - Templates: WorkspaceShell, AuthLayout, SettingsLayout
@@ -265,3 +266,4 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | 2026-11-24 | `organisms/SpreadsheetTable.tsx` | The pinned-right column's shadow shows only while the table is wider than its box (`data-scroll-x`); its border stays. | Yearly rent roll polish: the shadow darkened December although nothing scrolled. |
 | 2026-11-25 | `atoms/Progress.tsx` (`Bar`) | New `tone="neutral"`, and optional `label` + `valueText` that give it `role="progressbar"` with a name and a spoken value. Without them nothing changes. `BarProps` exported. | The lease page's Term card needs a grey bar for ended leases and a bar screen readers can read. |
 | 2026-11-25 | `molecules/StatusBadge.tsx` | lease domain: new UI-only `CANCELLED`, neutral "Cancelled". The others unchanged. | A lease ended before it started (`cancelledOn`) must not read as Ended or Terminated. |
+| 2026-11-25 | `atoms/Input.tsx` | New `Radio` (`RadioProps`): a round `Checkbox`, same sizes, colors and focus ring. Nothing else changed. | Add old lease: exactly one Primary among the tenant rows; there was no radio button. |

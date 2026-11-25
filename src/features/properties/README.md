@@ -45,7 +45,7 @@ Numbers the frontend computes (money in integer cents). The API gives only `unit
 - `PropertyPhoto({ property, canEdit })`: the page header photo with "Add photo" / "Change photo" (hidden file input, `checkFile(PHOTO_RULE)` first: JPEG, PNG, WebP, max 5 MB) and "Remove photo" (ConfirmDialog) for `property.edit`; "Uploading..." over the image; errors as toasts.
 
 ## PropertyUnitsTable.tsx
-- `PropertyUnitsTable`: units with tenant, rent, lease and status (expiring leases show "Expiring"); 25 per page; optional `onRowClick`. On phones flat cards inside the parent card (unit, type · sq ft, status, Tenant / Lease, Rent); the card is a button that opens the unit drawer.
+- `PropertyUnitsTable`: units with tenant, rent, lease and status (expiring leases show "Expiring"); 25 per page; optional `onRowClick`. On phones flat cards inside the parent card (unit, type · sq ft, status, Tenant / Lease, Rent); the card is a button that opens the unit drawer. A null listed rent shows "Not set"; a null floor area is left out.
 
 ## PropertyManagersCard.tsx
 - `PropertyManagersCard`: assigned managers with emails (GET /properties/:id/managers); OWNER can Remove (ConfirmDialog) and Assign from GET /managers. Shows backend 400 / 409 messages.

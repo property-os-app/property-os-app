@@ -4,8 +4,8 @@ import { compareNatural } from "@/lib/sort";
 import { leaseEndDate } from "@/features/leases/leaseEnd";
 import { dueState } from "@/features/leases/stats";
 import type { Lease } from "@/types/lease";
-import type { TenantListItem } from "@/types/tenant";
-import { unitLabel } from "@/lib/labels";
+import type { Tenant, TenantListItem } from "@/types/tenant";
+import { contactMethodLabels, unitLabel } from "@/lib/labels";
 
 /** One tenant with every visible lease they are on and their current lease. */
 export interface TenantRow {
@@ -90,8 +90,8 @@ export function unitLine(lease: Lease | undefined): string | null {
   return lease ? `${unitLabel(lease.unit.unitNumber)}, ${lease.unit.property.name}` : null;
 }
 
-/** Texts the search box looks in: name, email, phone, unit number and property of the current lease. */
-export function tenantSearchText(row: TenantRow): string[] {
+/** Texts the search box looks in (null = the tenant has none): name, email, phone, unit number and property of the current lease. */
+export function tenantSearchText(row: TenantRow): (string | null)[] {
   const { tenant, current } = row;
   return [
     tenant.fullName,
@@ -99,6 +99,13 @@ export function tenantSearchText(row: TenantRow): string[] {
     tenant.phone,
     ...(current ? [current.unit.unitNumber, `${unitLabel(current.unit.unitNumber)}`, current.unit.property.name] : []),
   ];
+}
+
+/** "Email", or "Email (no email on file)" when the preferred way isn't there (the API allows it). */
+export function preferredContactText(t: Pick<Tenant, "email" | "phone" | "preferredContactMethod">): string {
+  const label = contactMethodLabels[t.preferredContactMethod];
+  if (t.preferredContactMethod === "EMAIL") return t.email ? label : `${label} (no email on file)`;
+  return t.phone ? label : `${label} (no phone on file)`;
 }
 
 /* ---------- KPIs ---------- */
