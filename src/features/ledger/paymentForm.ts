@@ -1,5 +1,6 @@
 /** The Record Payment request, and what to do when its reply is lost. No API import, so it is unit-testable. */
 import { toCents } from "@/lib/format";
+import { isFileError } from "@/features/documents/form";
 import type { DocumentCategoryOption } from "@/types/document";
 import type { LedgerEntry, PaymentCreateBody, PaymentRecorded } from "@/types/ledger";
 
@@ -63,6 +64,6 @@ export function findPayment(entries: LedgerEntry[], body: PaymentCreateBody, kno
 
 /** "file" / "documentCategory" when a backend message is about the receipt (400, 413, 415), else null. */
 export function receiptErrorField(message: string, status: number): "file" | "documentCategory" | null {
-  if (status === 413 || status === 415 || message.startsWith("file ") || message.startsWith("File too large")) return "file";
+  if (isFileError(message, status)) return "file";
   return message.startsWith("documentCategory") ? "documentCategory" : null;
 }

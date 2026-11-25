@@ -3,6 +3,7 @@
  * rules.md (History-only lease) and API.md (POST /leases/history). No API import, so it is unit-testable.
  */
 import { addDaysISO, centsToAmount, parseDateOnly, todayUTC, toCents } from "@/lib/format";
+import { isFileError } from "@/features/documents/form";
 import { MAX_TAGS } from "@/features/leases/stats";
 import { EMAIL_MESSAGE, isEmailOrEmpty } from "@/features/tenants/form";
 import type { LeaseHistoryBody, NewLeaseTenant } from "@/types/lease";
@@ -205,11 +206,11 @@ export function oldLeaseRequest(body: LeaseHistoryBody, file: File | null): Form
 /* ---------- Backend errors ---------- */
 
 /** The field a backend message belongs under, or null for the top of the form. Dates (400 end date, 409 overlap) go under End date. */
-export function oldLeaseErrorField(message: string): OldLeaseField | null {
+export function oldLeaseErrorField(message: string, status: number): OldLeaseField | null {
+  if (isFileError(message, status)) return "file";
   if (message.startsWith("endDate") || message.startsWith("Unit already has a lease")) return "endDate";
   if (message.startsWith("startDate")) return "startDate";
   if (/^(Tenant|primaryTenantId|coTenantIds|newTenants|each value in coTenantIds|At least one tenant|Exactly one tenant)/.test(message)) return "tenants";
-  if (message.startsWith("file ") || message.startsWith("File too large")) return "file";
   if (message.startsWith("rent ")) return "rent";
   if (message.startsWith("deposit")) return "deposit";
   if (message.startsWith("tags") || message.startsWith("each value in tags")) return "tags";
@@ -259,10 +260,8 @@ export function oldLeaseServerErrors(err: OldLeaseServerError, tenants: OldLease
       byRow[row.key] = { ...byRow[row.key], [field]: [byRow[row.key]?.[field], text].filter(Boolean).join(" ") };
     } else if (twiceRow) {
       byRow[twiceRow.key] = { ...byRow[twiceRow.key], email: "Another new tenant has this email." };
-    } else if (err.status === 413) {
-      errors.file = "File too large (max 20 MB).";
     } else {
-      const field = oldLeaseErrorField(message);
+      const field = oldLeaseErrorField(message, err.status);
       if (field) errors[field] = [errors[field], message].filter(Boolean).join(" ");
       else top.push(message);
     }

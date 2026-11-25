@@ -1,6 +1,6 @@
 import { Select } from "@/components/atoms";
 import { FileDropzone, FormField } from "@/components/molecules";
-import { acceptOf, checkFile, DOCUMENT_RULE } from "@/lib/files";
+import { acceptOf, checkFile, DOCUMENT_HINT, DOCUMENT_RULE } from "@/lib/files";
 import { categoryOptions } from "@/features/documents/categories";
 import { PickedFile } from "@/features/documents/DocumentUpload";
 import { useDocumentCategories } from "@/features/documents/hooks";
@@ -52,7 +52,7 @@ export function ReceiptField({ value, onChange, errors, onErrors, disabled }: Re
         <FileDropzone
           multiple={false}
           accept={acceptOf(DOCUMENT_RULE)}
-          hint={`Optional. ${DOCUMENT_RULE.typesText}, up to ${DOCUMENT_RULE.maxText}`}
+          hint={`Optional. ${DOCUMENT_HINT}`}
           chooseLabel="Choose file"
           onFiles={pick}
           disabled={disabled}

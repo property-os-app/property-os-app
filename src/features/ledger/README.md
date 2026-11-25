@@ -12,7 +12,7 @@ The lease ledger (lease page, Ledger tab): charges, payments, voids and re-entri
 ## paymentForm.ts
 - `paymentRequest(body, file, category)`: JSON, or multipart with a file (`data` with `documentCategory` inside, and `file`). `ReceiptValue`, `receiptCategory(value, options)`: the picked receipt and the category to send (Receipt by default).
 - `isUnclearReply(status)` (no answer or 5xx), `isPaymentAnswer(value)`, `findPayment(entries, body, known)` (the sent payment in the reloaded ledger), `UNCLEAR_PAYMENT_MESSAGE`.
-- `receiptErrorField(message, status)`: messages that go under the receipt (file or category).
+- `receiptErrorField(message, status)`: messages that go under the receipt (file, by `isFileError`, or category).
 
 ## proration.ts
 - `RentProration`, `rentProration(lease, month)`: covered dates, days, days in month, full and prorated cents (rent x days / days in month, nearest cent, integer math), and whether the month's due date is outside the term. null when the lease covers the whole month.

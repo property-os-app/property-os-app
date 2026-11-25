@@ -60,7 +60,7 @@ describe("a lost or unclear reply", () => {
 describe("receiptErrorField", () => {
   it("file and category messages go to the receipt, the rest stays", () => {
     expect(receiptErrorField("File too large", 413)).toBe("file");
-    expect(receiptErrorField("file must be a PDF, JPEG or PNG file", 415)).toBe("file");
+    expect(receiptErrorField("Password-protected files are not supported", 415)).toBe("file");
     expect(receiptErrorField("file is empty", 400)).toBe("file");
     expect(receiptErrorField("documentCategory must be one of RECEIPT, OTHER", 400)).toBe("documentCategory");
     expect(receiptErrorField("amount must be greater than 0", 400)).toBeNull();

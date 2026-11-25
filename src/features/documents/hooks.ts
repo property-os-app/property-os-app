@@ -82,7 +82,7 @@ export function useDownloadDocument() {
   });
 }
 
-/** An upload error for the form: 413 names the limit ("File too large (max 20 MB)."); everything else is the backend message. */
+/** A photo upload error: 413 names the limit ("File too large (max 5 MB)."); everything else is the backend message. Documents show the messages as they are (`isFileError`). */
 export function uploadErrorText(err: unknown, rule: FileRule): string {
   if (err instanceof ApiError && err.status === 413) return `File too large (max ${rule.maxText}).`;
   return errorText(err);

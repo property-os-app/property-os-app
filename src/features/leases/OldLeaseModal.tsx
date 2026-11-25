@@ -3,7 +3,7 @@ import { Button, Caption, CurrencyInput, Input, Select, Textarea } from "@/compo
 import { FileDropzone, FormField, InlineError, toast } from "@/components/molecules";
 import { Modal } from "@/components/organisms";
 import { ApiError, errorText } from "@/lib/api";
-import { acceptOf, checkFile, DOCUMENT_RULE } from "@/lib/files";
+import { acceptOf, checkFile, DOCUMENT_HINT, DOCUMENT_RULE } from "@/lib/files";
 import { unitLabel, unitStatusLabels } from "@/lib/labels";
 import { compareNatural } from "@/lib/sort";
 import { useAuth } from "@/features/auth/authContext";
@@ -228,7 +228,7 @@ export function OldLeaseModal({ presetUnit, presetUnitLine, presetPropertyId, on
               }}
             />
           ) : (
-            <FileDropzone multiple={false} accept={acceptOf(DOCUMENT_RULE)} hint={`Optional. ${DOCUMENT_RULE.typesText}, up to ${DOCUMENT_RULE.maxText}`} chooseLabel="Choose file" onFiles={pickFile} disabled={busy} />
+            <FileDropzone multiple={false} accept={acceptOf(DOCUMENT_RULE)} hint={`Optional. ${DOCUMENT_HINT}`} chooseLabel="Choose file" onFiles={pickFile} disabled={busy} />
           )}
           {errors.file ? (
             <span role="alert" className="text-small text-danger">

@@ -60,7 +60,7 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 - `validateOldLease(values, today)`: unit, both dates, at least one tenant and one primary; new tenants need a name, a valid email when filled, no email twice; end after start and before UTC today; money and tag limits.
 - `oldLeaseBody(values)`: the JSON, optional fields only when filled (money as numbers, notes trimmed); never the property. The primary is `primaryTenantId` or one new tenant's `isPrimary`. `oldLeaseRequest(body, file)`: the multipart body (`data`, optional `file`).
 - `lastOldLeaseEnd(today)`: yesterday (UTC), the end date input's `max`.
-- `oldLeaseErrorField(message)`: where a backend message goes (dates and the 409 overlap under End date, tenant messages under Tenants, file messages under the file; others at the top). `oldLeaseServerErrors(err, tenants)`: a whole failed save: `newTenants.N` messages and TENANT_EMAIL_EXISTS under that new tenant's row. `OldLeaseServerError`: its input.
+- `oldLeaseErrorField(message, status)`: where a backend message goes (dates and the 409 overlap under End date, tenant messages under Tenants, file messages (any 413 or 415) under the file; others at the top). `oldLeaseServerErrors(err, tenants)`: a whole failed save: `newTenants.N` messages and TENANT_EMAIL_EXISTS under that new tenant's row. `OldLeaseServerError`: its input.
 
 ## OldLeaseModal.tsx
 - `OldLeaseModal({ presetUnit, presetUnitLine, presetPropertyId, onClose })`: "Add old lease": unit (locked from the unit drawer, else Property → Unit), `OldLeaseTenants`, start, end (before today), rent, deposit, notes, tags, optional signed lease (`DOCUMENT_RULE`). One request; after saving it stays where you are with a toast. Asks before discarding a filled form.

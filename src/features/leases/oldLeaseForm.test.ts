@@ -185,16 +185,17 @@ describe("backend errors", () => {
   });
 
   it("dates and the overlap under End date", () => {
-    expect(oldLeaseErrorField("endDate must be before today for a history-only lease")).toBe("endDate");
-    expect(oldLeaseErrorField("Unit already has a lease (LSE-2026-003, ACTIVE, 2026-01-01 to 2026-12-31) overlapping these dates. Change the dates.")).toBe("endDate");
+    expect(oldLeaseErrorField("endDate must be before today for a history-only lease", 400)).toBe("endDate");
+    expect(oldLeaseErrorField("Unit already has a lease (LSE-2026-003, ACTIVE, 2026-01-01 to 2026-12-31) overlapping these dates. Change the dates.", 400)).toBe("endDate");
   });
 
   it("tenant messages under the section, file messages under the file, the rest at the top", () => {
-    expect(oldLeaseErrorField("Exactly one tenant must be primary: set primaryTenantId or isPrimary on one new tenant")).toBe("tenants");
-    expect(oldLeaseErrorField("At least one tenant is required (primaryTenantId, coTenantIds or newTenants)")).toBe("tenants");
-    expect(oldLeaseErrorField("Tenant(s) not found: t1")).toBe("tenants");
-    expect(oldLeaseErrorField("file must be a PDF, JPEG or PNG file")).toBe("file");
-    expect(err(["File too large"], { status: 413 }).errors.file).toBe("File too large (max 20 MB).");
+    expect(oldLeaseErrorField("Exactly one tenant must be primary: set primaryTenantId or isPrimary on one new tenant", 400)).toBe("tenants");
+    expect(oldLeaseErrorField("At least one tenant is required (primaryTenantId, coTenantIds or newTenants)", 400)).toBe("tenants");
+    expect(oldLeaseErrorField("Tenant(s) not found: t1", 400)).toBe("tenants");
+    expect(oldLeaseErrorField("file is empty", 400)).toBe("file");
+    expect(err(["File too large"], { status: 413 }).errors.file).toBe("File too large");
+    expect(err(["Password-protected files are not supported"], { status: 415 })).toEqual({ errors: { file: "Password-protected files are not supported" }, top: "" });
     expect(err(["You do not have access to this property"], { status: 403 })).toEqual({ errors: {}, top: "You do not have access to this property" });
   });
 });

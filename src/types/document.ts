@@ -22,7 +22,23 @@ export interface DocumentCategories {
 }
 
 /** Detected from the file's content by the backend. */
-export type DocumentContentType = "application/pdf" | "image/jpeg" | "image/png";
+export type DocumentContentType =
+  | "application/pdf"
+  | "image/jpeg"
+  | "image/png"
+  | "image/webp"
+  | "image/gif"
+  | "image/heic"
+  | "image/heif"
+  | "application/msword"
+  | "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  | "application/vnd.ms-excel"
+  | "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  | "application/vnd.oasis.opendocument.text"
+  | "application/vnd.oasis.opendocument.spreadsheet"
+  | "text/csv"
+  | "text/plain"
+  | "application/rtf";
 
 /** POST (201), GET list (newest first) and DELETE (the deleted one) of /{owner}/:id/documents. */
 export interface Document {

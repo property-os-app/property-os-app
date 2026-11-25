@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { documentForm, nameError, photoForm } from "@/features/documents/form";
+import { documentForm, isFileError, nameError, photoForm } from "@/features/documents/form";
 
 const pdf = () => new File(["%PDF-1.4"], "Signed lease.pdf", { type: "application/pdf" });
 
@@ -21,6 +21,16 @@ describe("documentForm", () => {
 describe("photoForm", () => {
   it("sends only the file", () => {
     expect([...photoForm(new File(["x"], "front.jpg", { type: "image/jpeg" })).keys()]).toEqual(["file"]);
+  });
+});
+
+describe("isFileError", () => {
+  it("400 about the file, and any 413 or 415", () => {
+    expect(isFileError("file is empty", 400)).toBe(true);
+    expect(isFileError("File too large", 413)).toBe(true);
+    expect(isFileError("Password-protected files are not supported", 415)).toBe(true);
+    expect(isFileError("category must be one of OTHER", 400)).toBe(false);
+    expect(isFileError("Unit u1 not found", 404)).toBe(false);
   });
 });
 

@@ -8,12 +8,11 @@ import { Button, CurrencyInput, Input, Select, Textarea } from "@/components/ato
 import { Combobox, FormField, InlineError, toast, type ComboboxOption } from "@/components/molecules";
 import { Modal } from "@/components/organisms";
 import { ApiError } from "@/lib/api";
-import { DOCUMENT_RULE } from "@/lib/files";
 import { applyServerError } from "@/lib/forms";
 import { centsToAmount, formatCurrency, todayISO, toCents } from "@/lib/format";
 import { labelOptions, paymentMethodLabels, referenceHint, unitLabel } from "@/lib/labels";
 import { categoryOptions } from "@/features/documents/categories";
-import { uploadErrorText, useDocumentCategories } from "@/features/documents/hooks";
+import { useDocumentCategories } from "@/features/documents/hooks";
 import type { LeasePageState } from "@/features/leases/LeasePage";
 import { ledgerQuery, unclearPayment, useRecordPayment } from "@/features/ledger/hooks";
 import { findPayment, receiptCategory, receiptErrorField, type ReceiptValue } from "@/features/ledger/paymentForm";
@@ -181,7 +180,7 @@ export function RecordPaymentModal({ targets, presetLeaseId, reentry, onOpenLedg
       const onReceipt: ReceiptErrors = {};
       for (const m of err.messages) {
         const field = receipt.file ? receiptErrorField(m, err.status) : null;
-        if (field === "file") onReceipt.file = uploadErrorText(new ApiError(err.status, [m]), DOCUMENT_RULE);
+        if (field === "file") onReceipt.file = [onReceipt.file, m].filter(Boolean).join(" ");
         else if (field) onReceipt.category = m;
         else rest.push(m);
       }

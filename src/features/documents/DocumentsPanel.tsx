@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Download, Eye, FileImage, FileText, Trash2 } from "lucide-react";
+import { Download, Eye, Trash2 } from "lucide-react";
 import { Badge, Button, Caption, H3, Small } from "@/components/atoms";
 import { Card, KebabMenu, ListCard, toast } from "@/components/molecules";
 import { CardList, DataTable, type Column } from "@/components/organisms";
@@ -13,7 +13,9 @@ import { useAuth } from "@/features/auth/authContext";
 import { canManageDocuments } from "@/features/auth/permissions";
 import { DocumentDeleteDialog } from "@/features/documents/DocumentDeleteDialog";
 import { DocumentUpload } from "@/features/documents/DocumentUpload";
+import { FileKindIcon } from "@/features/documents/FileKindIcon";
 import { categoryLabel } from "@/features/documents/categories";
+import { canViewInBrowser, fileKind } from "@/features/documents/fileKind";
 import { useDocumentCategories, useDocuments, useDownloadDocument, useViewDocument } from "@/features/documents/hooks";
 import { ownerOfDocument, sourceText } from "@/features/documents/source";
 import { openBlankTab, POPUP_BLOCKED_MESSAGE } from "@/features/documents/view";
@@ -33,20 +35,10 @@ export interface DocumentsPanelProps {
 /** Table View / Download: icon-only squares (like Delete) while the panel is under 48rem wide, so the drawer tables don't scroll sideways. */
 const NARROW_ICON_ONLY = "@max-3xl:w-8 @max-3xl:px-0";
 
-/** PDF or image icon by content type. */
-function DocIcon({ doc }: { doc: ListedDocument }) {
-  const Icon = doc.contentType === "application/pdf" ? FileText : FileImage;
-  return (
-    <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-control border border-border-subtle bg-surface-3 text-text-muted">
-      <Icon size={16} strokeWidth={1.5} aria-label={doc.contentType === "application/pdf" ? "PDF" : "Image"} />
-    </span>
-  );
-}
-
 /**
  * The documents of one lease, tenant, unit, property or payment: upload card (with permission) and the list (DataTable from md,
- * CardList on phones, 5 states). View opens a new tab and Download saves the file, each with a fresh signed link on the
- * click (a phone card tap views); Delete confirms first. A lease's list has its payments' files
+ * CardList on phones, 5 states). View opens a new tab (only the types a browser shows: `canViewInBrowser`) and Download saves
+ * the file, each with a fresh signed link on the click (a phone card tap views, or downloads); Delete confirms first. A lease's list has its payments' files
  * too, a unit's list its leases' documents and theirs: each row shows its source, takes its label from its own record's
  * categories and deletes through that record, with that record's permission (`canManageDocuments`; hidden without it).
  */
@@ -118,7 +110,7 @@ export function DocumentsPanel({ target, leaseState, onOpenLedger, emptyText = "
       header: "Document",
       cell: (d) => (
         <div className="flex min-w-0 items-center gap-3 py-1.5">
-          <DocIcon doc={d} />
+          <FileKindIcon kind={fileKind(d.contentType)} />
           {/* Capped in narrow panels (drawers) so long names and labels truncate instead of widening the table. */}
           <div className="flex min-w-0 flex-col gap-1 @max-3xl:max-w-[180px]">
             <span className="truncate font-semibold text-text-primary" title={d.name}>
@@ -154,19 +146,21 @@ export function DocumentsPanel({ target, leaseState, onOpenLedger, emptyText = "
       align: "right",
       cell: (d) => (
         <div className="flex items-center justify-end gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            icon={<Eye size={16} strokeWidth={1.5} />}
-            disabled={viewingId === d.id}
-            aria-busy={viewingId === d.id || undefined}
-            aria-label={`View ${d.name}`}
-            title="View"
-            onClick={() => onView(d)}
-            className={NARROW_ICON_ONLY}
-          >
-            <span className="hidden @3xl:inline">{viewingId === d.id ? "Opening..." : "View"}</span>
-          </Button>
+          {canViewInBrowser(d.contentType) && (
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<Eye size={16} strokeWidth={1.5} />}
+              disabled={viewingId === d.id}
+              aria-busy={viewingId === d.id || undefined}
+              aria-label={`View ${d.name}`}
+              title="View"
+              onClick={() => onView(d)}
+              className={NARROW_ICON_ONLY}
+            >
+              <span className="hidden @3xl:inline">{viewingId === d.id ? "Opening..." : "View"}</span>
+            </Button>
+          )}
           <Button
             size="sm"
             variant="ghost"
@@ -210,7 +204,7 @@ export function DocumentsPanel({ target, leaseState, onOpenLedger, emptyText = "
           error={error}
           renderCard={(d) => (
             <ListCard
-              leading={<DocIcon doc={d} />}
+              leading={<FileKindIcon kind={fileKind(d.contentType)} />}
               title={d.name}
               subtitle={meta(d)}
               facts={[
@@ -218,13 +212,13 @@ export function DocumentsPanel({ target, leaseState, onOpenLedger, emptyText = "
                 { label: "By", value: d.uploadedBy.email },
               ]}
               note={source(d) ?? undefined}
-              onOpen={() => onView(d)}
-              openLabel={`View ${d.name}`}
+              onOpen={() => (canViewInBrowser(d.contentType) ? onView(d) : onDownload(d))}
+              openLabel={`${canViewInBrowser(d.contentType) ? "View" : "Download"} ${d.name}`}
               actions={
                 <KebabMenu
                   label={`Actions for ${d.name}`}
                   items={[
-                    { label: "View", icon: <Eye strokeWidth={1.5} />, onSelect: () => onView(d) },
+                    ...(canViewInBrowser(d.contentType) ? [{ label: "View", icon: <Eye strokeWidth={1.5} />, onSelect: () => onView(d) }] : []),
                     { label: "Download", icon: <Download strokeWidth={1.5} />, onSelect: () => onDownload(d) },
                     ...(canDelete(d) ? [{ label: "Delete", icon: <Trash2 strokeWidth={1.5} />, destructive: true, onSelect: () => setDeleting(d) }] : []),
                   ]}

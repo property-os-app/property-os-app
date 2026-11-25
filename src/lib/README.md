@@ -88,9 +88,9 @@ Links that open the user's own phone and email apps (no backend).
 - `unitLayout(unitType, bathrooms)`: "1 bd / 1 ba", "Studio / 1 ba", or "3 bd" when bathrooms is null.
 
 ## files.ts
-- `FileRule`: allowed types (MIME and extensions), inclusive byte limit and the words for messages. `DOCUMENT_RULE` (PDF, JPEG, PNG, 20 MB), `PHOTO_RULE` (JPEG, PNG, WebP, 5 MB).
-- `checkFile(file, rule)`: null or a message (wrong type; extension used when the browser gives no type; empty; too large). The backend checks the real content again (415).
-- `acceptOf(rule)`: the file input `accept` value. `formatFileSize(bytes)`: "980 B", "482 KB", "2.3 MB".
+- `FileRule`: allowed types (MIME and extensions), inclusive byte limit and the words for messages; `byExtension`: the extension decides. `DOCUMENT_RULE` (PDF, images with WebP, GIF and HEIC, Word, Excel, OpenDocument, CSV, TXT, RTF; 20 MB; by extension), `DOCUMENT_HINT` (the hint under every document upload box), `PHOTO_RULE` (JPEG, PNG, WebP, 5 MB).
+- `checkFile(file, rule)`: null or a message (wrong type; empty; too large). Documents: a listed extension is enough, whatever the browser's type; without one only a PDF or image type passes. Photo: the browser's type, or the extension when it has none. The backend checks the real content again (415).
+- `acceptOf(rule)`: the file input `accept` value (documents: extensions only). `extensionOf(name)`: "Scan.JPG" -> "jpg". `formatFileSize(bytes)`: "980 B", "482 KB", "2.3 MB".
 
 ## useIsMobile.ts
 - `useIsMobile()`: true under 768px (Tailwind `md`), read synchronously from `matchMedia` and updated on resize. List components render `CardList` instead of `DataTable` when true, and pages show the Filters sheet instead of the toolbar controls.
@@ -153,4 +153,4 @@ Links that open the user's own phone and email apps (no backend).
 - `clipboard.test.ts`: `copyText` on the Clipboard API path and that it never throws.
 - `tableParams.test.ts`: reading and writing list state in the URL, fallbacks and round trip.
 - `pdf.test.ts`: `filenameFromDisposition` (quoted, bare, `filename*`, bad escape, missing).
-- `files.test.ts`: `checkFile` (exactly 20 MB passes, one byte more fails, empty, wrong type, extension fallback, photo and PDF-only rules), `formatFileSize`, `acceptOf`.
+- `files.test.ts`: `checkFile` (exactly 20 MB passes, one byte more fails, empty, wrong type, every document extension with an empty or odd MIME type, the photo rule), `formatFileSize`, `acceptOf`.
