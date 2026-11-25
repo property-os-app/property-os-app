@@ -34,7 +34,7 @@ Small building blocks with no domain knowledge.
 | `Skeleton` | Shimmer block | `className` for size | Loading placeholders (no spinners). |
 | `Divider` | 1px line | - | Separating sections. |
 | `CollectionProgress` | 16px striped bar + % | `value` 0-100 or `null` (empty bar, no %), `label` | Rent collection rate. |
-| `Bar` | Thin 8px bar | `value`, `tone` | Occupancy and similar ratios. |
+| `Bar` | Thin 8px bar | `value`, `tone` success/warning/danger/neutral, `label` (makes it a named progress bar), `valueText` | Occupancy, a lease term and similar ratios. |
 | `Ring` | Circular 0-100 score | `value`, `size` | Portfolio health score. |
 
 ## Molecules
@@ -263,3 +263,4 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | 2026-11-24 | `molecules/Combobox.tsx` (new), `molecules/Combobox.test.ts`, `molecules/index.ts` | New `Combobox`: a searchable select with the accessible combobox pattern (helpers in `lib/textMatch.ts` and `lib/comboboxKeys.ts`). | Client feedback: the Record Payment tenant dropdown was too long to scroll; no existing component could search. |
 | 2026-11-24 | `organisms/SpreadsheetTable.tsx` | New optional `SheetColumn.width`: the column keeps that width (wider only when its content needs it) and the columns without one share the spare room. Without any `width` nothing changes. | Client feedback: the yearly rent roll should show the whole year without a sideways scroll; its months share the space between the first and Total columns. |
 | 2026-11-24 | `organisms/SpreadsheetTable.tsx` | The pinned-right column's shadow shows only while the table is wider than its box (`data-scroll-x`); its border stays. | Yearly rent roll polish: the shadow darkened December although nothing scrolled. |
+| 2026-11-25 | `atoms/Progress.tsx` (`Bar`) | New `tone="neutral"`, and optional `label` + `valueText` that give it `role="progressbar"` with a name and a spoken value. Without them nothing changes. `BarProps` exported. | The lease page's Term card needs a grey bar for ended leases and a bar screen readers can read. |

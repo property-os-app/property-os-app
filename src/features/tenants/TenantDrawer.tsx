@@ -28,7 +28,7 @@ import type { TenantDetail } from "@/types/tenant";
 type Tab = "overview" | "leases" | "documents";
 
 const leasePath = (l: Lease) => `/leases/${encodeURIComponent(l.id)}`;
-/** The drawer lives on the Tenants page: the lease page goes back there. */
+/** Opened on the Tenants page: the lease page goes back there. */
 const fromTenants: LeasePageState = { from: "tenants" };
 
 const orDash = (value: string | null | undefined) => (value ? value : <Dash />);
@@ -36,6 +36,8 @@ const orDash = (value: string | null | undefined) => (value ? value : <Dash />);
 export interface TenantDrawerProps {
   /** The list row: name, contact and the leases this user can see (the drawer adds GET /tenants/:id). */
   row: TenantRow;
+  /** Opened on the lease page of this lease: that lease just closes the drawer; another one opens without an origin (its parent is Leases). */
+  onLeasePage?: string;
   onClose: () => void;
 }
 
@@ -44,7 +46,7 @@ export interface TenantDrawerProps {
  * "Open lease" and a Leases row click go to /leases/:id.
  * Footer: Delete (OWNER) and Edit tenant. Mount it only while open; it closes itself after a delete.
  */
-export function TenantDrawer({ row, onClose }: TenantDrawerProps) {
+export function TenantDrawer({ row, onLeasePage, onClose }: TenantDrawerProps) {
   const { me } = useAuth();
   const user = me!;
   const detail = useTenant(row.tenant.id);
@@ -60,6 +62,7 @@ export function TenantDrawer({ row, onClose }: TenantDrawerProps) {
   const tab: Tab = docsHidden && chosenTab === "documents" ? "overview" : chosenTab;
   const tenant = detail.data ?? row.tenant;
   const { current, leases } = row;
+  const link: LeaseLink = { state: onLeasePage === undefined ? fromTenants : undefined, here: onLeasePage, onHere: onClose };
   const canEdit = can(user, "tenant.edit") && !notFound;
   const canDelete = can(user, "tenant.delete") && !notFound;
 
@@ -108,7 +111,7 @@ export function TenantDrawer({ row, onClose }: TenantDrawerProps) {
           </Card>
         ) : tab === "overview" ? (
           <>
-            {current?.status === "ACTIVE" && <ActiveLease lease={current} />}
+            {current?.status === "ACTIVE" && <ActiveLease lease={current} link={link} />}
 
             <div className="flex flex-col gap-3">
               <H3>Details</H3>
@@ -128,7 +131,7 @@ export function TenantDrawer({ row, onClose }: TenantDrawerProps) {
         ) : tab === "documents" ? (
           <DocumentsPanel owner="tenants" ownerId={row.tenant.id} canManage={canManageDocuments(user, "tenants")} emptyText="No documents for this tenant yet." />
         ) : (
-          <LeasesTab tenantId={row.tenant.id} leases={leases} onAddLease={can(user, "lease.create") ? () => setAddingLease(true) : undefined} />
+          <LeasesTab tenantId={row.tenant.id} leases={leases} link={link} onAddLease={can(user, "lease.create") ? () => setAddingLease(true) : undefined} />
         )}
       </Drawer>
 
@@ -139,9 +142,21 @@ export function TenantDrawer({ row, onClose }: TenantDrawerProps) {
   );
 }
 
-/** Current ACTIVE lease: a summary card, then Rent / Balance / Lease ends cards (same notes as the unit drawer). */
-function ActiveLease({ lease }: { lease: Lease }) {
+/** How the drawer's leases open: the router state to send, and the lease already on screen (which only closes the drawer). */
+interface LeaseLink {
+  state: LeasePageState | undefined;
+  here: string | undefined;
+  onHere: () => void;
+}
+
+function useOpenLease({ state, here, onHere }: LeaseLink) {
   const navigate = useNavigate();
+  return (lease: Lease) => (lease.id === here ? onHere() : void navigate(leasePath(lease), { state }));
+}
+
+/** Current ACTIVE lease: a summary card, then Rent / Balance / Lease ends cards (same notes as the unit drawer). */
+function ActiveLease({ lease, link }: { lease: Lease; link: LeaseLink }) {
+  const openLease = useOpenLease(link);
   const due = dueState(lease);
   return (
     <div className="flex flex-col gap-3">
@@ -152,7 +167,7 @@ function ActiveLease({ lease }: { lease: Lease }) {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <LeaseBadge lease={lease} />
-          <Button size="sm" variant="ghost" onClick={() => void navigate(leasePath(lease), { state: fromTenants })}>
+          <Button size="sm" variant="ghost" onClick={() => openLease(lease)}>
             Open lease
           </Button>
         </div>
@@ -194,8 +209,8 @@ function Details({ tenant }: { tenant: TenantDetail }) {
 }
 
 /** Every visible lease that includes the tenant, with their role on it. "Add lease" (primary tenant preset) when allowed. */
-function LeasesTab({ tenantId, leases, onAddLease }: { tenantId: string; leases: Lease[]; onAddLease?: () => void }) {
-  const navigate = useNavigate();
+function LeasesTab({ tenantId, leases, link, onAddLease }: { tenantId: string; leases: Lease[]; link: LeaseLink; onAddLease?: () => void }) {
+  const openLease = useOpenLease(link);
   const isMobile = useIsMobile();
   const role = (l: Lease) => (l.tenants.find((t) => t.id === tenantId)?.isPrimary ? "Primary" : "Co-tenant");
   const columns: Column<Lease>[] = [
@@ -231,9 +246,9 @@ function LeasesTab({ tenantId, leases, onAddLease }: { tenantId: string; leases:
           empty={{ title: "No leases", description: "Not on any lease yet." }}
           renderCard={(l) => (
             <ListCard
-              href={leasePath(l)}
+              {...(l.id === link.here ? { onOpen: link.onHere } : { href: leasePath(l) })}
               openLabel={`Open lease ${l.leaseNumber}`}
-              renderLink={(href, p) => <Link to={href} state={fromTenants} {...p} />}
+              renderLink={(href, p) => <Link to={href} state={link.state} {...p} />}
               title={l.leaseNumber}
               subtitle={`${unitLabel(l.unit.unitNumber)} · ${l.unit.property.name}`}
               badge={<LeaseBadge lease={l} />}
@@ -250,7 +265,7 @@ function LeasesTab({ tenantId, leases, onAddLease }: { tenantId: string; leases:
           columns={columns}
           rows={leases}
           rowKey={(l) => l.id}
-          onRowClick={(l) => void navigate(leasePath(l), { state: fromTenants })}
+          onRowClick={openLease}
           density="compact"
           caption="Leases"
           state={leases.length === 0 ? "empty" : "ideal"}

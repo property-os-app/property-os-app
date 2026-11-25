@@ -27,6 +27,12 @@ Pieces of the detail pages (`/properties/:id`, `/leases/:id`).
 ## ContactLink.tsx
 - `ContactLink({ kind, value, wrap })`: a tenant's phone (`tel:` via `telHref`) or email (`mailto:` via `mailtoHref`) as a link to the user's own phone / email app, plus a 28px copy button (44px tap area) that shows "Phone number copied" / "Email copied" (`copyText`, works on plain http too; "Couldn't copy" info toast if both ways fail). Clicks and keys stop there, so it never opens the card or table row it sits in; `pointer-events-auto` makes it tappable inside a `ListCard`. Truncates with a tooltip, or wraps with `wrap`. Dash when empty. Used by the Tenants table, cards and drawer, the lease Tenants tab and the unit drawer.
 
+## ContactActions.tsx
+- `ContactActions({ name, phone, email })`: `ContactLink` as icon buttons: call (`tel:`), email (`mailto:`) and a ⋮ menu with "Copy phone number" / "Copy email". What is missing is left out; a phone without digits can only be copied. 44px on phones; sits on top of a row's stretched button. Used by the lease page's People card. `ContactActionsProps`.
+
+## copyToast.ts
+- `copyWithToast(text, what, anchor?)`: `copyText`, then an "Email copied" toast, or how to copy it by hand. Used by `ContactLink`, `ContactActions` and the lease number.
+
 ## linkClass.ts
 - `linkFocus`: rounded keyboard-only focus ring with no offset (`focus-ring-tight`), so it doesn't touch the next word. For inline links and link-style buttons.
 - `textLink`: the green text link ("Back to Leases", "View all") with `linkFocus`.

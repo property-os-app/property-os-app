@@ -13,12 +13,14 @@ import { useAuth } from "@/features/auth/authContext";
 import { can, canManageDocuments } from "@/features/auth/permissions";
 import { DocumentsPanel } from "@/features/documents/DocumentsPanel";
 import { useDocuments } from "@/features/documents/hooks";
+import { DetailsTab } from "@/features/leases/DetailsTab";
+import type { FieldName } from "@/features/leases/form";
 import { useActivateAction, useLease, type ActivateError } from "@/features/leases/hooks";
 import { LeaseAlert } from "@/features/leases/LeaseAlert";
 import { LeaseDeleteDialog } from "@/features/leases/LeaseDeleteDialog";
 import { LeaseEndModal } from "@/features/leases/LeaseEndModal";
 import { LeaseBadge } from "@/features/leases/LeaseParts";
-import { DetailsTab, TenantsTab } from "@/features/leases/LeaseTabs";
+import { TenantsTab } from "@/features/leases/LeaseTabs";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
 import { canDeleteLease, dueNote, dueState, isOldLease, primaryTenant } from "@/features/leases/stats";
 import { AddChargeModal } from "@/features/ledger/AddChargeModal";
@@ -203,7 +205,8 @@ function LeaseDetail({ lease }: { lease: Lease }) {
     );
 
   const [activateError, setActivateError] = useState<ActivateError | null>((location.state as LeasePageState | null)?.activateError ?? null);
-  const [editing, setEditing] = useState(false);
+  // The edit wizard: closed, open at its first step (true), or at the step with a field (Details tab).
+  const [editing, setEditing] = useState<boolean | FieldName>(false);
   const [ending, setEnding] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [charging, setCharging] = useState(false);
@@ -404,14 +407,14 @@ function LeaseDetail({ lease }: { lease: Lease }) {
           <LedgerView lease={lease} canVoid={canVoid} canCharge={canCharge} canPay={canPay} />
         )
       ) : tab === "details" ? (
-        <DetailsTab lease={lease} canEdit={canEdit} />
+        <DetailsTab lease={lease} canEdit={canEdit} onEdit={setEditing} />
       ) : tab === "documents" ? (
         <DocumentsPanel owner="leases" ownerId={lease.id} canManage={canManageDocuments(user, "leases")} emptyText="No documents on this lease yet." />
       ) : (
         <TenantsTab lease={lease} />
       )}
 
-      {editing && <LeaseWizard lease={lease} onSaved={() => setActivateError(null)} onClose={() => setEditing(false)} />}
+      {editing && <LeaseWizard lease={lease} startAt={editing === true ? undefined : editing} onSaved={() => setActivateError(null)} onClose={() => setEditing(false)} />}
       {ending && <LeaseEndModal lease={lease} onClose={() => setEnding(false)} />}
       <LeaseDeleteDialog lease={deleting ? lease : null} onClose={() => setDeleting(false)} onDeleted={() => void navigate("/leases")} />
       {/* From the Rent Roll, a Rent charge is for that month; otherwise the current UTC month. */}

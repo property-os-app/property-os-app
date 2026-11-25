@@ -31,8 +31,13 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 - `LeaseFieldsMessage`, `parseLeaseFieldsMessage(msg)`: reads "Cannot activate lease: missing ...", "Lease X is ACTIVE, so it needs: ..." and the ENDED / TERMINATED "Not allowed: ..." message.
 - `friendlyLeaseMessage(msg)`: those three with friendly field names; other messages unchanged.
 - `firstRentDate(start, dueDay)`: first due date on or after the start (clamped to the month's last day).
-- `termMonthsOf(start, end)`: whole months, end date included. `termEndDate(start, months)`: start + months - 1 day.
+- `pastEndText(lease)`: "Ended 3 days ago but still active" (the alert and the Term card).
+- `termMonthsOf(start, end)`: whole months, end date included. `wholeMonthsBetween(start, end)`: the same for dates known to be valid. `termEndDate(start, months)`: start + months - 1 day.
 - `MAX_TAGS`, `MAX_TAG_LENGTH`, `normalizeTag`: the tag rules.
+
+## term.ts
+- `termParts(start, end)`: whole months and the days left over (`TermParts`). `termBadge(start, end)`: "12-month fixed", or "1 month, 12 days" when the dates don't make whole months.
+- `termView(lease)`: the Term card's badge, bar percent and tone, and text (`TermView`): "Month 7 of 12 · 156 days left" (the total is the nearest whole month), "Starts in N days" (draft, or active before its start), the past-end sentence (warning), "Ended on {date}" / "Ended early · end date is …" / "Terminated · end date was …" (neutral; the API keeps the end date when a lease is ended, so only an ENDED lease past it says "Ended on"). Old lease: dates only.
 
 ## form.ts
 - `STEPS`, `STEP_FIELDS`, `SERVER_FIELDS`, `stepOf`, `firstErrorStep`: the wizard steps and which fields each shows.
@@ -59,7 +64,7 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 - `templateOptions(list, current, extra)`: the wizard's Template options (`TemplateOption`: value, label, months). The default is marked; the lease's own template shows its pinned version ("· v1 (this lease's version; latest is v2)"); an archived current template is added on top; templates made in the wizard (`extra`) show before the list refetches.
 
 ## LeaseDocumentCard.tsx
-- `LeaseDocumentCard({ lease, canEdit })`: Details tab card "Lease document": template and version (+ Archived), Preview PDF (new tab opened on the click, then the blob) and Download PDF (filename from Content-Disposition, else "{leaseNumber}.pdf"), each with "Making PDF..."; errors as a toast. Without a template: "No template, so this lease has no PDF yet." (old lease: "Old lease: the signed copy is under Documents.")
+- `LeaseDocumentCard({ lease, canEdit })`: Details tab card "Lease document": the lease number (mono) with a Copy button, template and version (+ Archived), Preview PDF (new tab opened on the click, then the blob) and Download PDF (filename from Content-Disposition, else "{leaseNumber}.pdf"), each with "Making PDF..."; errors as a toast. Without a template: "No template, so this lease has no PDF yet." (old lease: "Old lease: the signed copy is under Documents.")
 
 ## LeasesPage.tsx
 - `LeasesPage`: /leases. KPIs (Active, Expiring in 60 days, Past end date, Monthly rent), toolbar (status segments, search, Property = sidebar scope, e-sign), "Show old leases" checkbox (default on; off writes `?old=hide` and asks GET /leases?historical=false; with the view toggle as one group on the right; in the phone Filters sheet too), header "Add old lease" (secondary, opens `OldLeaseModal` with the scope property) next to "Add Lease" (primary), the table with its 5 states, wizard, end and delete. Desktop: Cards / Table toggle at the right end of the toolbar (`ViewToggle`, saved per page with `useListView("leases", "table")`, default Table); Cards view shows the phone cards in a grid (`LeasesTable cards`) with a compact "Sort: ..." select (no column headers there).  A row click opens /leases/:id. Kebab actions open their modal on the list; a failed kebab Activate opens the lease page with the reason (router state `LeasePageState`). Old `/leases?lease=ID` links redirect to `/leases/ID`. Search, filters, sort and page live in the URL (`useClientTable` `inUrl`): `?q=&status=&esign=&sort=&page=`. Phones (under md): search plus a "Filters" button whose sheet holds the status segments, Property, E-signature and Sort by; "Property (all pages)" is the app-wide choice, so the count and "Clear filters" leave it (and the search) alone. With no properties (GET /properties returned []) the page shows only the header and `NoProperties` (owner: Add property via `useAddPropertyFlow`). KPIs show a Dash when loading failed.
@@ -78,11 +83,16 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 - `OverdueActions({ lease, primary, since, overdue })`: "Call {first name}" (the number after " · " from md) and "Email reminder" as plain `<a>` buttons (tel: / mailto:, via `rentReminderLinks`). The email quotes `overdue` (the overdue amount, never the whole balance; null leaves it out). The phone comes from `useTenant(primary.id)` (the lease has none), so Call shows once it loads; each button hides without a phone / email. Has a marked spot for a later backend "Send reminder".
 
 ## LeaseTabs.tsx
-- `DetailsTab`: key values (tenant, co-tenants, term, rent, deposit, frequency, auto-renew, late fee, number, template "Name · vN" (+ Archived) or "No template", balance, notes) in a card; `LeaseDocumentCard`, E-signature (badge + Select, PATCH `signatureStatus`) and Tags (`TagEditor`, PATCH `tags`) cards. Save errors use `leaseErrorText`.
 - `TenantsTab`: the lease's tenants (avatar, name, email, phone, Primary / Co-tenant), or "No tenants yet". Email and phone are `ContactLink`s; phones come from the cached GET /tenants list (the lease has none) and are hidden while it loads or fails.
 
+## DetailsTab.tsx
+- `DetailsTab({ lease, canEdit, onEdit })`: left: Money terms (rent, deposit, late fee; "Edit terms" opens the wizard at Terms, draft and active only), Term (`termView`, `Bar`, auto-renew; an old lease shows its dates only), `PeopleCard`, Notes (soft box, "Edit" / "Add notes" opens the wizard at its notes step in any status; hidden when empty and not editable). Right: `LeaseDocumentCard`, E-signature (badge + Select, PATCH `signatureStatus`) and Tags (`TagEditor`, PATCH `tags`). Save errors use `leaseErrorText`. Balance and total paid are in the header tiles, not here. `DetailsTabProps`.
+
+## PeopleCard.tsx
+- `PeopleCard({ lease })`: "N on this lease", a row per tenant: avatar, name, Primary / Co-tenant badge, `ContactActions`. A row opens `TenantDrawer` over the page once GET /tenants and GET /leases have loaded.
+
 ## LeaseWizard.tsx
-- `LeaseWizard`: the Add / Edit Lease modal (Stepper, Back / Cancel / Save as draft / Continue or Create & activate / Save changes). Opens TenantFormModal over itself for "Add new tenant". Keeps the "due day set by hand" flag (on in edit mode unless the saved due day is empty). Templates: GET /lease-templates; a new lease preselects the default as a default value (not a change); edit keeps the lease's template. Picking a template or changing the start date runs `templateEndDate` (remembers the end date it wrote). "+ New template" (templates.manage) opens `TemplateEditor` over the wizard and selects the new template. A lease saved as SIGNED shows the template read-only with a note (the backend gives 409).
+- `LeaseWizard`: the Add / Edit Lease modal (`startAt`: open at the step with this field) (Stepper, Back / Cancel / Save as draft / Continue or Create & activate / Save changes). Opens TenantFormModal over itself for "Add new tenant". Keeps the "due day set by hand" flag (on in edit mode unless the saved due day is empty). Templates: GET /lease-templates; a new lease preselects the default as a default value (not a change); edit keeps the lease's template. Picking a template or changing the start date runs `templateEndDate` (remembers the end date it wrote). "+ New template" (templates.manage) opens `TemplateEditor` over the wizard and selects the new template. A lease saved as SIGNED shows the template read-only with a note (the backend gives 409).
 
 ## LeaseWizardSteps.tsx
 - `PartiesStep`, `TermsStep`, `DepositStep`, `ReviewStep`: the 4 step bodies. `StepContext`: what they get from the wizard. Terms starts with "Lease template" (select with "No template", help says whether it sets the end date, "+ New template" action; read-only when signed or closed). Review shows the template. Terms: the due day follows the start date's day (date field and term buttons) until edited by hand; help "Rent is billed on the {nth} of each month, starting {date}." and a first-rent note when it differs from the start. Review: "Rent: {amount}, billed on the {nth} of each month, first rent {date}".
@@ -104,6 +114,7 @@ Leases: the /leases page (KPIs, toolbar, table), the /leases/:id lease page, the
 - `StatCard`: small drawer card (label, big value, optional note). Used by the unit and tenant drawers.
 
 ## Tests (`npm test`)
+- `term.test.ts`: `termBadge`, `termView` (active, before its start, past end, draft, ended, terminated, old lease).
 - `stats.test.ts`: `dueState` (rent billed early isn't overdue, due today, credit) and `notDueCaption`.
 - `templatePrefill.test.ts`: `templateEndDate` (2025-12-01 + 12 → 2026-11-30, month-end clamp, never over a hand-set end, follows a new start or another term while still prefilled).
 - `templateOptions.test.ts`: `templateOptions` (default label, pinned and newer version, archived current on top, wizard-made templates once).

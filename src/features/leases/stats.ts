@@ -1,5 +1,5 @@
 /** Lease money and date helpers shared by the leases page, the unit drawer and the tenants page. Money math in integer cents. */
-import { addDaysISO, addMonthsISO, addMonthsYM, currentMonth, dayInMonth, daysUntil, formatDate, formatShortDate, parseDateOnly, todayUTC, toCents } from "@/lib/format";
+import { addDaysISO, addMonthsISO, addMonthsYM, currentMonth, dayInMonth, daysSince, daysUntil, formatDate, formatShortDate, parseDateOnly, todayUTC, toCents } from "@/lib/format";
 import { plural, unitLabel } from "@/lib/labels";
 import type { Lease, LeaseStatus, LeaseTenant } from "@/types/lease";
 
@@ -111,6 +111,11 @@ export function canDeleteLease(lease: Pick<Lease, "status" | "isHistorical">, do
 /** ACTIVE and the end date is before UTC today (the backend's today): still active after the term. */
 export function isPastEnd(lease: Lease, today = todayUTC()): boolean {
   return lease.status === "ACTIVE" && lease.endDate !== null && lease.endDate < today;
+}
+
+/** "Ended 3 days ago but still active": the past-end sentence (for a lease that `isPastEnd`). */
+export function pastEndText(lease: Pick<Lease, "endDate">, now = new Date()): string {
+  return `Ended ${plural(daysSince(lease.endDate, now), "day")} ago but still active`;
 }
 
 /** ACTIVE with an end date from UTC today to today + `days` (inclusive). */
@@ -273,9 +278,13 @@ export function friendlyLeaseMessage(message: string): string {
  * null when a date is missing or the end is not after the start.
  */
 export function termMonthsOf(start: string, end: string): number | null {
-  if (!start || !end || end <= start) return null;
-  const endExclusive = addDaysISO(end, 1);
-  if (!endExclusive) return null;
+  if (!start || !end || end <= start || !addDaysISO(end, 1)) return null;
+  return wholeMonthsBetween(start, end);
+}
+
+/** Whole months from `start` to `end`, both included; both must be valid dates, end after start. */
+export function wholeMonthsBetween(start: string, end: string): number {
+  const endExclusive = addDaysISO(end, 1) ?? end;
   let n = (Number(endExclusive.slice(0, 4)) - Number(start.slice(0, 4))) * 12 + (Number(endExclusive.slice(5, 7)) - Number(start.slice(5, 7)));
   while (n > 0 && (addMonthsISO(start, n) ?? "") > endExclusive) n -= 1;
   return n;

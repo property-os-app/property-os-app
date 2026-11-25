@@ -1,14 +1,15 @@
-import { Download, ExternalLink } from "lucide-react";
+import { Copy, Download, ExternalLink } from "lucide-react";
 import { Badge, Button, Caption, H3, Small } from "@/components/atoms";
 import { toast } from "@/components/molecules";
 import { errorText } from "@/lib/api";
 import { openPdfInNewTab, saveBlob } from "@/lib/pdf";
 import { useLeaseDocument } from "@/features/leases/hooks";
 import { templateLine } from "@/features/leases/stats";
+import { copyWithToast } from "@/features/shared/copyToast";
 import type { Lease } from "@/types/lease";
 
 /**
- * Details tab card: the lease's template and version, with Preview PDF (new tab, opened on the click so it isn't blocked as a
+ * Details tab card: the lease number with a Copy button, then the lease's template and version, with Preview PDF (new tab, opened on the click so it isn't blocked as a
  * pop-up) and Download PDF ("LSE-….pdf" from Content-Disposition). Both only when the lease has a template; each shows
  * its own loading state. Errors (the backend JSON message) show as a toast.
  */
@@ -33,6 +34,22 @@ export function LeaseDocumentCard({ lease, canEdit }: { lease: Lease; canEdit: b
   return (
     <div className="flex flex-col gap-3">
       <H3>Lease document</H3>
+      <div className="flex min-w-0 items-center gap-1">
+        <span className="sr-only">Lease number</span>
+        <span className="min-w-0 font-mono break-all text-text-primary">{lease.leaseNumber}</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          aria-label="Copy lease number"
+          title="Copy lease number"
+          onClick={(e) => void copyWithToast(lease.leaseNumber, "lease number", e.currentTarget)}
+          // 28px to sit next to a line of text; after: grows the tap area to 44×44 (as in ContactLink).
+          className="relative size-7 shrink-0 text-text-muted after:absolute after:-inset-2 hover:text-text-primary"
+        >
+          <Copy size={14} strokeWidth={1.5} />
+        </Button>
+      </div>
       {line ? (
         <>
           <div className="flex flex-wrap items-center gap-2">
