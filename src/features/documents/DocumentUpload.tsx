@@ -7,7 +7,7 @@ import { errorText } from "@/lib/api";
 import { categoryOptions } from "@/features/documents/categories";
 import { documentForm, MAX_NAME_LENGTH, nameError } from "@/features/documents/form";
 import { uploadErrorText, useDocumentCategories, useUploadDocument } from "@/features/documents/hooks";
-import type { DocumentOwner } from "@/types/document";
+import type { DocumentRef } from "@/types/document";
 
 /** Ends a backend message with a period so another sentence can follow it. */
 const sentence = (text: string) => (/[.!?]$/.test(text.trim()) ? text.trim() : `${text.trim()}.`);
@@ -37,7 +37,7 @@ export function PickedFile({ file, onRemove, disabled }: { file: File; onRemove:
  * API order; required), optional display name. Upload waits for the category list (loading: disabled; error: Retry).
  * The type and size are checked here before sending; backend errors (400, 403, 404, 409, 413, 415) show inside.
  */
-export function DocumentUpload({ owner, ownerId }: { owner: DocumentOwner; ownerId: string }) {
+export function DocumentUpload({ target }: { target: DocumentRef }) {
   const upload = useUploadDocument();
   const id = useId();
   const [file, setFile] = useState<File | null>(null);
@@ -47,7 +47,7 @@ export function DocumentUpload({ owner, ownerId }: { owner: DocumentOwner; owner
   const [name, setName] = useState("");
   const [serverError, setServerError] = useState<string | null>(null);
   const categories = useDocumentCategories();
-  const options = categoryOptions(categories.data, owner);
+  const options = categoryOptions(categories.data, target.owner);
   const categoriesReady = categories.isSuccess;
   const busy = upload.isPending;
   const nameProblem = nameError(name);
@@ -67,7 +67,7 @@ export function DocumentUpload({ owner, ownerId }: { owner: DocumentOwner; owner
     if (!category) setCategoryError("Choose a category.");
     if (!file || !category || nameProblem || !categoriesReady) return;
     upload.mutate(
-      { owner, ownerId, form: documentForm(file, category, name) },
+      { target, form: documentForm(file, category, name) },
       {
         onSuccess: (doc) => {
           toast.success(`Uploaded ${doc.name}`);
@@ -149,7 +149,7 @@ export function DocumentUpload({ owner, ownerId }: { owner: DocumentOwner; owner
       </div>
       <div className="flex justify-end">
         <Button type="submit" disabled={busy || !categoriesReady} aria-busy={busy || undefined} className="max-md:h-11 max-md:w-full">
-          {busy ? "Uploading..." : "Upload"}
+          {busy ? "Uploading..." : target.owner === "payments" ? "Add file" : "Upload"}
         </Button>
       </div>
     </form>

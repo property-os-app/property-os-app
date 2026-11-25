@@ -9,7 +9,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { unitStatusLabels, unitTypeLabels, unitLabel } from "@/lib/labels";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
-import { can, canManageDocuments } from "@/features/auth/permissions";
+import { can } from "@/features/auth/permissions";
 import { DocumentsPanel } from "@/features/documents/DocumentsPanel";
 import { useDocuments } from "@/features/documents/hooks";
 import { useLeases } from "@/features/leases/hooks";
@@ -56,7 +56,7 @@ export function UnitDrawer({ unit, propertyName, leaseFrom, onClose }: UnitDrawe
   const { me } = useAuth();
   const user = me!;
   const leases = useLeases({ unitId: unit.id });
-  const documents = useDocuments("units", unit.id);
+  const documents = useDocuments({ owner: "units", ownerId: unit.id });
   const [tab, setTab] = useState<Tab>("tenant");
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -155,10 +155,7 @@ export function UnitDrawer({ unit, propertyName, leaseFrom, onClose }: UnitDrawe
           </>
         ) : tab === "documents" ? (
           <DocumentsPanel
-            owner="units"
-            ownerId={unit.id}
-            canManage={canManageDocuments(user, "units")}
-            canManageLeases={canManageDocuments(user, "leases")}
+            target={{ owner: "units", ownerId: unit.id }}
             leaseState={leaseFrom}
             emptyText="No documents on this unit or its leases yet."
           />

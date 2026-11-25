@@ -1,7 +1,8 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch, OFFLINE_MESSAGE } from "@/lib/api";
 import { toCents, centsToAmount } from "@/lib/format";
-import { refreshAfterMoneyChange } from "@/features/ledger/hooks";
+import { refreshAfterMoneyChange, unclearPayment } from "@/features/ledger/hooks";
+import { isPaymentAnswer } from "@/features/ledger/paymentForm";
 import type { Charge, ChargeCreateBody, ChargeType, LedgerEntry, Payment, PaymentCreateBody, PaymentMethod } from "@/types/ledger";
 
 /**
@@ -74,7 +75,10 @@ export function prefillFromEntry(e: LedgerEntry): { kind: "PAYMENT"; values: Pay
 
 const leasePath = (id: string) => `/leases/${encodeURIComponent(id)}`;
 
-/** Undo from the void toast: re-creates the payment as it was (new PMT number). Same refresh as every money change. */
+/**
+ * Undo from the void toast: re-creates the payment as it was (new PMT number). Same refresh as every money change. Like Record Payment it never
+ * retries by itself, and an unclear reply (`unclearPayment`) reloads the ledger too.
+ */
 export async function reenterPayment(qc: QueryClient, voided: Payment): Promise<Payment> {
   const v = paymentPrefill({ ...voided, number: voided.paymentNumber });
   const body: PaymentCreateBody = {
@@ -84,9 +88,15 @@ export async function reenterPayment(qc: QueryClient, voided: Payment): Promise<
     notes: v.notes,
     ...(v.referenceNumber ? { referenceNumber: v.referenceNumber } : {}),
   };
-  const saved = await apiFetch<Payment>(`${leasePath(voided.leaseId)}/payments`, { method: "POST", body });
-  refreshAfterMoneyChange(qc);
-  return saved;
+  try {
+    const saved = await apiFetch<Payment>(`${leasePath(voided.leaseId)}/payments`, { method: "POST", body, retry: false });
+    if (!isPaymentAnswer(saved)) throw new ApiError(0, [OFFLINE_MESSAGE]);
+    refreshAfterMoneyChange(qc);
+    return saved;
+  } catch (err) {
+    if (unclearPayment(err)) refreshAfterMoneyChange(qc);
+    throw err;
+  }
 }
 
 /** Undo from the void toast: re-creates the charge as it was (new INV number). periodMonth only on RENT. */

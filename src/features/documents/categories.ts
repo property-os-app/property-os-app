@@ -3,7 +3,7 @@ import { readableValue } from "@/lib/labels";
 import type { DocumentCategories, DocumentCategoryOption, DocumentOwner } from "@/types/document";
 
 /** Our owner (the path prefix, plural) -> the key of its list in the categories response (singular). */
-const LIST_KEY: Record<DocumentOwner, keyof DocumentCategories> = { leases: "lease", tenants: "tenant", units: "unit", properties: "property" };
+const LIST_KEY: Record<DocumentOwner, keyof DocumentCategories> = { leases: "lease", tenants: "tenant", units: "unit", properties: "property", payments: "payment" };
 
 /** That owner type's categories in the API's order; [] while the lists are loading (or failed). */
 export function categoryOptions(categories: DocumentCategories | undefined, owner: DocumentOwner): DocumentCategoryOption[] {

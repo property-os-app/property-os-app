@@ -9,7 +9,7 @@ import { formatCurrency, formatDate, formatTimestampDate, parseDateOnly } from "
 import { paymentFrequencyLabels, tenantTypeLabels, unitLabel } from "@/lib/labels";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
-import { can, canManageDocuments, roleLabel } from "@/features/auth/permissions";
+import { can, roleLabel } from "@/features/auth/permissions";
 import { DocumentsPanel } from "@/features/documents/DocumentsPanel";
 import { useDocuments } from "@/features/documents/hooks";
 import { useLeases } from "@/features/leases/hooks";
@@ -54,7 +54,7 @@ export function TenantDrawer({ row, onLeasePage, onClose }: TenantDrawerProps) {
   const detail = useTenant(row.tenant.id);
   // Old (history-only) leases included.
   const leases = useLeases({ tenantId: row.tenant.id });
-  const documents = useDocuments("tenants", row.tenant.id);
+  const documents = useDocuments({ owner: "tenants", ownerId: row.tenant.id });
   const [chosenTab, setTab] = useState<Tab>("overview");
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -133,7 +133,7 @@ export function TenantDrawer({ row, onLeasePage, onClose }: TenantDrawerProps) {
             </div>
           </>
         ) : tab === "documents" ? (
-          <DocumentsPanel owner="tenants" ownerId={row.tenant.id} canManage={canManageDocuments(user, "tenants")} emptyText="No documents for this tenant yet." />
+          <DocumentsPanel target={{ owner: "tenants", ownerId: row.tenant.id }} emptyText="No documents for this tenant yet." />
         ) : (
           <LeasesTab tenantId={row.tenant.id} query={leases} link={link} onAddLease={can(user, "lease.create") ? () => setAddingLease(true) : undefined} />
         )}

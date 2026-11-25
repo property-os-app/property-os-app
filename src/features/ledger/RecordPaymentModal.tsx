@@ -1,14 +1,24 @@
 import { useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router";
 import { z } from "zod";
 import { Button, CurrencyInput, Input, Select, Textarea } from "@/components/atoms";
 import { Combobox, FormField, InlineError, toast, type ComboboxOption } from "@/components/molecules";
 import { Modal } from "@/components/organisms";
+import { ApiError } from "@/lib/api";
+import { DOCUMENT_RULE } from "@/lib/files";
 import { applyServerError } from "@/lib/forms";
 import { centsToAmount, formatCurrency, todayISO, toCents } from "@/lib/format";
 import { labelOptions, paymentMethodLabels, referenceHint, unitLabel } from "@/lib/labels";
-import { useRecordPayment } from "@/features/ledger/hooks";
+import { categoryOptions } from "@/features/documents/categories";
+import { uploadErrorText, useDocumentCategories } from "@/features/documents/hooks";
+import type { LeasePageState } from "@/features/leases/LeasePage";
+import { ledgerQuery, unclearPayment, useRecordPayment } from "@/features/ledger/hooks";
+import { findPayment, receiptCategory, receiptErrorField, type ReceiptValue } from "@/features/ledger/paymentForm";
+import { ReceiptField, type ReceiptErrors } from "@/features/ledger/ReceiptField";
+import { UnclearPayment, type UnclearState } from "@/features/ledger/UnclearPayment";
 import { balanceText } from "@/features/ledger/balance";
 import type { PaymentPrefill } from "@/features/ledger/reenter";
 import type { PaymentCreateBody, PaymentMethod } from "@/types/ledger";
@@ -93,12 +103,25 @@ export interface RecordPaymentModalProps {
   presetLeaseId?: string;
   /** Re-enter a voided payment (needs `presetLeaseId`): its values, with the re-entry note, and its number for the title and toast. */
   reentry?: { from: string; values: PaymentPrefill };
+  /** Shows the lease's ledger after an unclear reply (the modal closes first). Default: goes to the lease page. */
+  onOpenLedger?: () => void;
   onClose: () => void;
 }
 
-/** "Record Payment" modal (the design's layout, without the partial-payment checkbox). Mount it only while open. */
-export function RecordPaymentModal({ targets, presetLeaseId, reentry, onClose }: RecordPaymentModalProps) {
+/**
+ * "Record Payment" modal, with an optional receipt sent in the same request. Nothing can be changed or closed while sending.
+ * When the reply is lost or unclear the payment may have been saved: Save stays locked until the ledger has been reloaded,
+ * and the form says whether the payment is in it. Mount it only while open.
+ */
+export function RecordPaymentModal({ targets, presetLeaseId, reentry, onOpenLedger, onClose }: RecordPaymentModalProps) {
   const record = useRecordPayment();
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const [receipt, setReceipt] = useState<ReceiptValue>({ file: null, category: null });
+  const [receiptErrors, setReceiptErrors] = useState<ReceiptErrors>({});
+  const categories = useDocumentCategories();
+  // The payment sent without a clear answer, and what the reloaded ledger says about it.
+  const [unclear, setUnclear] = useState<{ leaseId: string; body: PaymentCreateBody; known: ReadonlySet<string>; state: UnclearState } | null>(null);
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const preset = presetLeaseId ? targets.find((t) => t.leaseId === presetLeaseId) : undefined;
 
@@ -129,21 +152,76 @@ export function RecordPaymentModal({ targets, presetLeaseId, reentry, onClose }:
   const transactionHint = referenceHint(useWatch({ control, name: "method" }));
   const target = targets.find((t) => t.leaseId === leaseId);
 
-  const confirmClose = () => !isDirty || window.confirm("Discard changes?");
+  // Never while sending: the answer would be lost. After an unclear reply there is nothing left to discard.
+  const confirmClose = () => !isSubmitting && ((!isDirty && !receipt.file) || unclear !== null || window.confirm("Discard changes?"));
   const requestClose = () => {
     if (confirmClose()) onClose();
   };
 
   const onSubmit = handleSubmit(async (v) => {
     setFormErrors([]);
+    setReceiptErrors({});
+    setUnclear(null);
+    const body = paymentBody(v);
+    const known = new Set(qc.getQueryData(ledgerQuery(v.leaseId).queryKey)?.entries.map((e) => e.id));
     try {
-      const saved = await record.mutateAsync({ leaseId: v.leaseId, body: paymentBody(v) });
-      toast.success(reentry ? `Re-entered as ${saved.paymentNumber}` : `Payment ${saved.paymentNumber} recorded${target ? ` for ${unitLabel(target.unitNumber)}` : ""}`);
+      const saved = await record.mutateAsync({ leaseId: v.leaseId, body, file: receipt.file, category: receiptCategory(receipt, categoryOptions(categories.data, "payments")) });
+      const done = reentry ? `Re-entered as ${saved.paymentNumber}` : `Payment ${saved.paymentNumber} recorded${target ? ` for ${unitLabel(target.unitNumber)}` : ""}`;
+      toast.success(saved.document ? `${done} with receipt` : done);
       onClose();
     } catch (err) {
-      setFormErrors(applyServerError(setError, err, FIELDS));
+      if (unclearPayment(err)) {
+        // Not awaited: the check may take a while (a waking server), and the form can be closed meanwhile.
+        void checkLedger({ leaseId: v.leaseId, body, known });
+        return;
+      }
+      if (!(err instanceof ApiError)) return;
+      // All or nothing: after a clear "no" nothing was saved. The receipt's messages go under the receipt.
+      const rest: string[] = [];
+      const onReceipt: ReceiptErrors = {};
+      for (const m of err.messages) {
+        const field = receipt.file ? receiptErrorField(m, err.status) : null;
+        if (field === "file") onReceipt.file = uploadErrorText(new ApiError(err.status, [m]), DOCUMENT_RULE);
+        else if (field) onReceipt.category = m;
+        else rest.push(m);
+      }
+      setReceiptErrors(onReceipt);
+      if (rest.length > 0 || err.messages.length === 0) setFormErrors(applyServerError(setError, new ApiError(err.status, rest, err.error, err.code), FIELDS));
     }
   });
+
+  /** Reloads the ledger and looks for the payment in it. Until that worked, Save stays locked. */
+  const checkLedger = async (sent: { leaseId: string; body: PaymentCreateBody; known: ReadonlySet<string> }) => {
+    setUnclear({ ...sent, state: { status: "checking" } });
+    try {
+      const ledger = await qc.fetchQuery({ ...ledgerQuery(sent.leaseId), staleTime: 0, networkMode: "always" });
+      const entry = findPayment(ledger.entries, sent.body, sent.known);
+      setUnclear({ ...sent, state: entry ? { status: "found", entry } : { status: "missing" } });
+    } catch {
+      setUnclear({ ...sent, state: { status: "failed" } });
+    }
+  };
+
+  const openLedger = () => {
+    onClose();
+    if (onOpenLedger) onOpenLedger();
+    else if (unclear) void navigate(`/leases/${encodeURIComponent(unclear.leaseId)}?tab=ledger`, { state: { from: "rent-roll" } satisfies LeasePageState });
+  };
+
+  // The form is locked while sending and after an unclear reply, until the ledger says the payment isn't there.
+  const busy = isSubmitting || unclear?.state.status === "checking";
+  const locked = busy || (unclear !== null && unclear.state.status !== "missing");
+  const saveLabel = reentry ? "Re-enter payment" : "Record Payment";
+  const sendButton = (label: string, variant: "primary" | "secondary" = "primary") => (
+    <Button type="submit" form="payment-form" variant={variant} disabled={busy} aria-busy={busy || undefined}>
+      {busy ? (unclear ? "Checking the ledger..." : "Recording...") : label}
+    </Button>
+  );
+  const openLedgerButton = (variant: "primary" | "secondary") => (
+    <Button variant={variant} disabled={isSubmitting} onClick={openLedger}>
+      Open ledger
+    </Button>
+  );
 
   const options = useMemo(() => targets.map(targetOption), [targets]);
 
@@ -158,71 +236,89 @@ export function RecordPaymentModal({ targets, presetLeaseId, reentry, onClose }:
           <Button onClick={requestClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit" form="payment-form" variant="primary" disabled={isSubmitting} aria-busy={isSubmitting || undefined}>
-            {isSubmitting ? "Recording..." : reentry ? "Re-enter payment" : "Record Payment"}
-          </Button>
+          {!unclear || unclear.state.status === "checking" ? (
+            sendButton(saveLabel)
+          ) : unclear.state.status === "failed" ? (
+            <Button variant="primary" onClick={() => void checkLedger(unclear)}>
+              Check again
+            </Button>
+          ) : unclear.state.status === "found" ? (
+            <>
+              {sendButton("Record again anyway", "secondary")}
+              {openLedgerButton("primary")}
+            </>
+          ) : (
+            <>
+              {openLedgerButton("secondary")}
+              {sendButton("Try again")}
+            </>
+          )}
         </>
       }
     >
       <form id="payment-form" onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {formErrors.length > 0 && <InlineError title={formErrors.join(". ")} />}
+        {unclear && <UnclearPayment state={unclear.state} />}
 
-        <Controller
-          control={control}
-          name="leaseId"
-          // The FormField is inside, so its error / help id reaches the field itself.
-          render={({ field }) => (
-            <FormField label="Tenant" htmlFor="pay-tenant" required error={errors.leaseId?.message} help={target ? balanceHelp(target.balance) : undefined}>
-              {preset ? (
-                <Input id="pay-tenant" value={preset.label} readOnly disabled />
-              ) : (
-                <Combobox
-                  id="pay-tenant"
-                  ref={field.ref}
-                  name={field.name}
-                  options={options}
-                  value={field.value}
-                  onBlur={field.onBlur}
-                  onChange={(next) => {
-                    field.onChange(next);
-                    // A new tenant: prefill their balance. A prefilled amount is checked at once, so an earlier "enter an amount" error goes.
-                    const amount = prefill(targets.find((t) => t.leaseId === next)?.balance);
-                    setValue("amount", amount, { shouldDirty: true, shouldValidate: amount !== "" });
-                  }}
-                  listLabel="Tenant"
-                  placeholder="Choose a tenant"
-                />
-              )}
+                <fieldset disabled={locked} className="contents">
+          <Controller
+            control={control}
+            name="leaseId"
+            // The FormField is inside, so its error / help id reaches the field itself.
+            render={({ field }) => (
+              <FormField label="Tenant" htmlFor="pay-tenant" required error={errors.leaseId?.message} help={target ? balanceHelp(target.balance) : undefined}>
+                {preset ? (
+                  <Input id="pay-tenant" value={preset.label} readOnly disabled />
+                ) : (
+                  <Combobox
+                    id="pay-tenant"
+                    ref={field.ref}
+                    name={field.name}
+                    options={options}
+                    value={field.value}
+                    onBlur={field.onBlur}
+                    onChange={(next) => {
+                      field.onChange(next);
+                      // A new tenant: prefill their balance. A prefilled amount is checked at once, so an earlier "enter an amount" error goes.
+                      const amount = prefill(targets.find((t) => t.leaseId === next)?.balance);
+                      setValue("amount", amount, { shouldDirty: true, shouldValidate: amount !== "" });
+                    }}
+                    listLabel="Tenant"
+                    placeholder="Choose a tenant"
+                  />
+                )}
+              </FormField>
+            )}
+          />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField label="Amount" htmlFor="pay-amount" required error={errors.amount?.message} help={target ? amountNote(target.balance, amount) : undefined}>
+              <Controller
+                control={control}
+                name="amount"
+                render={({ field }) => <CurrencyInput id="pay-amount" name={field.name} value={field.value} onChange={field.onChange} onBlur={field.onBlur} />}
+              />
             </FormField>
-          )}
-        />
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <FormField label="Amount" htmlFor="pay-amount" required error={errors.amount?.message} help={target ? amountNote(target.balance, amount) : undefined}>
-            <Controller
-              control={control}
-              name="amount"
-              render={({ field }) => <CurrencyInput id="pay-amount" name={field.name} value={field.value} onChange={field.onChange} onBlur={field.onBlur} />}
-            />
+            <FormField label="Payment date" htmlFor="pay-date" required error={errors.paymentDate?.message}>
+              <Input id="pay-date" type="date" {...register("paymentDate")} />
+            </FormField>
+          </div>
+          <FormField label="Method" htmlFor="pay-method" required error={errors.method?.message}>
+            <Select id="pay-method" {...register("method")}>
+              {labelOptions(paymentMethodLabels).map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
           </FormField>
-          <FormField label="Payment date" htmlFor="pay-date" required error={errors.paymentDate?.message}>
-            <Input id="pay-date" type="date" {...register("paymentDate")} />
+          <FormField label="Reference" htmlFor="pay-reference" error={errors.referenceNumber?.message} help={transactionHint}>
+            <Input id="pay-reference" maxLength={MAX_REFERENCE} placeholder={transactionHint ? undefined : "Check number or confirmation ID"} autoComplete="off" {...register("referenceNumber")} />
           </FormField>
-        </div>
-        <FormField label="Method" htmlFor="pay-method" required error={errors.method?.message}>
-          <Select id="pay-method" {...register("method")}>
-            {labelOptions(paymentMethodLabels).map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
-        </FormField>
-        <FormField label="Reference" htmlFor="pay-reference" error={errors.referenceNumber?.message} help={transactionHint}>
-          <Input id="pay-reference" maxLength={MAX_REFERENCE} placeholder={transactionHint ? undefined : "Check number or confirmation ID"} autoComplete="off" {...register("referenceNumber")} />
-        </FormField>
-        <FormField label="Notes" htmlFor="pay-notes" error={errors.notes?.message}>
-          <Textarea id="pay-notes" maxLength={MAX_NOTES} {...register("notes")} />
-        </FormField>
+          <FormField label="Notes" htmlFor="pay-notes" error={errors.notes?.message}>
+            <Textarea id="pay-notes" maxLength={MAX_NOTES} {...register("notes")} />
+          </FormField>
+          <ReceiptField value={receipt} onChange={setReceipt} errors={receiptErrors} onErrors={setReceiptErrors} disabled={locked} />
+        </fieldset>
       </form>
     </Modal>
   );

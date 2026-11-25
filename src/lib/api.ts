@@ -15,6 +15,11 @@ export interface ApiFetchOptions {
   /** Turned into ?a=1&b=2. undefined, null and "" are skipped. */
   query?: Record<string, QueryValue>;
   signal?: AbortSignal;
+  /**
+   * false: never sent again by itself, not even on a 502 / 503 or the host's waking page (payments: a second one could be
+   * saved). Default true (serverWake.ts says which methods may retry).
+   */
+  retry?: boolean;
 }
 
 /** Error thrown by apiFetch. status 0 means the server could not be reached. */
@@ -152,10 +157,11 @@ async function send(path: string, options: ApiFetchOptions, accept: string): Pro
       const kind = waking ?? "network";
       const offline = typeof navigator !== "undefined" && navigator.onLine === false;
       const delay = wakeDelay(i);
-      const retryable = canRetryWaking(method, kind, res?.status);
+      const retryable = options.retry !== false && canRetryWaking(method, kind, res?.status);
       if (offline || !retryable || Date.now() - started + delay > WAKE_LIMIT_MS) {
         // A write that can't retry (504, network error) fails as before (5xx text / offline); a server still asleep: "Can't reach the server".
-        if (res && !retryable) return res;
+        // The host's page is never an answer, whatever its status.
+        if (res && !retryable && kind !== "html") return res;
         throw new ApiError(0, [OFFLINE_MESSAGE]);
       }
       void res?.body?.cancel().catch(() => {});

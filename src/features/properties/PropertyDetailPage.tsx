@@ -9,7 +9,7 @@ import { ApiError, errorText } from "@/lib/api";
 import { centsToAmount, formatCompactCurrency, formatCurrency, formatDate, formatPercent } from "@/lib/format";
 import { plural, propertyTypeLabels } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
-import { can, canManageDocuments } from "@/features/auth/permissions";
+import { can } from "@/features/auth/permissions";
 import { DocumentsPanel } from "@/features/documents/DocumentsPanel";
 import { useDocuments } from "@/features/documents/hooks";
 import { useLeases } from "@/features/leases/hooks";
@@ -103,7 +103,7 @@ function PropertyDetail({ property }: { property: Property }) {
   const units = useUnits({ propertyId: property.id });
   const leases = useLeases({ propertyId: property.id });
   const del = useDeleteProperty();
-  const documents = useDocuments("properties", property.id);
+  const documents = useDocuments({ owner: "properties", ownerId: property.id });
 
   const [tab, setTab] = useState<Tab>("overview");
   const [editing, setEditing] = useState(false);
@@ -279,7 +279,7 @@ function PropertyDetail({ property }: { property: Property }) {
           </div>
         </div>
       ) : tab === "documents" ? (
-        <DocumentsPanel owner="properties" ownerId={property.id} canManage={canManageDocuments(user, "properties")} emptyText="No documents on this property yet." />
+        <DocumentsPanel target={{ owner: "properties", ownerId: property.id }} emptyText="No documents on this property yet." />
       ) : (
         <Card padding="none">
           <PropertyUnitsTable

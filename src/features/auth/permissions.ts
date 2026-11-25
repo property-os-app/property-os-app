@@ -73,13 +73,14 @@ export function can(me: Pick<Me, "role" | "permissions">, action: Action): boole
 
 /**
  * Uploading and deleting documents needs the owner record's edit permission (API.md, Documents): leases.manage,
- * tenants.create_edit, units.create_edit or properties.edit. The property photo uses property.edit too.
+ * tenants.create_edit, units.create_edit, properties.edit or, for a payment's files, money.record. The property photo uses property.edit too.
  */
 const DOCUMENT_ACTIONS: Record<DocumentOwner, Action> = {
   leases: "lease.edit",
   tenants: "tenant.edit",
   units: "unit.edit",
   properties: "property.edit",
+  payments: "payment.create",
 };
 
 /** True when the user may upload and delete documents on that owner type. Seeing them only needs access to the record. */

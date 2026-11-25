@@ -9,6 +9,8 @@ import { cn } from "@/lib/cn";
 import { formatFileSize } from "@/lib/files";
 import { formatTimestampDate } from "@/lib/format";
 import { useIsMobile } from "@/lib/useIsMobile";
+import { useAuth } from "@/features/auth/authContext";
+import { canManageDocuments } from "@/features/auth/permissions";
 import { DocumentDeleteDialog } from "@/features/documents/DocumentDeleteDialog";
 import { DocumentUpload } from "@/features/documents/DocumentUpload";
 import { categoryLabel } from "@/features/documents/categories";
@@ -16,17 +18,14 @@ import { useDocumentCategories, useDocuments, useDownloadDocument, useViewDocume
 import { ownerOfDocument, sourceText } from "@/features/documents/source";
 import { openBlankTab, POPUP_BLOCKED_MESSAGE } from "@/features/documents/view";
 import { textLink } from "@/features/shared/linkClass";
-import type { DocumentOwner, ListedDocument } from "@/types/document";
+import type { DocumentRef, ListedDocument } from "@/types/document";
 
 export interface DocumentsPanelProps {
-  owner: DocumentOwner;
-  ownerId: string;
-  /** Upload and delete (the owner record's edit permission, `canManageDocuments`). Hidden, never disabled, without it. */
-  canManage: boolean;
-  /** A unit's list: delete its leases' documents (the lease permission). */
-  canManageLeases?: boolean;
+  target: DocumentRef;
   /** A unit's list: router state for the links to the leases. */
   leaseState?: unknown;
+  /** A lease's list: a payment file's source opens the Ledger tab. */
+  onOpenLedger?: () => void;
   /** Empty-state text, e.g. "No documents on this lease yet." */
   emptyText?: string;
 }
@@ -45,31 +44,42 @@ function DocIcon({ doc }: { doc: ListedDocument }) {
 }
 
 /**
- * The documents of one lease, tenant, unit or property: upload card (with permission) and the list (DataTable from md,
+ * The documents of one lease, tenant, unit, property or payment: upload card (with permission) and the list (DataTable from md,
  * CardList on phones, 5 states). View opens a new tab and Download saves the file, each with a fresh signed link on the
- * click (a phone card tap views); Delete confirms first. A unit's list has its leases' documents too: each row shows "Unit" or a
- * link to the lease's documents, and deletes through its own record.
+ * click (a phone card tap views); Delete confirms first. A lease's list has its payments' files
+ * too, a unit's list its leases' documents and theirs: each row shows its source, takes its label from its own record's
+ * categories and deletes through that record, with that record's permission (`canManageDocuments`; hidden without it).
  */
-export function DocumentsPanel({ owner, ownerId, canManage, canManageLeases = false, leaseState, emptyText = "No documents yet." }: DocumentsPanelProps) {
-  const docs = useDocuments(owner, ownerId);
+export function DocumentsPanel({ target, leaseState, onOpenLedger, emptyText = "No documents yet." }: DocumentsPanelProps) {
+  const { me } = useAuth();
+  const docs = useDocuments(target);
+  const canManage = canManageDocuments(me!, target.owner);
+  const ofPayment = target.owner === "payments";
   // Labels from the owner type's own list; a readable fallback while it loads (or fails), never blank.
   const categories = useDocumentCategories();
-  const list = { owner, ownerId };
-  const label = (d: ListedDocument) => categoryLabel(categories.data, ownerOfDocument(d, list).owner, d.category);
-  const canDelete = (d: ListedDocument) => (ownerOfDocument(d, list).owner === owner ? canManage : canManageLeases);
-  const source = (d: ListedDocument) =>
-    d.source?.leaseId ? (
-      // Sits on top of a phone card's stretched button.
-      <Link
-        to={`/leases/${encodeURIComponent(d.source.leaseId)}?tab=documents`}
-        state={leaseState}
-        className={cn(textLink, "pointer-events-auto relative")}
-      >
-        {sourceText(d)}
-      </Link>
-    ) : (
-      sourceText(d)
-    );
+  const label = (d: ListedDocument) => categoryLabel(categories.data, ownerOfDocument(d, target).owner, d.category);
+  const canDelete = (d: ListedDocument) => canManageDocuments(me!, ownerOfDocument(d, target).owner);
+  /** "Unit", a link to the lease (its Ledger tab for a payment's file), or "Payment PMT-…" opening this lease's Ledger tab. */
+  const source = (d: ListedDocument) => {
+    const text = sourceText(d, target);
+    // Sits on top of a phone card's stretched button.
+    const linkClass = cn(textLink, "pointer-events-auto relative text-left");
+    if (text && d.source?.leaseId) {
+      return (
+        <Link to={`/leases/${encodeURIComponent(d.source.leaseId)}?tab=${d.paymentId ? "ledger" : "documents"}`} state={leaseState} className={linkClass}>
+          {text}
+        </Link>
+      );
+    }
+    if (text && d.paymentId && onOpenLedger) {
+      return (
+        <button type="button" onClick={onOpenLedger} className={linkClass}>
+          {text}
+        </button>
+      );
+    }
+    return text;
+  };
   const download = useDownloadDocument();
   const view = useViewDocument();
   const isMobile = useIsMobile();
@@ -98,7 +108,7 @@ export function DocumentsPanel({ owner, ownerId, canManage, canManageLeases = fa
   const viewingId = view.isPending ? view.variables?.docId : null;
 
   const state = docs.isError ? "error" : docs.isPending ? "loading" : docs.data.length === 0 ? "empty" : "ideal";
-  const empty = { title: "No documents", description: canManage ? `${emptyText} Upload one above.` : emptyText };
+  const empty = { title: ofPayment ? "No files" : "No documents", description: canManage ? `${emptyText} ${ofPayment ? "Add" : "Upload"} one above.` : emptyText };
   const error = { title: "Couldn't load documents", description: errorText(docs.error), onRetry: () => void docs.refetch() };
   const meta = (d: ListedDocument) => `${label(d)} · ${formatFileSize(d.sizeBytes)}`;
 
@@ -120,7 +130,8 @@ export function DocumentsPanel({ owner, ownerId, canManage, canManageLeases = fa
               </Badge>
               <Caption className="tabular">{formatFileSize(d.sizeBytes)}</Caption>
             </span>
-            {d.source && <Caption className="truncate">{source(d)}</Caption>}
+            {/* Wraps: "Lease … · Payment …" is longer than a narrow panel's column. */}
+            {source(d) && <Caption className="whitespace-normal">{source(d)}</Caption>}
           </div>
         </div>
       ),
@@ -184,8 +195,8 @@ export function DocumentsPanel({ owner, ownerId, canManage, canManageLeases = fa
     <div className="@container flex flex-col gap-4">
       {canManage && (
         <Card className="flex flex-col gap-4">
-          <H3>Upload a document</H3>
-          <DocumentUpload owner={owner} ownerId={ownerId} />
+          <H3>{ofPayment ? "Add a file" : "Upload a document"}</H3>
+          <DocumentUpload target={target} />
         </Card>
       )}
       {isMobile ? (
@@ -206,7 +217,7 @@ export function DocumentsPanel({ owner, ownerId, canManage, canManageLeases = fa
                 { label: "Uploaded", value: formatTimestampDate(d.createdAt) },
                 { label: "By", value: d.uploadedBy.email },
               ]}
-              note={d.source ? source(d) : undefined}
+              note={source(d) ?? undefined}
               onOpen={() => onView(d)}
               openLabel={`View ${d.name}`}
               actions={
@@ -225,7 +236,7 @@ export function DocumentsPanel({ owner, ownerId, canManage, canManageLeases = fa
       ) : (
         <DataTable columns={columns} rows={docs.data ?? []} rowKey={(d) => d.id} density="compact" caption="Documents" state={state} empty={empty} error={error} />
       )}
-      <DocumentDeleteDialog {...(deleting ? ownerOfDocument(deleting, list) : list)} doc={deleting} onClose={() => setDeleting(null)} />
+      <DocumentDeleteDialog target={deleting ? ownerOfDocument(deleting, target) : target} doc={deleting} onClose={() => setDeleting(null)} />
     </div>
   );
 }

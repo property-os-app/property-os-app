@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 import { centsToAmount, currentMonthUTC, daysUntil, formatCurrency, formatDate, formatMonth, isMonth, ordinal, toCents } from "@/lib/format";
 import { plural, unitLabel } from "@/lib/labels";
 import { useAuth } from "@/features/auth/authContext";
-import { can, canManageDocuments } from "@/features/auth/permissions";
+import { can } from "@/features/auth/permissions";
 import { DocumentsPanel } from "@/features/documents/DocumentsPanel";
 import { useDocuments } from "@/features/documents/hooks";
 import { DetailsTab } from "@/features/leases/DetailsTab";
@@ -203,7 +203,7 @@ function LeaseDetail({ lease }: { lease: Lease }) {
   // An old (history-only) lease is never billed: no ledger call, no Ledger tab, no money actions.
   const old = isOldLease(lease);
   const ledger = useLedger(lease.id, { enabled: !old });
-  const documents = useDocuments("leases", lease.id);
+  const documents = useDocuments({ owner: "leases", ownerId: lease.id });
   const activate = useActivateAction();
 
   const tabParam = params.get("tab") as Tab | null;
@@ -425,7 +425,7 @@ function LeaseDetail({ lease }: { lease: Lease }) {
       ) : tab === "details" ? (
         <DetailsTab lease={lease} canEdit={canEdit} onEdit={setEditing} />
       ) : tab === "documents" ? (
-        <DocumentsPanel owner="leases" ownerId={lease.id} canManage={canManageDocuments(user, "leases")} emptyText="No documents on this lease yet." />
+        <DocumentsPanel target={{ owner: "leases", ownerId: lease.id }} onOpenLedger={() => setTab("ledger")} emptyText="No documents on this lease yet." />
       ) : (
         <TenantsTab lease={lease} />
       )}
@@ -436,7 +436,7 @@ function LeaseDetail({ lease }: { lease: Lease }) {
       {/* From the Rent Roll, a Rent charge is for that month; otherwise the current UTC month. */}
       {charging && <AddChargeModal leaseId={lease.id} month={month ?? currentMonthUTC()} onClose={() => setCharging(false)} />}
       {paying && summary && (
-        <RecordPaymentModal targets={[leasePaymentTarget(lease, summary.balance)]} presetLeaseId={lease.id} onClose={() => setPaying(false)} />
+        <RecordPaymentModal targets={[leasePaymentTarget(lease, summary.balance)]} presetLeaseId={lease.id} onOpenLedger={() => setTab("ledger")} onClose={() => setPaying(false)} />
       )}
     </>
   );

@@ -19,7 +19,7 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 - `errorText(err)`: one display text for any error.
 - Friendly texts instead of the backend's: `OFFLINE_MESSAGE` (status 0: server unreachable, or Firebase `auth/network-request-failed` while getting the token), `SERVER_ERROR_MESSAGE` (any 5xx), `FORBIDDEN_MESSAGE` (403 `FORBIDDEN_ROLE`). Other errors keep the backend message, so 403 `FORBIDDEN_PERMISSION` says which switch to ask the owner for.
 - `ApiFetchOptions`: options type.
-- Waking server: a 502/503/504, an HTML page or a network error is retried with backoff for up to 90 seconds (GET always; writes only on 502, 503 or the HTML page, which never reached the API), then fails with status 0 `OFFLINE_MESSAGE`. Our own answers (2xx, 4xx, 500 JSON) return at once. A signal abort stops the wait.
+- Waking server: a 502/503/504, an HTML page or a network error is retried with backoff for up to 90 seconds (GET always; writes only on 502, 503 or the HTML page, which never reached the API), then fails with status 0 `OFFLINE_MESSAGE`. Our own answers (2xx, 4xx, 500 JSON) return at once. A signal abort stops the wait. `retry: false` (payments only) turns that off; the host's HTML page then fails like a network error, never as an answer.
 - `apiFetchBlob(path, options)`: same token and errors as `apiFetch`, for endpoints that answer with a file (lease and template PDFs). Checks `res.ok` first (errors are JSON and throw `ApiError`), then returns `{ blob, filename }` (filename from `Content-Disposition`, null when missing). `ApiBlob`: its type.
 
 ## serverWake.ts

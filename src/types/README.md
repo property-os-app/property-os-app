@@ -32,8 +32,8 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 - `TenantCreateBody`: POST body. `TenantUpdateBody`: PATCH body (`idNumber`, `address`, `moveInDate`, `notes` may be null).
 
 ## document.ts
-- `DocumentOwner`: `leases | tenants | units | properties` (the path prefix). `DocumentCategoryOption` (`{ value, label }`) and `DocumentCategories` (GET /documents/categories: `{ lease, tenant, unit, property }`, singular keys, each list in display order). `Document.category` is a plain string (the lists come from the API, never hard-coded). `ListedDocument`: a listed document, with its `source` (`DocumentSource`) in a unit's list.
-- `Document`: one uploaded file (`name`, `category`, `contentType`, `sizeBytes`, `uploadedBy { id, email }`, `createdAt`). `DocumentContentType`.
+- `DocumentOwner`: `leases | tenants | units | properties | payments`. `DocumentRef`: one record with documents (a payment with its `leaseId`). `DocumentCategoryOption` (`{ value, label }`) and `DocumentCategories` (GET /documents/categories: `{ lease, tenant, unit, property, payment }`, singular keys, each list in display order). `Document.category` is a plain string (the lists come from the API, never hard-coded). `ListedDocument`: a listed document, with its `source` (`DocumentSource`) in a unit's list.
+- `Document`: one uploaded file (`name`, `category`, `contentType`, `sizeBytes`, `uploadedBy { id, email }`, `createdAt`, `paymentId` / `paymentNumber` on a payment's file, else null). `DocumentContentType`.
 - `DocumentDownload`: `{ url, expiresAt }`, a 5-minute signed link; open it at once, never store it.
 
 ## lease.ts
@@ -57,9 +57,9 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 
 ## ledger.ts
 - `ChargeType`, `PaymentMethod`, `LedgerEntryKind`: money enums.
-- `Charge`, `Payment`: POST charge / payment answers (money strings, "YYYY-MM-DD" dates, void fields). `Charge.createdById` / `createdBy` are null on rent billed automatically (show "Auto-billed").
-- `LedgerEntry`, `LedgerResponse`: GET /leases/:id/ledger (entries oldest first; `runningBalance` may be negative; summary with balance, totals, monthly rent).
-- `ChargeCreateBody` (`periodMonth` only on RENT), `PaymentCreateBody`, `VoidBody` (`reason`): request bodies.
+- `Charge`, `Payment`: POST charge / payment answers (money strings, "YYYY-MM-DD" dates, void fields). `Charge.createdById` / `createdBy` are null on rent billed automatically (show "Auto-billed"). `Payment.documentCount`: its files. `PaymentRecorded`: the POST answer, with `document` or null.
+- `LedgerEntry`, `LedgerResponse`: GET /leases/:id/ledger (entries oldest first; `runningBalance` may be negative; summary with balance, totals, monthly rent). `documentCount`: a payment's files, null on charges.
+- `ChargeCreateBody` (`periodMonth` only on RENT), `PaymentCreateBody`, `VoidBody` (`reason`): request bodies. `PaymentCreateBody.documentCategory`: only with a file.
 
 ## rentRoll.ts
 - `RentRollStatus`: `PAID | PARTIAL | UNPAID | OVERDUE | NOT_BILLED`.

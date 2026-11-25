@@ -23,6 +23,11 @@ const CATEGORIES: DocumentCategories = {
     { value: "SERVICE_CONTRACT", label: "Service contract (snow, lawn, etc.)" },
     { value: "OTHER", label: "Other" },
   ],
+  payment: [
+    { value: "RECEIPT", label: "Receipt" },
+    { value: "CHECK_IMAGE", label: "Check (photo / scan)" },
+    { value: "OTHER", label: "Other" },
+  ],
 };
 
 describe("categoryOptions", () => {
@@ -42,6 +47,7 @@ describe("categoryLabel", () => {
     expect(categoryLabel(CATEGORIES, "leases", "INSPECTION")).toBe("Other inspection");
     expect(categoryLabel(CATEGORIES, "units", "INSPECTION")).toBe("Inspection");
     expect(categoryLabel(CATEGORIES, "tenants", "ID")).toBe("ID");
+    expect(categoryLabel(CATEGORIES, "payments", "CHECK_IMAGE")).toBe("Check (photo / scan)");
   });
 
   it("falls back to a readable label while loading", () => {
