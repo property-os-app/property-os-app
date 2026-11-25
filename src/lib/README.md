@@ -15,11 +15,11 @@ Plain TypeScript helpers with no UI: env, Firebase, the API client, labels, form
 ## api.ts
 - `apiFetch<T>(path, { method, body, query, signal })`: calls `VITE_API_URL + path`, adds `Authorization: Bearer <token>` when signed in, sends `body` as JSON, builds the query string (skips undefined, null, ""), returns `undefined` for 204 or empty bodies.
 - `form` option (FormData): sent as multipart/form-data with no Content-Type set by hand (the browser adds the boundary); used for document uploads and the property photo. Errors (400, 403, 404, 409, 413, 415) are `ApiError`s like any other.
-- `ApiError`: thrown on error responses: `status`, `messages: string[]` (backend message is a string or an array), `error`, `code` (only on the 6 auth errors, e.g. `INVALID_TOKEN`, `FORBIDDEN_PERMISSION`; switch on it, never on message text). `status` 0 means the server could not be reached.
+- `ApiError`: thrown on error responses: `status`, `messages: string[]` (backend message is a string or an array), `error`, `code` (only on the 6 auth errors, e.g. `INVALID_TOKEN`, `FORBIDDEN_PERMISSION`; switch on it, never on message text). `status` 0 means the server could not be reached. `details`: the whole JSON error body (409 `TENANT_EMAIL_EXISTS` has `tenant` and `newTenantIndex`).
 - `errorText(err)`: one display text for any error.
 - Friendly texts instead of the backend's: `OFFLINE_MESSAGE` (status 0: server unreachable, or Firebase `auth/network-request-failed` while getting the token), `SERVER_ERROR_MESSAGE` (any 5xx), `FORBIDDEN_MESSAGE` (403 `FORBIDDEN_ROLE`). Other errors keep the backend message, so 403 `FORBIDDEN_PERMISSION` says which switch to ask the owner for.
 - `ApiFetchOptions`: options type.
-- Waking server: a 502/503/504, an HTML page or a network error is retried with backoff for up to 90 seconds (GET always; writes only on 502, 503 or the HTML page, which never reached the API), then fails with status 0 `OFFLINE_MESSAGE`. Our own answers (2xx, 4xx, 500 JSON) return at once. A signal abort stops the wait.
+- Waking server: a 502/503/504, an HTML page or a network error is retried with backoff for up to 90 seconds (GET always; writes only on 502, 503 or the HTML page, which never reached the API), then fails with status 0 `OFFLINE_MESSAGE`. Our own answers (2xx, 4xx, 500 JSON) return at once. A signal abort stops the wait. `retry: false` (payments only) turns that off; the host's HTML page then fails like a network error, never as an answer.
 - `apiFetchBlob(path, options)`: same token and errors as `apiFetch`, for endpoints that answer with a file (lease and template PDFs). Checks `res.ok` first (errors are JSON and throw `ApiError`), then returns `{ blob, filename }` (filename from `Content-Disposition`, null when missing). `ApiBlob`: its type.
 
 ## serverWake.ts
@@ -88,9 +88,9 @@ Links that open the user's own phone and email apps (no backend).
 - `unitLayout(unitType, bathrooms)`: "1 bd / 1 ba", "Studio / 1 ba", or "3 bd" when bathrooms is null.
 
 ## files.ts
-- `FileRule`: allowed types (MIME and extensions), inclusive byte limit and the words for messages. `DOCUMENT_RULE` (PDF, JPEG, PNG, 20 MB), `PDF_RULE` (the old lease's signed copy), `PHOTO_RULE` (JPEG, PNG, WebP, 5 MB).
-- `checkFile(file, rule)`: null or a message (wrong type; extension used when the browser gives no type; empty; too large). The backend checks the real content again (415).
-- `acceptOf(rule)`: the file input `accept` value. `formatFileSize(bytes)`: "980 B", "482 KB", "2.3 MB".
+- `FileRule`: allowed types (MIME and extensions), inclusive byte limit and the words for messages; `byExtension`: the extension decides. `DOCUMENT_RULE` (PDF, images with WebP, GIF and HEIC, Word, Excel, OpenDocument, CSV, TXT, RTF; 20 MB; by extension), `DOCUMENT_HINT` (the hint under every document upload box), `PHOTO_RULE` (JPEG, PNG, WebP, 5 MB).
+- `checkFile(file, rule)`: null or a message (wrong type; empty; too large). Documents: a listed extension is enough, whatever the browser's type; without one only a PDF or image type passes. Photo: the browser's type, or the extension when it has none. The backend checks the real content again (415).
+- `acceptOf(rule)`: the file input `accept` value (documents: extensions only). `extensionOf(name)`: "Scan.JPG" -> "jpg". `formatFileSize(bytes)`: "980 B", "482 KB", "2.3 MB".
 
 ## useIsMobile.ts
 - `useIsMobile()`: true under 768px (Tailwind `md`), read synchronously from `matchMedia` and updated on resize. List components render `CardList` instead of `DataTable` when true, and pages show the Filters sheet instead of the toolbar controls.
@@ -153,4 +153,4 @@ Links that open the user's own phone and email apps (no backend).
 - `clipboard.test.ts`: `copyText` on the Clipboard API path and that it never throws.
 - `tableParams.test.ts`: reading and writing list state in the URL, fallbacks and round trip.
 - `pdf.test.ts`: `filenameFromDisposition` (quoted, bare, `filename*`, bad escape, missing).
-- `files.test.ts`: `checkFile` (exactly 20 MB passes, one byte more fails, empty, wrong type, extension fallback, photo and PDF-only rules), `formatFileSize`, `acceptOf`.
+- `files.test.ts`: `checkFile` (exactly 20 MB passes, one byte more fails, empty, wrong type, every document extension with an empty or odd MIME type, the photo rule), `formatFileSize`, `acceptOf`.

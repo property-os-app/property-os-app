@@ -1,14 +1,24 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { ApiError, apiFetch, errorText } from "@/lib/api";
 import type { FileRule } from "@/lib/files";
 import { documentKeys } from "@/features/documents/keys";
+import { leaseKeys } from "@/features/leases/keys";
 import { showInTab, type ViewTab } from "@/features/documents/view";
-import type { Document, DocumentCategories, DocumentDownload, DocumentOwner } from "@/types/document";
+import type { Document, DocumentCategories, DocumentDownload, DocumentRef, ListedDocument } from "@/types/document";
 
-const documentsPath = (owner: DocumentOwner, ownerId: string) => `/${owner}/${encodeURIComponent(ownerId)}/documents`;
+const documentsPath = (target: DocumentRef) =>
+  target.owner === "payments"
+    ? `/leases/${encodeURIComponent(target.leaseId)}/payments/${encodeURIComponent(target.ownerId)}/documents`
+    : `/${target.owner}/${encodeURIComponent(target.ownerId)}/documents`;
+
+/** A lease's list has its payments' files too, a unit's list its leases' documents and their payments' files. */
+const LIST_QUERY: Partial<Record<DocumentRef["owner"], Record<string, string>>> = {
+  leases: { includePayments: "true" },
+  units: { includeLeases: "true", includePayments: "true" },
+};
 
 /**
- * GET /documents/categories: `{ lease, tenant, unit, property }`, each `{ value, label }[]` in display order. Static data
+ * GET /documents/categories: `{ lease, tenant, unit, property, payment }`, each `{ value, label }[]` in display order. Static data
  * (changes only with an API release), so it is fetched once and kept for the session. Read it with `categories.ts`.
  */
 export function useDocumentCategories() {
@@ -20,22 +30,34 @@ export function useDocumentCategories() {
   });
 }
 
-/** GET /{owner}/:id/documents: newest first, no pagination. 404 when the owner is out of scope (a manager on a tenant they can't see). */
-export function useDocuments(owner: DocumentOwner, ownerId: string, options: { enabled?: boolean } = {}) {
+/**
+ * GET /{owner}/:id/documents (a payment's: under its lease): newest first, no pagination. A lease's list includes its payments'
+ * files (`paymentId` set), a unit's list its leases' documents and theirs, each with its `source`. 404 when the owner is out of scope (a manager on a tenant they can't see).
+ */
+export function useDocuments(target: DocumentRef, options: { enabled?: boolean } = {}) {
   return useQuery({
-    queryKey: documentKeys.list(owner, ownerId),
-    queryFn: ({ signal }) => apiFetch<Document[]>(documentsPath(owner, ownerId), { signal }),
+    queryKey: documentKeys.list(target),
+    queryFn: ({ signal }) => apiFetch<ListedDocument[]>(documentsPath(target), { query: LIST_QUERY[target.owner], signal }),
     enabled: options.enabled,
   });
+}
+
+/** Refreshes that record's list. A lease's documents are in its unit's list too; a payment's also in its lease's, and counted in the ledger. */
+function refreshDocuments(qc: QueryClient, target: DocumentRef) {
+  void qc.invalidateQueries({ queryKey: documentKeys.list(target) });
+  if (target.owner === "leases" || target.owner === "payments") void qc.invalidateQueries({ queryKey: documentKeys.units });
+  if (target.owner === "payments") {
+    void qc.invalidateQueries({ queryKey: documentKeys.list({ owner: "leases", ownerId: target.leaseId }) });
+    void qc.invalidateQueries({ queryKey: leaseKeys.ledger(target.leaseId) });
+  }
 }
 
 /** POST /{owner}/:id/documents with a multipart body from `documentForm`. Refreshes that owner's list. */
 export function useUploadDocument() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ owner, ownerId, form }: { owner: DocumentOwner; ownerId: string; form: FormData }) =>
-      apiFetch<Document>(documentsPath(owner, ownerId), { method: "POST", form }),
-    onSuccess: (_doc, { owner, ownerId }) => void qc.invalidateQueries({ queryKey: documentKeys.list(owner, ownerId) }),
+    mutationFn: ({ target, form }: { target: DocumentRef; form: FormData }) => apiFetch<Document>(documentsPath(target), { method: "POST", form }),
+    onSuccess: (_doc, { target }) => refreshDocuments(qc, target),
   });
 }
 
@@ -43,9 +65,9 @@ export function useUploadDocument() {
 export function useDeleteDocument() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ owner, ownerId, docId }: { owner: DocumentOwner; ownerId: string; docId: string }) =>
-      apiFetch<Document>(`${documentsPath(owner, ownerId)}/${encodeURIComponent(docId)}`, { method: "DELETE" }),
-    onSuccess: (_doc, { owner, ownerId }) => void qc.invalidateQueries({ queryKey: documentKeys.list(owner, ownerId) }),
+    mutationFn: ({ target, docId }: { target: DocumentRef; docId: string }) =>
+      apiFetch<Document>(`${documentsPath(target)}/${encodeURIComponent(docId)}`, { method: "DELETE" }),
+    onSuccess: (_doc, { target }) => refreshDocuments(qc, target),
   });
 }
 
@@ -60,7 +82,7 @@ export function useDownloadDocument() {
   });
 }
 
-/** An upload error for the form: 413 names the limit ("File too large (max 20 MB)."); everything else is the backend message. */
+/** A photo upload error: 413 names the limit ("File too large (max 5 MB)."); everything else is the backend message. Documents show the messages as they are (`isFileError`). */
 export function uploadErrorText(err: unknown, rule: FileRule): string {
   if (err instanceof ApiError && err.status === 413) return `File too large (max ${rule.maxText}).`;
   return errorText(err);

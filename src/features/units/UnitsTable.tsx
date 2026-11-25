@@ -7,7 +7,8 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { unitLayout, unitLabel } from "@/lib/labels";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { primaryTenantName } from "@/features/properties/stats";
-import type { UnitListRow } from "@/features/units/stats";
+import { NotSet } from "@/features/shared/Missing";
+import { floorAreaText, type UnitListRow } from "@/features/units/stats";
 
 type Props = Pick<DataTableProps<UnitListRow>, "rows" | "state" | "sort" | "onSortChange" | "empty" | "error" | "footer"> & {
   onOpen: (row: UnitListRow) => void;
@@ -64,11 +65,11 @@ export function UnitsTable({ cards, onOpen, onEdit, onDelete, ...props }: Props)
         cell: ({ unit }) => (
           <div>
             <div>{unitLayout(unit.unitType, unit.bathrooms)}</div>
-            <Caption className="block tabular">{unit.floorArea.toLocaleString("en-US")} sq ft</Caption>
+            {unit.floorArea !== null && <Caption className="block tabular">{floorAreaText(unit.floorArea)}</Caption>}
           </div>
         ),
       },
-      { key: "listed", header: "Listed rent", align: "right", sortable: true, cell: ({ unit }) => formatCurrency(unit.monthlyRent) },
+      { key: "listed", header: "Listed rent", align: "right", sortable: true, cell: ({ unit }) => (unit.monthlyRent === null ? <NotSet /> : formatCurrency(unit.monthlyRent)) },
       { key: "current", header: "Current rent", align: "right", sortable: true, cell: ({ active }) => (active ? formatCurrency(active.rent) : <Dash />) },
       {
         key: "tenant",
@@ -115,7 +116,7 @@ export function UnitsTable({ cards, onOpen, onEdit, onDelete, ...props }: Props)
             facts={[
               { label: "Tenant", value: primaryTenantName(r.active) ?? <Dash /> },
               { label: "Lease ends", value: <EndsText active={r.active} /> },
-              { label: "Listed rent", value: <Num>{formatCurrency(r.unit.monthlyRent)}</Num> },
+              { label: "Listed rent", value: r.unit.monthlyRent === null ? <NotSet /> : <Num>{formatCurrency(r.unit.monthlyRent)}</Num> },
             ]}
             actions={menu?.(r)}
           />

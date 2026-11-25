@@ -1,10 +1,11 @@
 /** Numbers and labels the frontend computes for tenants from GET /tenants + GET /leases. Money math in integer cents. */
 import { daysUntil, parseDateOnly, todayISO, toCents } from "@/lib/format";
 import { compareNatural } from "@/lib/sort";
+import { leaseEndDate } from "@/features/leases/leaseEnd";
 import { dueState } from "@/features/leases/stats";
 import type { Lease } from "@/types/lease";
-import type { TenantListItem } from "@/types/tenant";
-import { unitLabel } from "@/lib/labels";
+import type { Tenant, TenantListItem } from "@/types/tenant";
+import { contactMethodLabels, unitLabel } from "@/lib/labels";
 
 /** One tenant with every visible lease they are on and their current lease. */
 export interface TenantRow {
@@ -17,18 +18,20 @@ export interface TenantRow {
 /** Lease status filter values. "active" includes expiring leases; "ended" is ENDED or TERMINATED. */
 export type LeaseFilter = "all" | "active" | "expiring" | "draft" | "ended" | "none";
 
-const byEndDate = (a: Lease, b: Lease) => (a.endDate ?? "9999-12-31").localeCompare(b.endDate ?? "9999-12-31");
+const byEndDate = (a: Lease, b: Lease) => (leaseEndDate(a) ?? "9999-12-31").localeCompare(leaseEndDate(b) ?? "9999-12-31");
 
 /**
  * The tenant's current lease: the ACTIVE one (several: the soonest endDate), else a DRAFT (the newest),
- * else the ENDED or TERMINATED one with the latest endDate. `leases` must be newest first (as GET /leases returns them).
+ * else the ENDED or TERMINATED one that ended last (`leaseEndDate`); a cancelled one only when there is nothing else.
+ * `leases` must be newest first (as GET /leases returns them).
  */
 export function currentLease(leases: Lease[]): Lease | undefined {
   const active = leases.filter((l) => l.status === "ACTIVE").sort(byEndDate);
   if (active.length > 0) return active[0];
   const draft = leases.find((l) => l.status === "DRAFT");
   if (draft) return draft;
-  return leases.filter((l) => l.status === "ENDED" || l.status === "TERMINATED").sort(byEndDate).at(-1);
+  const closed = leases.filter((l) => l.status === "ENDED" || l.status === "TERMINATED").sort(byEndDate);
+  return closed.filter((l) => !l.cancelledOn).at(-1) ?? closed.at(-1);
 }
 
 /** Rows in the default order: balance highest first (no lease last), then name. */
@@ -87,8 +90,8 @@ export function unitLine(lease: Lease | undefined): string | null {
   return lease ? `${unitLabel(lease.unit.unitNumber)}, ${lease.unit.property.name}` : null;
 }
 
-/** Texts the search box looks in: name, email, phone, unit number and property of the current lease. */
-export function tenantSearchText(row: TenantRow): string[] {
+/** Texts the search box looks in (null = the tenant has none): name, email, phone, unit number and property of the current lease. */
+export function tenantSearchText(row: TenantRow): (string | null)[] {
   const { tenant, current } = row;
   return [
     tenant.fullName,
@@ -96,6 +99,13 @@ export function tenantSearchText(row: TenantRow): string[] {
     tenant.phone,
     ...(current ? [current.unit.unitNumber, `${unitLabel(current.unit.unitNumber)}`, current.unit.property.name] : []),
   ];
+}
+
+/** "Email", or "Email (no email on file)" when the preferred way isn't there (the API allows it). */
+export function preferredContactText(t: Pick<Tenant, "email" | "phone" | "preferredContactMethod">): string {
+  const label = contactMethodLabels[t.preferredContactMethod];
+  if (t.preferredContactMethod === "EMAIL") return t.email ? label : `${label} (no email on file)`;
+  return t.phone ? label : `${label} (no phone on file)`;
 }
 
 /* ---------- KPIs ---------- */
@@ -125,13 +135,13 @@ export function outstanding(rows: TenantRow[]): { count: number; totalCents: num
   return { count: owing.length, totalCents };
 }
 
-/** Tenants whose current lease is ENDED or TERMINATED (not an old lease) with endDate in the last 30 days (local calendar days). */
+/** Tenants whose current lease is ENDED or TERMINATED (not an old or cancelled lease) and ended in the last 30 days (`leaseEndDate`, local calendar days). */
 export function recentMoveOuts(rows: TenantRow[]): number {
   return rows.filter((r) => {
     const lease = r.current;
-    // Old (history-only) leases are records of the past, not move-outs.
-    if ((lease?.status !== "ENDED" && lease?.status !== "TERMINATED") || lease.isHistorical) return false;
-    const days = daysUntil(lease.endDate);
+    // Old (history-only) leases are records of the past, and on a cancelled one nobody moved in: not move-outs.
+    if ((lease?.status !== "ENDED" && lease?.status !== "TERMINATED") || lease.isHistorical || lease.cancelledOn) return false;
+    const days = daysUntil(leaseEndDate(lease));
     return days !== null && days <= 0 && days >= -30;
   }).length;
 }

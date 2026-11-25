@@ -1,8 +1,10 @@
 import { queryOptions, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch, OFFLINE_MESSAGE } from "@/lib/api";
+import { documentKeys } from "@/features/documents/keys";
+import { isPaymentAnswer, isUnclearReply, paymentRequest } from "@/features/ledger/paymentForm";
 import { leaseKeys, rentRollPrefix } from "@/features/leases/keys";
 import { tenantKeys } from "@/features/tenants/keys";
-import type { Charge, ChargeCreateBody, LedgerResponse, Payment, PaymentCreateBody, VoidBody } from "@/types/ledger";
+import type { Charge, ChargeCreateBody, LedgerResponse, Payment, PaymentCreateBody, PaymentRecorded, VoidBody } from "@/types/ledger";
 
 const leasePath = (id: string) => `/leases/${encodeURIComponent(id)}`;
 
@@ -39,15 +41,33 @@ export function useAddCharge() {
   });
 }
 
-/** POST /leases/:id/payments. Overpayment is allowed (balance goes negative). 409 on a DRAFT lease. */
+/**
+ * POST /leases/:id/payments, with `file` as multipart (the payment and its receipt, all or nothing). Overpayment is allowed
+ * (balance goes negative). 409 on a DRAFT lease. Never retried by itself. When the reply is lost or unclear
+ * (`unclearPayment`), the payment may have been saved: the ledger and the rent roll reload too.
+ */
 export function useRecordPayment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ leaseId, body }: { leaseId: string; body: PaymentCreateBody }) =>
-      apiFetch<Payment>(`${leasePath(leaseId)}/payments`, { method: "POST", body }),
-    onSuccess: () => refreshAfterMoneyChange(qc),
+    // Offline it fails at once; the default would wait and send it by itself later.
+    networkMode: "always",
+    mutationFn: async ({ leaseId, body, file = null, category = "" }: { leaseId: string; body: PaymentCreateBody; file?: File | null; category?: string }) => {
+      const saved = await apiFetch<PaymentRecorded>(`${leasePath(leaseId)}/payments`, { method: "POST", retry: false, ...paymentRequest(body, file, category) });
+      if (!isPaymentAnswer(saved)) throw new ApiError(0, [OFFLINE_MESSAGE]);
+      return saved;
+    },
+    onSuccess: (saved) => {
+      refreshAfterMoneyChange(qc);
+      if (saved.document) void qc.invalidateQueries({ queryKey: documentKeys.all, predicate: (q) => q.queryKey[1] !== documentKeys.categories[1] });
+    },
+    onError: (err) => {
+      if (unclearPayment(err)) refreshAfterMoneyChange(qc);
+    },
   });
 }
+
+/** The payment may have been saved although this error came back: no answer, a 5xx, or something that isn't an API error. */
+export const unclearPayment = (err: unknown) => isUnclearReply(err instanceof ApiError ? err.status : null);
 
 /** POST /leases/:id/charges/:chargeId/void (OWNER, or a manager with money.void). 409 "Charge {number} is already voided". */
 export function useVoidCharge() {

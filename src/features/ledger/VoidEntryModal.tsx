@@ -5,7 +5,8 @@ import { FormField, InlineError, toast } from "@/components/molecules";
 import { Modal } from "@/components/organisms";
 import { ApiError, errorText } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { useVoidCharge, useVoidPayment } from "@/features/ledger/hooks";
+import { unclearPayment, useVoidCharge, useVoidPayment } from "@/features/ledger/hooks";
+import { UNCLEAR_PAYMENT_MESSAGE } from "@/features/ledger/paymentForm";
 import { reenterCharge, reenterPayment } from "@/features/ledger/reenter";
 import type { LedgerEntry } from "@/types/ledger";
 
@@ -55,7 +56,7 @@ export function VoidEntryModal({ leaseId, entry, onClose }: { leaseId: string; e
           undo: () =>
             void reenterPayment(qc, saved).then(
               (again) => toast.success(`Re-entered as ${again.paymentNumber}`),
-              (err: unknown) => toast.error(`Couldn't re-enter ${saved.paymentNumber}`, { description: errorText(err) }),
+              (err: unknown) => toast.error(`Couldn't re-enter ${saved.paymentNumber}`, { description: unclearPayment(err) ? UNCLEAR_PAYMENT_MESSAGE : errorText(err) }),
             ),
         });
       }

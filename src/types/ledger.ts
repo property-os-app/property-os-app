@@ -1,5 +1,7 @@
 /** Types for the ledger, charges and payments endpoints. Source: ../property-os-api/docs/frontend-handoff/API.md sections 2, 4 ("Charge", "Payment", "Ledger") and 5. */
 
+import type { Document } from "@/types/document";
+
 export type ChargeType = "RENT" | "LATE_FEE" | "OTHER";
 
 /** In the order to show them (API.md section 2). Payments, expenses and the ticket resolve form share it. */
@@ -49,10 +51,15 @@ export interface Payment {
   voidedAt: string | null;
   voidedById: string | null;
   voidReason: string | null;
+  /** Its files (receipts...), kept when it is voided. */
+  documentCount: number;
   createdById: string;
   createdAt: string;
   updatedAt: string;
 }
+
+/** POST /leases/:id/payments answer only: the payment, and the document made from the sent file (null without one). */
+export type PaymentRecorded = Payment & { document: Document | null };
 
 export type LedgerEntryKind = "CHARGE" | "PAYMENT";
 
@@ -77,6 +84,8 @@ export interface LedgerEntry {
   notes: string | null;
   voided: boolean;
   voidReason: string | null;
+  /** Payments: how many files they have. null on charges. */
+  documentCount: number | null;
   /** Money string, may be negative (credit). */
   runningBalance: string;
 }
@@ -113,6 +122,8 @@ export interface PaymentCreateBody {
   paymentDate: string;
   referenceNumber?: string;
   notes?: string;
+  /** Category of the file sent along (API default RECEIPT); only with a file. */
+  documentCategory?: string;
 }
 
 /** Void body for charges and payments: reason trimmed, 1–300 chars. OWNER only. */

@@ -6,6 +6,7 @@ import type { DocumentCategories } from "@/types/document";
 const CATEGORIES: DocumentCategories = {
   lease: [
     { value: "SIGNED_LEASE", label: "Signed lease" },
+    { value: "PET_AGREEMENT", label: "Pet agreement" },
     { value: "INSPECTION", label: "Other inspection" },
     { value: "OTHER", label: "Other" },
   ],
@@ -22,11 +23,16 @@ const CATEGORIES: DocumentCategories = {
     { value: "SERVICE_CONTRACT", label: "Service contract (snow, lawn, etc.)" },
     { value: "OTHER", label: "Other" },
   ],
+  payment: [
+    { value: "RECEIPT", label: "Receipt" },
+    { value: "CHECK_IMAGE", label: "Check (photo / scan)" },
+    { value: "OTHER", label: "Other" },
+  ],
 };
 
 describe("categoryOptions", () => {
   it("gives the owner type's own list in the API order", () => {
-    expect(categoryOptions(CATEGORIES, "leases").map((c) => c.value)).toEqual(["SIGNED_LEASE", "INSPECTION", "OTHER"]);
+    expect(categoryOptions(CATEGORIES, "leases").map((c) => c.value)).toEqual(["SIGNED_LEASE", "PET_AGREEMENT", "INSPECTION", "OTHER"]);
     expect(categoryOptions(CATEGORIES, "units").map((c) => c.value)).toEqual(["INSPECTION", "OLD_LEASE", "OTHER"]);
     expect(categoryOptions(CATEGORIES, "properties")[0].label).toBe("Service contract (snow, lawn, etc.)");
   });
@@ -41,6 +47,7 @@ describe("categoryLabel", () => {
     expect(categoryLabel(CATEGORIES, "leases", "INSPECTION")).toBe("Other inspection");
     expect(categoryLabel(CATEGORIES, "units", "INSPECTION")).toBe("Inspection");
     expect(categoryLabel(CATEGORIES, "tenants", "ID")).toBe("ID");
+    expect(categoryLabel(CATEGORIES, "payments", "CHECK_IMAGE")).toBe("Check (photo / scan)");
   });
 
   it("falls back to a readable label while loading", () => {

@@ -1,83 +1,15 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Button, Input, Select, Skeleton, Textarea } from "@/components/atoms";
 import { FormField, InlineError, toast } from "@/components/molecules";
 import { Modal } from "@/components/organisms";
 import { ApiError, errorText } from "@/lib/api";
 import { applyServerError } from "@/lib/forms";
 import { contactMethodLabels, labelOptions, tenantTypeLabels } from "@/lib/labels";
+import { TENANT_FIELDS, tenantChanges, tenantCreateBody, tenantDefaults, tenantSchema, type TenantFormInput, type TenantFormOutput } from "@/features/tenants/form";
 import { useCreateTenant, useTenant, useUpdateTenant } from "@/features/tenants/hooks";
-import type { ContactMethod, Tenant, TenantCreateBody, TenantDetail, TenantType, TenantUpdateBody } from "@/types/tenant";
-
-const TENANT_TYPES = Object.keys(tenantTypeLabels) as [TenantType, ...TenantType[]];
-const CONTACT_METHODS = Object.keys(contactMethodLabels) as [ContactMethod, ...ContactMethod[]];
-
-const FIELDS = ["fullName", "email", "phone", "idNumber", "address", "tenantType", "moveInDate", "preferredContactMethod", "notes"] as const;
-
-/** Rules from ../property-os-api/docs/frontend-handoff/rules.md (Tenants). Every text field is trimmed before it is checked and sent. */
-const schema = z.object({
-  fullName: z.string().trim().min(1, "Enter the full name."),
-  email: z.string().trim().min(1, "Enter the email.").pipe(z.email("Enter a valid email, e.g. name@example.com.")),
-  phone: z.string().trim().min(1, "Enter the phone number."),
-  idNumber: z.string().trim(),
-  address: z.string().trim(),
-  tenantType: z.enum(TENANT_TYPES),
-  // Input type="date" gives "" or "YYYY-MM-DD"; the string is kept as it is.
-  moveInDate: z.string().refine((v) => v === "" || /^\d{4}-\d{2}-\d{2}$/.test(v), "Use a full date."),
-  preferredContactMethod: z.enum(CONTACT_METHODS),
-  notes: z.string().trim(),
-});
-
-type FormInput = z.input<typeof schema>;
-type FormOutput = z.output<typeof schema>;
-
-function defaults(t?: TenantDetail): FormInput {
-  return {
-    fullName: t?.fullName ?? "",
-    email: t?.email ?? "",
-    phone: t?.phone ?? "",
-    idNumber: t?.idNumber ?? "",
-    address: t?.address ?? "",
-    tenantType: t?.tenantType ?? "INDIVIDUAL",
-    // "YYYY-MM-DD" in and out, kept as it is.
-    moveInDate: t?.moveInDate ?? "",
-    preferredContactMethod: t?.preferredContactMethod ?? "EMAIL",
-    notes: t?.notes ?? "",
-  };
-}
-
-/** POST body: optional fields only when filled. */
-function createBody(v: FormOutput): TenantCreateBody {
-  return {
-    fullName: v.fullName,
-    email: v.email,
-    phone: v.phone,
-    tenantType: v.tenantType,
-    preferredContactMethod: v.preferredContactMethod,
-    ...(v.idNumber ? { idNumber: v.idNumber } : {}),
-    ...(v.address ? { address: v.address } : {}),
-    ...(v.moveInDate ? { moveInDate: v.moveInDate } : {}),
-    ...(v.notes ? { notes: v.notes } : {}),
-  };
-}
-
-/** PATCH body with only the changed fields. idNumber, address, moveInDate, notes: null when the user cleared them. */
-function changedFields(v: FormOutput, t: TenantDetail): TenantUpdateBody {
-  const before = defaults(t);
-  const body: TenantUpdateBody = {};
-  if (v.fullName !== before.fullName) body.fullName = v.fullName;
-  if (v.email !== before.email) body.email = v.email;
-  if (v.phone !== before.phone) body.phone = v.phone;
-  if (v.tenantType !== before.tenantType) body.tenantType = v.tenantType;
-  if (v.preferredContactMethod !== before.preferredContactMethod) body.preferredContactMethod = v.preferredContactMethod;
-  if (v.idNumber !== before.idNumber) body.idNumber = v.idNumber || null;
-  if (v.address !== before.address) body.address = v.address || null;
-  if (v.moveInDate !== before.moveInDate) body.moveInDate = v.moveInDate || null;
-  if (v.notes !== before.notes) body.notes = v.notes || null;
-  return body;
-}
+import type { Tenant, TenantDetail } from "@/types/tenant";
 
 export interface TenantFormModalProps {
   /** Edit this tenant (loads GET /tenants/:id for the idNumber); without it the modal creates one. */
@@ -127,9 +59,9 @@ function TenantForm({ tenant, onSaved, onClose }: { tenant?: TenantDetail; onSav
     handleSubmit,
     setError,
     formState: { errors, isDirty, isSubmitting },
-  } = useForm<FormInput, unknown, FormOutput>({
-    resolver: zodResolver(schema),
-    defaultValues: defaults(tenant),
+  } = useForm<TenantFormInput, unknown, TenantFormOutput>({
+    resolver: zodResolver(tenantSchema),
+    defaultValues: tenantDefaults(tenant),
     mode: "onTouched",
   });
 
@@ -142,14 +74,14 @@ function TenantForm({ tenant, onSaved, onClose }: { tenant?: TenantDetail; onSav
     setFormErrors([]);
     try {
       if (tenant) {
-        const body = changedFields(v, tenant);
+        const body = tenantChanges(v, tenant);
         if (Object.keys(body).length > 0) {
           const saved = await update.mutateAsync({ id: tenant.id, body });
           toast.success(`Tenant ${saved.fullName} updated`);
           onSaved?.(saved);
         }
       } else {
-        const saved = await create.mutateAsync(createBody(v));
+        const saved = await create.mutateAsync(tenantCreateBody(v));
         toast.success(`Tenant ${saved.fullName} added`);
         onSaved?.(saved);
       }
@@ -160,7 +92,7 @@ function TenantForm({ tenant, onSaved, onClose }: { tenant?: TenantDetail; onSav
         setError("email", { type: "server", message: err.messages.join(". ") }, { shouldFocus: true });
         return;
       }
-      setFormErrors(applyServerError(setError, err, FIELDS));
+      setFormErrors(applyServerError(setError, err, TENANT_FIELDS));
     }
   });
 
@@ -188,10 +120,10 @@ function TenantForm({ tenant, onSaved, onClose }: { tenant?: TenantDetail; onSav
         <FormField label="Full name" htmlFor="tf-name" required error={errors.fullName?.message} className="md:col-span-2">
           <Input id="tf-name" autoFocus autoComplete="off" {...register("fullName")} />
         </FormField>
-        <FormField label="Email" htmlFor="tf-email" required error={errors.email?.message}>
+        <FormField label="Email" htmlFor="tf-email" help="Optional" error={errors.email?.message}>
           <Input id="tf-email" type="email" autoComplete="off" {...register("email")} />
         </FormField>
-        <FormField label="Phone" htmlFor="tf-phone" required error={errors.phone?.message}>
+        <FormField label="Phone" htmlFor="tf-phone" help="Optional" error={errors.phone?.message}>
           <Input id="tf-phone" type="tel" autoComplete="off" {...register("phone")} />
         </FormField>
         <FormField label="ID / passport number" htmlFor="tf-id" error={errors.idNumber?.message}>

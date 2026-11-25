@@ -89,9 +89,10 @@ export function PartiesStep(ctx: StepContext) {
     if (!next) return;
     if (!getValues("propertyId")) setValue("propertyId", next.propertyId);
     const rent = getValues("rent");
-    if (rent === "" || (before && toCents(rent) === toCents(before.monthlyRent))) {
-      setValue("rent", centsToAmount(toCents(next.monthlyRent)), { shouldDirty: true });
-    }
+    const prefilled = rent !== "" && before != null && before.monthlyRent !== null && toCents(rent) === toCents(before.monthlyRent);
+    // A unit without a listed rent prefills nothing (and clears the other unit's); it is never $0.
+    if (next.monthlyRent !== null && (rent === "" || prefilled)) setValue("rent", centsToAmount(toCents(next.monthlyRent)), { shouldDirty: true });
+    else if (prefilled) setValue("rent", "", { shouldDirty: true });
   };
 
   const setPrimary = (t: PickedTenant | null) => {
@@ -285,7 +286,7 @@ export function TermsStep(ctx: StepContext) {
         <FormField label="Late fee" htmlFor="lw-fee"><ReadOnly id="lw-fee" value={moneyText(v.lateFeeAmount)} /></FormField>
         <FormField label="Grace period (days)" htmlFor="lw-grace"><ReadOnly id="lw-grace" value={v.lateFeeGraceDays} /></FormField>
         <FormField label="Auto-renew" htmlFor="lw-renew"><ReadOnly id="lw-renew" value={v.autoRenew ? "On" : "Off"} /></FormField>
-        <Caption className="md:col-span-2">This lease is closed: only tags and notes can change.</Caption>
+        <Caption className="md:col-span-2">This lease is closed: only tags and notes can change here.</Caption>
       </div>
     );
   }
@@ -328,7 +329,7 @@ export function TermsStep(ctx: StepContext) {
         htmlFor="lw-rent"
         required
         error={errors.rent?.message}
-        help={unit ? `Listed rent for ${unitLabel(unit.unitNumber)} is ${formatCurrency(unit.monthlyRent)}` : undefined}
+        help={unit && unit.monthlyRent !== null ? `Listed rent for ${unitLabel(unit.unitNumber)} is ${formatCurrency(unit.monthlyRent)}` : undefined}
       >
         <Controller
           control={control}

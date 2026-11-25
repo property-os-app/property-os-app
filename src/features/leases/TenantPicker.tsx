@@ -8,7 +8,7 @@ import { useTenants } from "@/features/tenants/hooks";
 export interface PickedTenant {
   id: string;
   fullName: string;
-  email: string;
+  email: string | null;
 }
 
 const MAX_RESULTS = 5;
@@ -21,7 +21,7 @@ function TenantSearch({ id, exclude, onPick, autoFocus }: { id: string; exclude:
   const results = term
     ? (tenants.data ?? [])
         .filter((t) => !exclude.includes(t.id))
-        .filter((t) => [t.fullName, t.email, t.phone].some((v) => v.toLowerCase().includes(term)))
+        .filter((t) => [t.fullName, t.email, t.phone].some((v) => v?.toLowerCase().includes(term)))
         .slice(0, MAX_RESULTS)
     : [];
 
@@ -59,7 +59,7 @@ function TenantSearch({ id, exclude, onPick, autoFocus }: { id: string; exclude:
                     <Avatar name={t.fullName} size={24} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-semibold text-text-primary">{t.fullName}</span>
-                      <Caption className="block truncate">{[t.email, t.phone].join(" · ")}</Caption>
+                      <Caption className="block truncate">{[t.email, t.phone].filter(Boolean).join(" · ")}</Caption>
                     </span>
                   </button>
                 </li>

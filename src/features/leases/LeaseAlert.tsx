@@ -3,10 +3,10 @@ import { AlertTriangle, Info } from "lucide-react";
 import { Caption } from "@/components/atoms";
 import { Card } from "@/components/molecules";
 import { cn } from "@/lib/cn";
-import { centsToAmount, daysSince, daysUntil, formatCurrency, formatDate } from "@/lib/format";
+import { centsToAmount, daysUntil, formatCurrency, formatDate } from "@/lib/format";
 import { plural } from "@/lib/labels";
 import { OverdueActions } from "@/features/leases/OverdueActions";
-import { dueState, isPastEnd, leaseMissing, primaryTenant } from "@/features/leases/stats";
+import { dueState, isPastEnd, leaseMissing, pastEndText, primaryTenant } from "@/features/leases/stats";
 import type { BalanceSplit } from "@/features/ledger/overdue";
 import type { Lease } from "@/types/lease";
 
@@ -54,9 +54,8 @@ export function LeaseAlert({ lease, split }: { lease: Lease; split?: BalanceSpli
     return <AlertCard tone="info" title="Draft, not active yet" text={missing.length > 0 ? `Missing to activate: ${missing.join(", ")}.` : "Ready to activate."} />;
   }
   if (isPastEnd(lease)) {
-    const days = daysSince(lease.endDate);
     return (
-      <AlertCard tone="danger" title={`Ended ${plural(days, "day")} ago but still active`} text="End the lease or change the end date.">
+      <AlertCard tone="danger" title={pastEndText(lease)} text="End the lease or change the end date.">
         {actions}
       </AlertCard>
     );

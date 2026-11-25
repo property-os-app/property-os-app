@@ -9,7 +9,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { unitStatusLabels, unitTypeLabels, unitLabel } from "@/lib/labels";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAuth } from "@/features/auth/authContext";
-import { can, canManageDocuments } from "@/features/auth/permissions";
+import { can } from "@/features/auth/permissions";
 import { DocumentsPanel } from "@/features/documents/DocumentsPanel";
 import { useDocuments } from "@/features/documents/hooks";
 import { useLeases } from "@/features/leases/hooks";
@@ -19,10 +19,11 @@ import { LeaseWizard } from "@/features/leases/LeaseWizard";
 import { OldLeaseModal } from "@/features/leases/OldLeaseModal";
 import { dueNote, dueState, leaseEndsNote, leasePeriod } from "@/features/leases/stats";
 import { ContactLink } from "@/features/shared/ContactLink";
+import { NotSet } from "@/features/shared/Missing";
 import { primaryTenantName } from "@/features/properties/stats";
 import { UnitDeleteDialog } from "@/features/units/UnitDeleteDialog";
 import { UnitFormModal } from "@/features/units/UnitFormModal";
-import { rentDiffNote, unitSummary } from "@/features/units/stats";
+import { floorAreaText, rentDiffNote, unitSummary } from "@/features/units/stats";
 import type { Lease } from "@/types/lease";
 import type { Unit } from "@/types/unit";
 
@@ -55,7 +56,7 @@ export function UnitDrawer({ unit, propertyName, leaseFrom, onClose }: UnitDrawe
   const { me } = useAuth();
   const user = me!;
   const leases = useLeases({ unitId: unit.id });
-  const documents = useDocuments("units", unit.id);
+  const documents = useDocuments({ owner: "units", ownerId: unit.id });
   const [tab, setTab] = useState<Tab>("tenant");
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -145,15 +146,19 @@ export function UnitDrawer({ unit, propertyName, leaseFrom, onClose }: UnitDrawe
                   { label: "Type", value: unitTypeLabels[unit.unitType] },
                   { label: "Bathrooms", value: unit.bathrooms ?? <Dash /> },
                   { label: "Floor", value: unit.floor ?? <Dash /> },
-                  { label: "Floor area", value: <Num>{unit.floorArea.toLocaleString("en-US")} sq ft</Num> },
-                  { label: "Listed rent", value: <Num>{formatCurrency(unit.monthlyRent)}</Num> },
+                  { label: "Floor area", value: unit.floorArea === null ? <NotSet /> : <Num>{floorAreaText(unit.floorArea)}</Num> },
+                  { label: "Listed rent", value: unit.monthlyRent === null ? <NotSet /> : <Num>{formatCurrency(unit.monthlyRent)}</Num> },
                   { label: "Description", value: unit.description ? <span className="whitespace-pre-line">{unit.description}</span> : <Dash /> },
                 ]}
               />
             </div>
           </>
         ) : tab === "documents" ? (
-          <DocumentsPanel owner="units" ownerId={unit.id} canManage={canManageDocuments(user, "units")} emptyText="No documents on this unit yet." />
+          <DocumentsPanel
+            target={{ owner: "units", ownerId: unit.id }}
+            leaseState={leaseFrom}
+            emptyText="No documents on this unit or its leases yet."
+          />
         ) : (
           <div className="flex flex-col gap-3">
             {canAddLease && (
@@ -209,7 +214,6 @@ export function UnitDrawer({ unit, propertyName, leaseFrom, onClose }: UnitDrawe
         <OldLeaseModal
           presetUnit={unit}
           presetUnitLine={`${unitLabel(unit.unitNumber)}${propertyName ? `, ${propertyName}` : ""}`}
-          leaseFrom={leaseFrom}
           onClose={() => setAddingOld(false)}
         />
       )}

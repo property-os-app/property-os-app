@@ -24,7 +24,9 @@ import {
   formMissing,
   schema,
   serverErrorStep,
+  stepOf,
   updateBody,
+  type FieldName,
   type FormInput,
   type FormOutput,
 } from "@/features/leases/form";
@@ -48,6 +50,8 @@ export interface LeaseWizardProps {
   presetUnit?: Unit;
   /** Create: preset primary tenant (tenant drawer). */
   presetTenantId?: string;
+  /** Open at the step that has this field (default: the first step). */
+  startAt?: FieldName;
   /** After a successful save (before onClose). */
   onSaved?: (lease: Lease) => void;
   onClose: () => void;
@@ -60,7 +64,7 @@ export interface LeaseWizardProps {
  * Template: a new lease preselects the default template (once the list loads); an existing lease keeps its template unless
  * the user changes it. A template's default term fills the end date (templateEndDate) until the user sets it by hand.
  */
-export function LeaseWizard({ lease, presetUnit, presetTenantId, onSaved, onClose }: LeaseWizardProps) {
+export function LeaseWizard({ lease, presetUnit, presetTenantId, startAt, onSaved, onClose }: LeaseWizardProps) {
   const { propertyId: scope } = useScope();
   const { me } = useAuth();
   const isCreate = !lease;
@@ -73,7 +77,7 @@ export function LeaseWizard({ lease, presetUnit, presetTenantId, onSaved, onClos
   const tenants = useTenants();
   const templates = useLeaseTemplates({ enabled: !closed });
 
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(() => (startAt ? stepOf(startAt) : 0));
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [addingTenant, setAddingTenant] = useState<"primary" | "co" | null>(null);
   const [newTenants, setNewTenants] = useState<PickedTenant[]>([]);

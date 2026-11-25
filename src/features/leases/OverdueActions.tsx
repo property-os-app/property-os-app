@@ -1,7 +1,7 @@
 import { Mail, Phone } from "lucide-react";
 import { LinkButton } from "@/components/atoms";
 import { useAuth } from "@/features/auth/authContext";
-import { coTenants } from "@/features/leases/stats";
+import { coTenantEmails } from "@/features/leases/stats";
 import { rentReminderLinks } from "@/features/shared/rentReminder";
 import { useTenant } from "@/features/tenants/hooks";
 import type { MoneyInput } from "@/lib/format";
@@ -20,7 +20,7 @@ export function OverdueActions({ lease, primary, since, overdue }: { lease: Leas
   const links = rentReminderLinks({
     tenantName: primary.fullName,
     email: primary.email,
-    cc: coTenants(lease).map((t) => t.email).filter(Boolean),
+    cc: coTenantEmails(lease),
     phone,
     propertyName: lease.unit.property.name,
     unitNumber: lease.unit.unitNumber,

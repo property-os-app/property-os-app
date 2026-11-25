@@ -3,6 +3,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { Avatar, Divider, Overline, Skeleton, Small } from "@/components/atoms";
 import { Card, KebabMenu, type MenuItem } from "@/components/molecules";
 import { ContactLink } from "@/features/shared/ContactLink";
+import { NotProvided } from "@/features/shared/Missing";
 import { BalanceValue, RentStatusBadge, TenantLeaseBadge } from "@/features/tenants/TenantParts";
 import { rentStatus, unitLine, type TenantRow } from "@/features/tenants/stats";
 
@@ -62,10 +63,10 @@ export function TenantCard({ row, onOpen, onEdit, onDelete }: TenantCardProps) {
 
       <div className="flex min-w-0 flex-col gap-0.5">
         <Small className="block truncate">
-          <ContactLink kind="email" value={tenant.email} />
+          <ContactLink kind="email" value={tenant.email} empty={<NotProvided what="Email" />} />
         </Small>
         <Small className="block truncate">
-          <ContactLink kind="phone" value={tenant.phone} />
+          <ContactLink kind="phone" value={tenant.phone} empty={<NotProvided what="Phone" />} />
         </Small>
       </div>
 

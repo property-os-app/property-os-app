@@ -1,24 +1,24 @@
 import { useId, useState } from "react";
-import { FileText, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Button, Caption, Input, Select } from "@/components/atoms";
 import { FileDropzone, FormField, InlineError, toast } from "@/components/molecules";
-import { acceptOf, checkFile, DOCUMENT_RULE, formatFileSize } from "@/lib/files";
-import { errorText } from "@/lib/api";
+import { acceptOf, checkFile, DOCUMENT_HINT, DOCUMENT_RULE, formatFileSize } from "@/lib/files";
+import { ApiError, errorText } from "@/lib/api";
 import { categoryOptions } from "@/features/documents/categories";
-import { documentForm, MAX_NAME_LENGTH, nameError } from "@/features/documents/form";
-import { uploadErrorText, useDocumentCategories, useUploadDocument } from "@/features/documents/hooks";
-import type { DocumentOwner } from "@/types/document";
+import { documentForm, isFileError, MAX_NAME_LENGTH, nameError } from "@/features/documents/form";
+import { FileKindIcon } from "@/features/documents/FileKindIcon";
+import { pickedFileKind } from "@/features/documents/fileKind";
+import { useDocumentCategories, useUploadDocument } from "@/features/documents/hooks";
+import type { DocumentRef } from "@/types/document";
 
 /** Ends a backend message with a period so another sentence can follow it. */
 const sentence = (text: string) => (/[.!?]$/.test(text.trim()) ? text.trim() : `${text.trim()}.`);
 
-/** The file the user picked, shown with its size and a Remove button. */
+/** The file the user picked, shown with its icon (by extension), its size and a Remove button. */
 export function PickedFile({ file, onRemove, disabled }: { file: File; onRemove: () => void; disabled?: boolean }) {
   return (
     <div className="flex items-center gap-3 rounded-control border border-border-subtle bg-surface-2 p-3">
-      <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-control border border-border-subtle bg-surface-3 text-text-muted">
-        <FileText size={16} strokeWidth={1.5} />
-      </span>
+      <FileKindIcon kind={pickedFileKind(file)} className="size-10" />
       <div className="min-w-0 flex-1">
         <div className="truncate text-small text-text-primary" title={file.name}>
           {file.name}
@@ -35,9 +35,10 @@ export function PickedFile({ file, onRemove, disabled }: { file: File; onRemove:
 /**
  * Upload one document: drop zone + "Choose file", category (that owner type's list from GET /documents/categories, in the
  * API order; required), optional display name. Upload waits for the category list (loading: disabled; error: Retry).
- * The type and size are checked here before sending; backend errors (400, 403, 404, 409, 413, 415) show inside.
+ * The type and size are checked here before sending. Backend errors about the file (400 empty, 413, 415) show under it, the
+ * others (400, 403, 404, 409) on top, as they are.
  */
-export function DocumentUpload({ owner, ownerId }: { owner: DocumentOwner; ownerId: string }) {
+export function DocumentUpload({ target }: { target: DocumentRef }) {
   const upload = useUploadDocument();
   const id = useId();
   const [file, setFile] = useState<File | null>(null);
@@ -47,7 +48,7 @@ export function DocumentUpload({ owner, ownerId }: { owner: DocumentOwner; owner
   const [name, setName] = useState("");
   const [serverError, setServerError] = useState<string | null>(null);
   const categories = useDocumentCategories();
-  const options = categoryOptions(categories.data, owner);
+  const options = categoryOptions(categories.data, target.owner);
   const categoriesReady = categories.isSuccess;
   const busy = upload.isPending;
   const nameProblem = nameError(name);
@@ -63,11 +64,11 @@ export function DocumentUpload({ owner, ownerId }: { owner: DocumentOwner; owner
 
   const submit = () => {
     setServerError(null);
-    if (!file) setFileError("Choose a file to upload.");
+    setFileError(file ? null : "Choose a file to upload.");
     if (!category) setCategoryError("Choose a category.");
     if (!file || !category || nameProblem || !categoriesReady) return;
     upload.mutate(
-      { owner, ownerId, form: documentForm(file, category, name) },
+      { target, form: documentForm(file, category, name) },
       {
         onSuccess: (doc) => {
           toast.success(`Uploaded ${doc.name}`);
@@ -75,7 +76,14 @@ export function DocumentUpload({ owner, ownerId }: { owner: DocumentOwner; owner
           setCategory("");
           setName("");
         },
-        onError: (err) => setServerError(uploadErrorText(err, DOCUMENT_RULE)),
+        onError: (err) => {
+          if (err instanceof ApiError && err.messages.length > 0) {
+            const aboutFile = err.messages.filter((m) => isFileError(m, err.status));
+            const rest = err.messages.filter((m) => !isFileError(m, err.status));
+            setFileError(aboutFile.join(" ") || null);
+            setServerError(rest.join(". ") || null);
+          } else setServerError(errorText(err));
+        },
       },
     );
   };
@@ -91,12 +99,19 @@ export function DocumentUpload({ owner, ownerId }: { owner: DocumentOwner; owner
     >
       {serverError && <InlineError title="Couldn't upload the file" description={serverError} />}
       {file ? (
-        <PickedFile file={file} disabled={busy} onRemove={() => setFile(null)} />
+        <PickedFile
+          file={file}
+          disabled={busy}
+          onRemove={() => {
+            setFile(null);
+            setFileError(null);
+          }}
+        />
       ) : (
         <FileDropzone
           multiple={false}
           accept={acceptOf(DOCUMENT_RULE)}
-          hint={`${DOCUMENT_RULE.typesText}, up to ${DOCUMENT_RULE.maxText}`}
+          hint={DOCUMENT_HINT}
           chooseLabel="Choose file"
           onFiles={pick}
           disabled={busy}
@@ -149,7 +164,7 @@ export function DocumentUpload({ owner, ownerId }: { owner: DocumentOwner; owner
       </div>
       <div className="flex justify-end">
         <Button type="submit" disabled={busy || !categoriesReady} aria-busy={busy || undefined} className="max-md:h-11 max-md:w-full">
-          {busy ? "Uploading..." : "Upload"}
+          {busy ? "Uploading..." : target.owner === "payments" ? "Add file" : "Upload"}
         </Button>
       </div>
     </form>

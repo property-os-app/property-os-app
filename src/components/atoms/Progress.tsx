@@ -29,12 +29,35 @@ export function CollectionProgress({ value, label = "Collection rate", className
   );
 }
 
-/** Thin 8px bar for occupancy and similar ratios. */
-export function Bar({ value, tone = "success", className }: { value: number; tone?: "success" | "warning" | "danger"; className?: string }) {
+export interface BarProps {
+  /** 0 to 100. */
+  value: number;
+  tone?: "success" | "warning" | "danger" | "neutral";
+  /** Makes it a named progress bar for screen readers. Without it the bar is only a picture of a number shown next to it. */
+  label?: string;
+  /** With `label`: what screen readers say instead of the percentage. */
+  valueText?: string;
+  className?: string;
+}
+
+/** Thin 8px bar for occupancy, a lease term and similar ratios. */
+export function Bar({ value, tone = "success", label, valueText, className }: BarProps) {
   const pct = Math.max(0, Math.min(100, value));
   return (
-    <div className={cn("h-2 w-full overflow-hidden rounded-pill bg-surface-3", className)}>
-      <div className={cn("h-full rounded-pill", tone === "success" && "bg-success", tone === "warning" && "bg-warning", tone === "danger" && "bg-danger")} style={{ width: `${pct}%` }} />
+    <div
+      {...(label && { role: "progressbar", "aria-label": label, "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": Math.round(pct), "aria-valuetext": valueText })}
+      className={cn("h-2 w-full overflow-hidden rounded-pill bg-surface-3", className)}
+    >
+      <div
+        className={cn(
+          "h-full rounded-pill",
+          tone === "success" && "bg-success",
+          tone === "warning" && "bg-warning",
+          tone === "danger" && "bg-danger",
+          tone === "neutral" && "bg-text-muted",
+        )}
+        style={{ width: `${pct}%` }}
+      />
     </div>
   );
 }

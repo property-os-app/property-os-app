@@ -11,9 +11,10 @@ export interface Tenant {
   /** Set only for self-registered tenants. */
   userId: string | null;
   fullName: string;
-  /** Always lowercase. */
-  email: string;
-  phone: string;
+  /** Always lowercase; null = none. */
+  email: string | null;
+  /** null = none. */
+  phone: string | null;
   idNumber: string | null;
   address: string | null;
   tenantType: TenantType;
@@ -46,8 +47,8 @@ export type TenantListItem = Omit<TenantDetail, "idNumber">;
 /** POST /tenants body. Text is trimmed by the form; moveInDate is "YYYY-MM-DD". */
 export interface TenantCreateBody {
   fullName: string;
-  email: string;
-  phone: string;
+  email?: string;
+  phone?: string;
   idNumber?: string;
   address?: string;
   tenantType?: TenantType;
@@ -56,8 +57,10 @@ export interface TenantCreateBody {
   notes?: string;
 }
 
-/** PATCH /tenants/:id body: any subset. Only idNumber, address, moveInDate and notes may be null (clears them). */
-export type TenantUpdateBody = Partial<Omit<TenantCreateBody, "idNumber" | "address" | "moveInDate" | "notes">> & {
+/** PATCH /tenants/:id body: any subset. email, phone, idNumber, address, moveInDate and notes may be null (clears them). */
+export type TenantUpdateBody = Partial<Omit<TenantCreateBody, "email" | "phone" | "idNumber" | "address" | "moveInDate" | "notes">> & {
+  email?: string | null;
+  phone?: string | null;
   idNumber?: string | null;
   address?: string | null;
   moveInDate?: string | null;

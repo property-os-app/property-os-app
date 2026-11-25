@@ -108,7 +108,7 @@ describe("roles", () => {
 
 describe("canManageDocuments", () => {
   it("OWNER manages every owner type; TENANT none", () => {
-    for (const owner of ["leases", "tenants", "units", "properties"] as const) {
+    for (const owner of ["leases", "tenants", "units", "properties", "payments"] as const) {
       expect(canManageDocuments(user("OWNER"), owner)).toBe(true);
       expect(canManageDocuments(user("TENANT", ["leases.manage"]), owner)).toBe(false);
     }
@@ -122,5 +122,7 @@ describe("canManageDocuments", () => {
     expect(canManageDocuments(m, "properties")).toBe(false);
     expect(canManageDocuments(user("PROPERTY_MANAGER", ["tenants.create_edit", "properties.edit"]), "tenants")).toBe(true);
     expect(canManageDocuments(user("PROPERTY_MANAGER", ["properties.edit"]), "properties")).toBe(true);
+    expect(canManageDocuments(m, "payments")).toBe(false);
+    expect(canManageDocuments(user("PROPERTY_MANAGER", ["money.record"]), "payments")).toBe(true);
   });
 });

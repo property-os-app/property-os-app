@@ -26,6 +26,11 @@ export function documentForm(file: File, category: string, name = ""): FormData 
   return form;
 }
 
+/** A backend message about the file itself (400 empty, 413 too large, 415 type, macros or password): it goes under the file, as it is. */
+export function isFileError(message: string, status: number): boolean {
+  return status === 413 || status === 415 || message.startsWith("file ");
+}
+
 /** The multipart body of PUT /properties/:id/photo: only `file` (any other field is 400). */
 export function photoForm(file: File): FormData {
   const form = new FormData();

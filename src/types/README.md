@@ -21,28 +21,28 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 
 ## unit.ts
 - `UnitType`, `UnitStatus`: unit enums.
-- `Unit`: one row from GET /units (`monthlyRent` is a money string like "1200.00", `floorArea` a number).
-- `UnitCreateBody`: POST /units body (never `OCCUPIED`). `UnitUpdateBody`: PATCH body (no `propertyId`; `floor`, `bathrooms`, `description` may be null).
+- `Unit`: one row from GET /units (`monthlyRent` is a money string like "1200.00" or null = not set, `floorArea` a number or null).
+- `UnitCreateBody`: POST /units body (never `OCCUPIED`). `UnitUpdateBody`: PATCH body (no `propertyId`; `floorArea`, `monthlyRent`, `floor`, `bathrooms`, `description` may be null).
 
 ## tenant.ts
 - `TenantType`, `ContactMethod`: tenant enums.
 - `Tenant`: POST / PATCH answer (no `createdBy`; `moveInDate` is a "YYYY-MM-DD" date or null).
 - `TenantCreatedBy`, `TenantDetail`: GET /tenants/:id (with `idNumber` and `createdBy`).
-- `TenantListItem`: one row of GET /tenants (no `idNumber`).
+- `TenantListItem`: one row of GET /tenants (no `idNumber`). `email` and `phone` are null when the tenant has none.
 - `TenantCreateBody`: POST body. `TenantUpdateBody`: PATCH body (`idNumber`, `address`, `moveInDate`, `notes` may be null).
 
 ## document.ts
-- `DocumentOwner`: `leases | tenants | units | properties` (the path prefix). `DocumentCategoryOption` (`{ value, label }`) and `DocumentCategories` (GET /documents/categories: `{ lease, tenant, unit, property }`, singular keys, each list in display order). `Document.category` is a plain string (the lists come from the API, never hard-coded).
-- `Document`: one uploaded file (`name`, `category`, `contentType`, `sizeBytes`, `uploadedBy { id, email }`, `createdAt`). `DocumentContentType`.
+- `DocumentOwner`: `leases | tenants | units | properties | payments`. `DocumentRef`: one record with documents (a payment with its `leaseId`). `DocumentCategoryOption` (`{ value, label }`) and `DocumentCategories` (GET /documents/categories: `{ lease, tenant, unit, property, payment }`, singular keys, each list in display order). `Document.category` is a plain string (the lists come from the API, never hard-coded). `ListedDocument`: a listed document, with its `source` (`DocumentSource`) in a unit's list.
+- `Document`: one uploaded file (`name`, `category`, `contentType`, `sizeBytes`, `uploadedBy { id, email }`, `createdAt`, `paymentId` / `paymentNumber` on a payment's file, else null). `DocumentContentType`.
 - `DocumentDownload`: `{ url, expiresAt }`, a 5-minute signed link; open it at once, never store it.
 
 ## lease.ts
 - `LeaseStatus`, `SignatureStatus`, `PaymentFrequency`: lease enums.
-- `LeaseTenant`: one tenant on a lease (`isPrimary`).
-- `Lease`: one row from GET /leases (dates "YYYY-MM-DD", money strings with 2 decimals, `tenants` primary first then by name, `endingSoon`, `balance`, `templateVersionId`, `template`, `isHistorical` true for an old (history-only) lease).
+- `LeaseTenant`: one tenant on a lease (`isPrimary`; `email` null = none).
+- `Lease`: one row from GET /leases (dates "YYYY-MM-DD", money strings with 2 decimals, `tenants` primary first then by name, `endingSoon`, `balance`, `templateVersionId`, `template`, `isHistorical` true for an old (history-only) lease, `endedOn` the day it actually ended or null, `cancelledOn` set when it was ended before it started).
 - `LeaseTemplateRef`: the lease's embedded template `{ id, name, version, archived }`; `version` is the pinned one.
-- `LeaseCreateBody`: POST /leases body (only `unitId` required; `status` DRAFT or ACTIVE). `LeaseUpdateBody`: PATCH body (never `status`; dates, rent, deposit, rentDueDay, notes, primaryTenantId, templateId may be null). Both take `templateId`. `LeaseEndBody`: `{ status?: ENDED | TERMINATED }`.
-- `LeaseHistoryBody`: POST /leases/history body (unit, primary tenant, start and end required; co-tenants, rent, deposit, notes, tags optional).
+- `LeaseCreateBody`: POST /leases body (only `unitId` required; `status` DRAFT or ACTIVE). `LeaseUpdateBody`: PATCH body (never `status`; dates, rent, deposit, rentDueDay, notes, primaryTenantId, templateId may be null; `endedOn` only on a closed lease). Both take `templateId`. `LeaseEndBody`: `{ status?: ENDED | TERMINATED, endedOn? }`.
+- `LeaseHistoryBody`: POST /leases/history `data` (unit, start, end, at least one tenant and exactly one primary; `newTenants` are `NewLeaseTenant`s). `OldLeaseCreated`: its answer (the lease plus `document` or null).
 
 ## leaseTemplate.ts
 - `LeaseTemplateListItem`: one row of GET /lease-templates (`defaultTermMonths`, `isDefault`, `archivedAt`, `currentVersion`, `leaseCount`).
@@ -57,9 +57,9 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 
 ## ledger.ts
 - `ChargeType`, `PaymentMethod`, `LedgerEntryKind`: money enums.
-- `Charge`, `Payment`: POST charge / payment answers (money strings, "YYYY-MM-DD" dates, void fields). `Charge.createdById` / `createdBy` are null on rent billed automatically (show "Auto-billed").
-- `LedgerEntry`, `LedgerResponse`: GET /leases/:id/ledger (entries oldest first; `runningBalance` may be negative; summary with balance, totals, monthly rent).
-- `ChargeCreateBody` (`periodMonth` only on RENT), `PaymentCreateBody`, `VoidBody` (`reason`): request bodies.
+- `Charge`, `Payment`: POST charge / payment answers (money strings, "YYYY-MM-DD" dates, void fields). `Charge.createdById` / `createdBy` are null on rent billed automatically (show "Auto-billed"). `Payment.documentCount`: its files. `PaymentRecorded`: the POST answer, with `document` or null.
+- `LedgerEntry`, `LedgerResponse`: GET /leases/:id/ledger (entries oldest first; `runningBalance` may be negative; summary with balance, totals, monthly rent). `documentCount`: a payment's files, null on charges.
+- `ChargeCreateBody` (`periodMonth` only on RENT), `PaymentCreateBody`, `VoidBody` (`reason`): request bodies. `PaymentCreateBody.documentCategory`: only with a file.
 
 ## rentRoll.ts
 - `RentRollStatus`: `PAID | PARTIAL | UNPAID | OVERDUE | NOT_BILLED`.

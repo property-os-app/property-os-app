@@ -1,115 +1,16 @@
 import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Button, CurrencyInput, Input, Select, Textarea } from "@/components/atoms";
 import { FormField, InlineError, toast } from "@/components/molecules";
 import { Modal } from "@/components/organisms";
 import { ApiError } from "@/lib/api";
 import { applyServerError } from "@/lib/forms";
-import { centsToAmount, toCents } from "@/lib/format";
 import { labelOptions, unitStatusLabels, unitTypeLabels, unitLabel } from "@/lib/labels";
 import { useProperties } from "@/features/properties/hooks";
+import { EDITABLE_STATUSES, makeUnitSchema, unitChanges, unitCreateBody, unitDefaults, UNIT_FIELDS, type UnitFormInput, type UnitFormOutput } from "@/features/units/form";
 import { useCreateUnit, useUnits, useUpdateUnit } from "@/features/units/hooks";
-import type { Unit, UnitCreateBody, UnitStatus, UnitType, UnitUpdateBody } from "@/types/unit";
-
-const UNIT_TYPES = Object.keys(unitTypeLabels) as [UnitType, ...UnitType[]];
-/** The statuses a user may pick. OCCUPIED is set only by activating a lease. */
-const EDITABLE_STATUSES = ["VACANT", "RESERVED", "UNDER_MAINTENANCE"] as const satisfies readonly UnitStatus[];
-/** monthlyRent: more than 0, at most 99,999,999.99 (API.md, POST /units). */
-const MAX_RENT_CENTS = 9_999_999_999;
-/** floor and bathrooms are 32-bit integers: floor -2,147,483,648 to 2,147,483,647, bathrooms 0 to 2,147,483,647. */
-const MIN_INT = -2_147_483_648;
-const MAX_INT = 2_147_483_647;
-
-const FIELDS = ["propertyId", "unitNumber", "unitType", "floorArea", "floor", "bathrooms", "monthlyRent", "status", "description"] as const;
-
-const DECIMAL_RE = /^\d+(\.\d+)?$/;
-const INT_RE = /^-?\d+$/;
-const WHOLE_RE = /^\d+$/;
-
-/** "" -> null, else the integer. Only called after the regex check. */
-const toIntOrNull = (v: string) => (v === "" ? null : Number(v));
-
-/**
- * Rules from ../property-os-api/docs/frontend-handoff/rules.md (Units). Unit numbers are unique per property ignoring case
- * (backend 409); the form checks the same first (trimmed, case-insensitive, same property, never the unit itself).
- */
-function makeSchema(units: Unit[], propertyName: (id: string) => string, editing?: Unit) {
-  return z
-    .object({
-      propertyId: z.string().min(1, "Choose a property."),
-      unitNumber: z.string().trim().min(1, "Enter the unit number."),
-      unitType: z.string().min(1, "Choose a unit type.").pipe(z.enum(UNIT_TYPES)),
-      floorArea: z
-        .string()
-        .trim()
-        .min(1, "Enter the floor area.")
-        .refine((v) => DECIMAL_RE.test(v), "Use a number, e.g. 750 or 750.5.")
-        .refine((v) => Number(v) > 0, "Floor area must be more than 0.")
-        .transform(Number),
-      floor: z
-        .string()
-        .trim()
-        .refine((v) => v === "" || INT_RE.test(v), "Use a whole number, e.g. 3 or -1.")
-        .refine((v) => v === "" || !INT_RE.test(v) || (Number(v) >= MIN_INT && Number(v) <= MAX_INT), "Floor must be between -2,147,483,648 and 2,147,483,647.")
-        .transform(toIntOrNull),
-      bathrooms: z
-        .string()
-        .trim()
-        .refine((v) => v === "" || WHOLE_RE.test(v), "Use a whole number, 0 or more.")
-        .refine((v) => v === "" || !WHOLE_RE.test(v) || Number(v) <= MAX_INT, "Bathrooms can be at most 2,147,483,647.")
-        .transform(toIntOrNull),
-      monthlyRent: z
-        .union([z.number(), z.literal("")])
-        // The first check narrows the value to a number.
-        .refine((v) => v !== "", "Enter the monthly rent.")
-        .refine((v) => toCents(v) > 0, "Monthly rent must be more than $0.")
-        .refine((v) => toCents(v) <= MAX_RENT_CENTS, "Monthly rent can be at most $99,999,999.99."),
-      status: z.string(),
-      description: z.string().trim(),
-    })
-    .superRefine((v, ctx) => {
-      const number = v.unitNumber.toLowerCase();
-      const taken = units.some(
-        (u) => u.propertyId === v.propertyId && u.id !== editing?.id && u.unitNumber.trim().toLowerCase() === number,
-      );
-      if (number && taken) {
-        ctx.addIssue({ code: "custom", path: ["unitNumber"], message: `${unitLabel(v.unitNumber)} already exists in ${propertyName(v.propertyId)}.` });
-      }
-    });
-}
-
-type FormInput = z.input<ReturnType<typeof makeSchema>>;
-type FormOutput = z.output<ReturnType<typeof makeSchema>>;
-
-function defaults(unit: Unit | undefined, propertyId: string): FormInput {
-  return {
-    propertyId: unit?.propertyId ?? propertyId,
-    unitNumber: unit?.unitNumber ?? "",
-    unitType: unit?.unitType ?? "",
-    floorArea: unit ? String(unit.floorArea) : "",
-    floor: unit?.floor != null ? String(unit.floor) : "",
-    bathrooms: unit?.bathrooms != null ? String(unit.bathrooms) : "",
-    monthlyRent: unit ? centsToAmount(toCents(unit.monthlyRent)) : "",
-    status: unit?.status ?? "VACANT",
-    description: unit?.description ?? "",
-  };
-}
-
-/** PATCH body with only the changed fields. floor, bathrooms, description: null when the user cleared them. Status only when editable. */
-function changedFields(v: FormOutput, u: Unit): UnitUpdateBody {
-  const body: UnitUpdateBody = {};
-  if (v.unitNumber !== u.unitNumber) body.unitNumber = v.unitNumber;
-  if (v.unitType !== u.unitType) body.unitType = v.unitType;
-  if (v.floorArea !== u.floorArea) body.floorArea = v.floorArea;
-  if (v.floor !== u.floor) body.floor = v.floor;
-  if (v.bathrooms !== u.bathrooms) body.bathrooms = v.bathrooms;
-  if (toCents(v.monthlyRent) !== toCents(u.monthlyRent)) body.monthlyRent = v.monthlyRent;
-  if (u.status !== "OCCUPIED" && v.status !== u.status) body.status = v.status as UnitUpdateBody["status"];
-  if (v.description !== (u.description ?? "")) body.description = v.description === "" ? null : v.description;
-  return body;
-}
+import type { Unit } from "@/types/unit";
 
 export interface UnitFormModalProps {
   /** Edit this unit; without it the modal creates one. */
@@ -137,7 +38,7 @@ export function UnitFormModal({ unit, defaultPropertyId, step, onSaved, onClose 
     const names = new Map(properties.data?.map((p) => [p.id, p.name]));
     return (id: string) => names.get(id) ?? "this property";
   }, [properties.data]);
-  const schema = useMemo(() => makeSchema(allUnits.data ?? [], propertyName, unit), [allUnits.data, propertyName, unit]);
+  const schema = useMemo(() => makeUnitSchema(allUnits.data ?? [], propertyName, unit), [allUnits.data, propertyName, unit]);
   const statusLocked = unit?.status === "OCCUPIED";
 
   const {
@@ -146,9 +47,9 @@ export function UnitFormModal({ unit, defaultPropertyId, step, onSaved, onClose 
     handleSubmit,
     setError,
     formState: { errors, isDirty, isSubmitting },
-  } = useForm<FormInput, unknown, FormOutput>({
+  } = useForm<UnitFormInput, unknown, UnitFormOutput>({
     resolver: zodResolver(schema),
-    defaultValues: defaults(unit, defaultPropertyId ?? ""),
+    defaultValues: unitDefaults(unit, defaultPropertyId ?? ""),
     mode: "onTouched",
   });
 
@@ -162,22 +63,11 @@ export function UnitFormModal({ unit, defaultPropertyId, step, onSaved, onClose 
     try {
       let saved: Unit;
       if (unit) {
-        const body = changedFields(v, unit);
+        const body = unitChanges(v, unit);
         saved = Object.keys(body).length > 0 ? await update.mutateAsync({ id: unit.id, body }) : unit;
         if (saved !== unit) toast.success(`${unitLabel(saved.unitNumber)} updated`);
       } else {
-        const body: UnitCreateBody = {
-          propertyId: v.propertyId,
-          unitNumber: v.unitNumber,
-          unitType: v.unitType,
-          floorArea: v.floorArea,
-          monthlyRent: v.monthlyRent,
-          status: v.status as UnitCreateBody["status"],
-          ...(v.floor !== null ? { floor: v.floor } : {}),
-          ...(v.bathrooms !== null ? { bathrooms: v.bathrooms } : {}),
-          ...(v.description ? { description: v.description } : {}),
-        };
-        saved = await create.mutateAsync(body);
+        saved = await create.mutateAsync(unitCreateBody(v));
         toast.success(`${unitLabel(saved.unitNumber)} added to ${propertyName(saved.propertyId)}`);
       }
       (onSaved ?? onClose)(saved);
@@ -187,7 +77,7 @@ export function UnitFormModal({ unit, defaultPropertyId, step, onSaved, onClose 
         setError("unitNumber", { type: "server", message: err.messages.join(" ") }, { shouldFocus: true });
         return;
       }
-      setFormErrors(applyServerError(setError, err, FIELDS));
+      setFormErrors(applyServerError(setError, err, UNIT_FIELDS));
     }
   });
 
@@ -246,10 +136,10 @@ export function UnitFormModal({ unit, defaultPropertyId, step, onSaved, onClose 
             ))}
           </Select>
         </FormField>
-        <FormField label="Floor area (sq ft)" htmlFor="uf-area" required error={errors.floorArea?.message}>
+        <FormField label="Floor area (sq ft)" htmlFor="uf-area" help="Optional" error={errors.floorArea?.message}>
           <Input id="uf-area" inputMode="decimal" {...register("floorArea")} />
         </FormField>
-        <FormField label="Monthly rent" htmlFor="uf-rent" required error={errors.monthlyRent?.message}>
+        <FormField label="Monthly rent" htmlFor="uf-rent" help="Optional. $0 is a real rent; empty means not set." error={errors.monthlyRent?.message}>
           <Controller
             control={control}
             name="monthlyRent"

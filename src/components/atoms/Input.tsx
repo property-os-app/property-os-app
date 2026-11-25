@@ -110,6 +110,26 @@ export function Checkbox({ className, label, id, ...props }: CheckboxProps) {
   );
 }
 
+export interface RadioProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> {
+  label?: React.ReactNode;
+}
+
+/** One choice of a group: give every Radio of the group the same `name`, inside a role="radiogroup" with a label. Looks like Checkbox, round. */
+export function Radio({ className, label, id, ...props }: RadioProps) {
+  const autoId = React.useId();
+  const inputId = id ?? autoId;
+  return (
+    <label htmlFor={inputId} className={cn("inline-flex cursor-pointer items-center gap-2.5 text-body text-text-primary", className)}>
+      <span className="relative inline-flex size-[18px] shrink-0 items-center justify-center">
+        <input id={inputId} type="radio" className="peer absolute inset-0 size-full cursor-pointer opacity-0" {...props} />
+        <span className="pointer-events-none size-full rounded-pill border border-border-strong bg-surface-2 peer-checked:border-success peer-checked:bg-success peer-focus-visible:focus-ring" />
+        <span aria-hidden className="pointer-events-none absolute hidden size-2 rounded-pill bg-success-fg peer-checked:block" />
+      </span>
+      {label}
+    </label>
+  );
+}
+
 export interface ToggleProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onChange"> {
   checked: boolean;
   onChange: (checked: boolean) => void;

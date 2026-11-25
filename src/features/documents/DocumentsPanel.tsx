@@ -1,24 +1,33 @@
 import { useState } from "react";
-import { Download, Eye, FileImage, FileText, Trash2 } from "lucide-react";
+import { Link } from "react-router";
+import { Download, Eye, Trash2 } from "lucide-react";
 import { Badge, Button, Caption, H3, Small } from "@/components/atoms";
 import { Card, KebabMenu, ListCard, toast } from "@/components/molecules";
 import { CardList, DataTable, type Column } from "@/components/organisms";
 import { errorText } from "@/lib/api";
+import { cn } from "@/lib/cn";
 import { formatFileSize } from "@/lib/files";
 import { formatTimestampDate } from "@/lib/format";
 import { useIsMobile } from "@/lib/useIsMobile";
+import { useAuth } from "@/features/auth/authContext";
+import { canManageDocuments } from "@/features/auth/permissions";
 import { DocumentDeleteDialog } from "@/features/documents/DocumentDeleteDialog";
 import { DocumentUpload } from "@/features/documents/DocumentUpload";
+import { FileKindIcon } from "@/features/documents/FileKindIcon";
 import { categoryLabel } from "@/features/documents/categories";
+import { canViewInBrowser, fileKind } from "@/features/documents/fileKind";
 import { useDocumentCategories, useDocuments, useDownloadDocument, useViewDocument } from "@/features/documents/hooks";
+import { ownerOfDocument, sourceText } from "@/features/documents/source";
 import { openBlankTab, POPUP_BLOCKED_MESSAGE } from "@/features/documents/view";
-import type { Document, DocumentOwner } from "@/types/document";
+import { textLink } from "@/features/shared/linkClass";
+import type { DocumentRef, ListedDocument } from "@/types/document";
 
 export interface DocumentsPanelProps {
-  owner: DocumentOwner;
-  ownerId: string;
-  /** Upload and delete (the owner record's edit permission, `canManageDocuments`). Hidden, never disabled, without it. */
-  canManage: boolean;
+  target: DocumentRef;
+  /** A unit's list: router state for the links to the leases. */
+  leaseState?: unknown;
+  /** A lease's list: a payment file's source opens the Ledger tab. */
+  onOpenLedger?: () => void;
   /** Empty-state text, e.g. "No documents on this lease yet." */
   emptyText?: string;
 }
@@ -26,36 +35,53 @@ export interface DocumentsPanelProps {
 /** Table View / Download: icon-only squares (like Delete) while the panel is under 48rem wide, so the drawer tables don't scroll sideways. */
 const NARROW_ICON_ONLY = "@max-3xl:w-8 @max-3xl:px-0";
 
-/** PDF or image icon by content type. */
-function DocIcon({ doc }: { doc: Document }) {
-  const Icon = doc.contentType === "application/pdf" ? FileText : FileImage;
-  return (
-    <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-control border border-border-subtle bg-surface-3 text-text-muted">
-      <Icon size={16} strokeWidth={1.5} aria-label={doc.contentType === "application/pdf" ? "PDF" : "Image"} />
-    </span>
-  );
-}
-
 /**
- * The documents of one lease, tenant, unit or property: upload card (with permission) and the list (DataTable from md,
- * CardList on phones, 5 states). View opens a new tab and Download saves the file, each with a fresh signed link on the
- * click (a phone card tap views); Delete confirms first.
+ * The documents of one lease, tenant, unit, property or payment: upload card (with permission) and the list (DataTable from md,
+ * CardList on phones, 5 states). View opens a new tab (only the types a browser shows: `canViewInBrowser`) and Download saves
+ * the file, each with a fresh signed link on the click (a phone card tap views, or downloads); Delete confirms first. A lease's list has its payments' files
+ * too, a unit's list its leases' documents and theirs: each row shows its source, takes its label from its own record's
+ * categories and deletes through that record, with that record's permission (`canManageDocuments`; hidden without it).
  */
-export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No documents yet." }: DocumentsPanelProps) {
-  const docs = useDocuments(owner, ownerId);
+export function DocumentsPanel({ target, leaseState, onOpenLedger, emptyText = "No documents yet." }: DocumentsPanelProps) {
+  const { me } = useAuth();
+  const docs = useDocuments(target);
+  const canManage = canManageDocuments(me!, target.owner);
+  const ofPayment = target.owner === "payments";
   // Labels from the owner type's own list; a readable fallback while it loads (or fails), never blank.
   const categories = useDocumentCategories();
-  const label = (d: Document) => categoryLabel(categories.data, owner, d.category);
+  const label = (d: ListedDocument) => categoryLabel(categories.data, ownerOfDocument(d, target).owner, d.category);
+  const canDelete = (d: ListedDocument) => canManageDocuments(me!, ownerOfDocument(d, target).owner);
+  /** "Unit", a link to the lease (its Ledger tab for a payment's file), or "Payment PMT-…" opening this lease's Ledger tab. */
+  const source = (d: ListedDocument) => {
+    const text = sourceText(d, target);
+    // Sits on top of a phone card's stretched button.
+    const linkClass = cn(textLink, "pointer-events-auto relative text-left");
+    if (text && d.source?.leaseId) {
+      return (
+        <Link to={`/leases/${encodeURIComponent(d.source.leaseId)}?tab=${d.paymentId ? "ledger" : "documents"}`} state={leaseState} className={linkClass}>
+          {text}
+        </Link>
+      );
+    }
+    if (text && d.paymentId && onOpenLedger) {
+      return (
+        <button type="button" onClick={onOpenLedger} className={linkClass}>
+          {text}
+        </button>
+      );
+    }
+    return text;
+  };
   const download = useDownloadDocument();
   const view = useViewDocument();
   const isMobile = useIsMobile();
-  const [deleting, setDeleting] = useState<Document | null>(null);
+  const [deleting, setDeleting] = useState<ListedDocument | null>(null);
 
-  const onDownload = (doc: Document) => download.mutate(doc.id, { onError: (err) => toast.error(`Couldn't download ${doc.name}`, { description: errorText(err) }) });
+  const onDownload = (doc: ListedDocument) => download.mutate(doc.id, { onError: (err) => toast.error(`Couldn't download ${doc.name}`, { description: errorText(err) }) });
   const pendingId = download.isPending ? download.variables : null;
 
   // The tab must open in the click itself (before any await) or popup blockers stop it.
-  const onView = (doc: Document) => {
+  const onView = (doc: ListedDocument) => {
     const tab = openBlankTab();
     if (!tab) {
       toast.error(`Couldn't open ${doc.name}`, { description: POPUP_BLOCKED_MESSAGE });
@@ -74,17 +100,17 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
   const viewingId = view.isPending ? view.variables?.docId : null;
 
   const state = docs.isError ? "error" : docs.isPending ? "loading" : docs.data.length === 0 ? "empty" : "ideal";
-  const empty = { title: "No documents", description: canManage ? `${emptyText} Upload one above.` : emptyText };
+  const empty = { title: ofPayment ? "No files" : "No documents", description: canManage ? `${emptyText} ${ofPayment ? "Add" : "Upload"} one above.` : emptyText };
   const error = { title: "Couldn't load documents", description: errorText(docs.error), onRetry: () => void docs.refetch() };
-  const meta = (d: Document) => `${label(d)} · ${formatFileSize(d.sizeBytes)}`;
+  const meta = (d: ListedDocument) => `${label(d)} · ${formatFileSize(d.sizeBytes)}`;
 
-  const columns: Column<Document>[] = [
+  const columns: Column<ListedDocument>[] = [
     {
       key: "name",
       header: "Document",
       cell: (d) => (
-        <div className="flex min-w-0 items-center gap-3">
-          <DocIcon doc={d} />
+        <div className="flex min-w-0 items-center gap-3 py-1.5">
+          <FileKindIcon kind={fileKind(d.contentType)} />
           {/* Capped in narrow panels (drawers) so long names and labels truncate instead of widening the table. */}
           <div className="flex min-w-0 flex-col gap-1 @max-3xl:max-w-[180px]">
             <span className="truncate font-semibold text-text-primary" title={d.name}>
@@ -96,6 +122,8 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
               </Badge>
               <Caption className="tabular">{formatFileSize(d.sizeBytes)}</Caption>
             </span>
+            {/* Wraps: "Lease … · Payment …" is longer than a narrow panel's column. */}
+            {source(d) && <Caption className="whitespace-normal">{source(d)}</Caption>}
           </div>
         </div>
       ),
@@ -118,19 +146,21 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
       align: "right",
       cell: (d) => (
         <div className="flex items-center justify-end gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            icon={<Eye size={16} strokeWidth={1.5} />}
-            disabled={viewingId === d.id}
-            aria-busy={viewingId === d.id || undefined}
-            aria-label={`View ${d.name}`}
-            title="View"
-            onClick={() => onView(d)}
-            className={NARROW_ICON_ONLY}
-          >
-            <span className="hidden @3xl:inline">{viewingId === d.id ? "Opening..." : "View"}</span>
-          </Button>
+          {canViewInBrowser(d.contentType) && (
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<Eye size={16} strokeWidth={1.5} />}
+              disabled={viewingId === d.id}
+              aria-busy={viewingId === d.id || undefined}
+              aria-label={`View ${d.name}`}
+              title="View"
+              onClick={() => onView(d)}
+              className={NARROW_ICON_ONLY}
+            >
+              <span className="hidden @3xl:inline">{viewingId === d.id ? "Opening..." : "View"}</span>
+            </Button>
+          )}
           <Button
             size="sm"
             variant="ghost"
@@ -144,7 +174,7 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
           >
             <span className="hidden @3xl:inline">{pendingId === d.id ? "Downloading..." : "Download"}</span>
           </Button>
-          {canManage && (
+          {canDelete(d) && (
             <Button size="sm" variant="ghost" iconOnly aria-label={`Delete ${d.name}`} onClick={() => setDeleting(d)}>
               <Trash2 size={16} strokeWidth={1.5} />
             </Button>
@@ -159,8 +189,8 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
     <div className="@container flex flex-col gap-4">
       {canManage && (
         <Card className="flex flex-col gap-4">
-          <H3>Upload a document</H3>
-          <DocumentUpload owner={owner} ownerId={ownerId} />
+          <H3>{ofPayment ? "Add a file" : "Upload a document"}</H3>
+          <DocumentUpload target={target} />
         </Card>
       )}
       {isMobile ? (
@@ -174,22 +204,23 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
           error={error}
           renderCard={(d) => (
             <ListCard
-              leading={<DocIcon doc={d} />}
+              leading={<FileKindIcon kind={fileKind(d.contentType)} />}
               title={d.name}
               subtitle={meta(d)}
               facts={[
                 { label: "Uploaded", value: formatTimestampDate(d.createdAt) },
                 { label: "By", value: d.uploadedBy.email },
               ]}
-              onOpen={() => onView(d)}
-              openLabel={`View ${d.name}`}
+              note={source(d) ?? undefined}
+              onOpen={() => (canViewInBrowser(d.contentType) ? onView(d) : onDownload(d))}
+              openLabel={`${canViewInBrowser(d.contentType) ? "View" : "Download"} ${d.name}`}
               actions={
                 <KebabMenu
                   label={`Actions for ${d.name}`}
                   items={[
-                    { label: "View", icon: <Eye strokeWidth={1.5} />, onSelect: () => onView(d) },
+                    ...(canViewInBrowser(d.contentType) ? [{ label: "View", icon: <Eye strokeWidth={1.5} />, onSelect: () => onView(d) }] : []),
                     { label: "Download", icon: <Download strokeWidth={1.5} />, onSelect: () => onDownload(d) },
-                    ...(canManage ? [{ label: "Delete", icon: <Trash2 strokeWidth={1.5} />, destructive: true, onSelect: () => setDeleting(d) }] : []),
+                    ...(canDelete(d) ? [{ label: "Delete", icon: <Trash2 strokeWidth={1.5} />, destructive: true, onSelect: () => setDeleting(d) }] : []),
                   ]}
                 />
               }
@@ -199,7 +230,7 @@ export function DocumentsPanel({ owner, ownerId, canManage, emptyText = "No docu
       ) : (
         <DataTable columns={columns} rows={docs.data ?? []} rowKey={(d) => d.id} density="compact" caption="Documents" state={state} empty={empty} error={error} />
       )}
-      <DocumentDeleteDialog owner={owner} ownerId={ownerId} doc={deleting} onClose={() => setDeleting(null)} />
+      <DocumentDeleteDialog target={deleting ? ownerOfDocument(deleting, target) : target} doc={deleting} onClose={() => setDeleting(null)} />
     </div>
   );
 }

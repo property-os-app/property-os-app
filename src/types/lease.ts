@@ -1,5 +1,7 @@
 /** Types for the leases endpoints. Source: ../property-os-api/docs/frontend-handoff/API.md sections 2 and 4 ("Lease"). */
 
+import type { Document } from "@/types/document";
+
 export type LeaseStatus = "DRAFT" | "ACTIVE" | "ENDED" | "TERMINATED";
 
 export type SignatureStatus = "NOT_SENT" | "PENDING" | "SIGNED";
@@ -10,7 +12,8 @@ export type PaymentFrequency = "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY";
 export interface LeaseTenant {
   id: string;
   fullName: string;
-  email: string;
+  /** null = the tenant has none. */
+  email: string | null;
   isPrimary: boolean;
 }
 
@@ -34,6 +37,13 @@ export interface Lease {
   startDate: string | null;
   /** "YYYY-MM-DD"; null only on DRAFT. */
   endDate: string | null;
+  /**
+   * "YYYY-MM-DD": the day it actually ended. null on DRAFT / ACTIVE, cancelled and history-only leases, and on leases
+   * ended before the API had this field (show endDate instead).
+   */
+  endedOn: string | null;
+  /** "YYYY-MM-DD" (UTC): ended before it started, the tenant never moved in. Read-only; null on every other lease. */
+  cancelledOn: string | null;
   paymentFrequency: PaymentFrequency;
   /** Money string ("1200.00"); null only on DRAFT. */
   rent: string | null;
@@ -113,16 +123,32 @@ export type LeaseUpdateBody = Partial<
   primaryTenantId?: string | null;
   /** A different id re-pins to its current version; the same id changes nothing; null removes it. 409 while SIGNED. */
   templateId?: string | null;
+  /** Corrects the day an ENDED / TERMINATED lease ended (start date to UTC today; never null). 409 on any other, history-only or cancelled lease. */
+  endedOn?: string;
 };
 
+/** A tenant created by POST /leases/history. Never null: leave a field out instead. */
+export interface NewLeaseTenant {
+  fullName: string;
+  email?: string;
+  phone?: string;
+  isPrimary?: boolean;
+}
+
+/** POST /leases/history answer: the lease, and the document made from the sent file (null without one). */
+export type OldLeaseCreated = Lease & { document: Document | null };
+
 /**
- * POST /leases/history body: an old lease recorded for history. endDate after startDate and before UTC today.
+ * POST /leases/history `data`: an old lease recorded for history. endDate after startDate and before UTC today.
  * Nothing else is sent: it is always ENDED + SIGNED, isHistorical true. Money is a JSON number.
  */
 export interface LeaseHistoryBody {
   unitId: string;
-  primaryTenantId: string;
+  /** Exactly one primary: this, or `isPrimary` on one new tenant. */
+  primaryTenantId?: string;
   coTenantIds?: string[];
+  /** Created with the lease (max 10; needs tenants.create_edit). */
+  newTenants?: NewLeaseTenant[];
   startDate: string;
   endDate: string;
   rent?: number;
@@ -131,7 +157,9 @@ export interface LeaseHistoryBody {
   tags?: string[];
 }
 
-/** POST /leases/:id/end body. Default ENDED. */
+/** POST /leases/:id/end body. Default ENDED. Never null: leave a field out instead. */
 export interface LeaseEndBody {
   status?: "ENDED" | "TERMINATED";
+  /** Start date to UTC today (default). Never for a lease that hasn't started (400): that one is cancelled. */
+  endedOn?: string;
 }

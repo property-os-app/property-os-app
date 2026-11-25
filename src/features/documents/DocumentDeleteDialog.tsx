@@ -3,18 +3,18 @@ import { toast } from "@/components/molecules";
 import { ConfirmDialog } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { useDeleteDocument } from "@/features/documents/hooks";
-import type { Document, DocumentOwner } from "@/types/document";
+import type { Document, DocumentRef } from "@/types/document";
 
 export interface DocumentDeleteDialogProps {
-  owner: DocumentOwner;
-  ownerId: string;
+  /** The record the document belongs to. */
+  target: DocumentRef;
   /** The document to delete; null keeps the dialog closed. */
   doc: Document | null;
   onClose: () => void;
 }
 
 /** Delete one document (DELETE /{owner}/:id/documents/:docId). Errors show inside the dialog. */
-export function DocumentDeleteDialog({ owner, ownerId, doc, onClose }: DocumentDeleteDialogProps) {
+export function DocumentDeleteDialog({ target, doc, onClose }: DocumentDeleteDialogProps) {
   const remove = useDeleteDocument();
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +27,7 @@ export function DocumentDeleteDialog({ owner, ownerId, doc, onClose }: DocumentD
     if (!doc) return;
     setError(null);
     remove.mutate(
-      { owner, ownerId, docId: doc.id },
+      { target, docId: doc.id },
       {
         onSuccess: () => {
           toast.success(`Deleted ${doc.name}`);
