@@ -18,6 +18,7 @@ import type { LeasePageState } from "@/features/leases/LeasePage";
 import { LeasesTable } from "@/features/leases/LeasesTable";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
 import { OldLeaseModal } from "@/features/leases/OldLeaseModal";
+import { leaseEndDate } from "@/features/leases/leaseEnd";
 import { compareLeasesDefault, expiresWithin, isClosed, isPastEnd, pastEndNote, primaryTenant, startedThisMonth } from "@/features/leases/stats";
 import { useAddPropertyFlow } from "@/features/properties/AddPropertyFlow";
 import { useProperties } from "@/features/properties/hooks";
@@ -61,7 +62,7 @@ const searchText = (l: Lease) => [l.leaseNumber, l.unit.unitNumber, `${unitLabel
 const sorts: Record<string, SortColumn<Lease>> = {
   tenant: { kind: "text", value: (l) => primaryTenant(l)?.fullName },
   rent: { kind: "money", value: (l) => l.rent },
-  expires: { kind: "date", value: (l) => l.endDate },
+  expires: { kind: "date", value: (l) => leaseEndDate(l) },
   balance: { kind: "money", value: (l) => l.balance },
 };
 
@@ -107,7 +108,7 @@ function LeasesList() {
   const [deleteLease, setDeleteLease] = useState<Lease | null>(null);
   const addProperty = useAddPropertyFlow();
 
-  // Default order: ACTIVE by soonest end, then DRAFT newest first, then ENDED / TERMINATED latest end first.
+  // Default order: ACTIVE by soonest end, then DRAFT newest first, then ENDED / TERMINATED latest real end first.
   const rows = useMemo(() => (leases.data ? [...leases.data].sort(compareLeasesDefault) : undefined), [leases.data]);
   const table = useClientTable<Lease, Filters>({
     rows,

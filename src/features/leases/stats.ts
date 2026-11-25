@@ -1,11 +1,17 @@
 /** Lease money and date helpers shared by the leases page, the unit drawer and the tenants page. Money math in integer cents. */
 import { addDaysISO, addMonthsISO, addMonthsYM, currentMonth, dayInMonth, daysSince, daysUntil, formatDate, formatShortDate, parseDateOnly, todayUTC, toCents } from "@/lib/format";
 import { plural, unitLabel } from "@/lib/labels";
+import { cancelledText, leaseEndDate } from "@/features/leases/leaseEnd";
 import type { Lease, LeaseStatus, LeaseTenant } from "@/types/lease";
 
-/** "Nov 1, 2026 to Oct 31, 2027"; null when both dates are missing (a missing one shows "-"). */
+/**
+ * "Nov 1, 2026 to Oct 31, 2027": the start to the day it ended, or will end (`leaseEndDate`). A cancelled lease had no
+ * period: "Cancelled Nov 25, 2026". null when both dates are missing (a missing one shows "-").
+ */
 export function leasePeriod(lease: Lease): string | null {
-  return lease.startDate || lease.endDate ? `${formatDate(lease.startDate)} to ${formatDate(lease.endDate)}` : null;
+  if (lease.cancelledOn) return cancelledText(lease.cancelledOn);
+  const end = leaseEndDate(lease);
+  return lease.startDate || end ? `${formatDate(lease.startDate)} to ${formatDate(end)}` : null;
 }
 
 /**
@@ -85,7 +91,7 @@ export function coTenants(lease: Lease): LeaseTenant[] {
   return lease.tenants.filter((t) => !t.isPrimary);
 }
 
-/** ENDED or TERMINATED: final, only notes and tags can change. */
+/** ENDED or TERMINATED: final, only notes, tags and the day it ended (`canEditEndDate`) can change. */
 export function isClosed(lease: Pick<Lease, "status">): boolean {
   return lease.status === "ENDED" || lease.status === "TERMINATED";
 }
@@ -147,14 +153,14 @@ const NO_END = "9999-12-31";
 
 /**
  * Default list order ("sorted by soonest expiry"): ACTIVE by end date ascending, then DRAFT newest first,
- * then ENDED / TERMINATED with the latest end date first.
+ * then ENDED / TERMINATED with the latest end (`leaseEndDate`) first.
  */
 export function compareLeasesDefault(a: Lease, b: Lease): number {
   const rank = STATUS_RANK[a.status] - STATUS_RANK[b.status];
   if (rank !== 0) return rank;
   if (a.status === "ACTIVE") return (a.endDate ?? NO_END).localeCompare(b.endDate ?? NO_END);
   if (a.status === "DRAFT") return b.createdAt.localeCompare(a.createdAt);
-  return (b.endDate ?? "").localeCompare(a.endDate ?? "");
+  return (leaseEndDate(b) ?? "").localeCompare(leaseEndDate(a) ?? "");
 }
 
 /* ---------- Activation ---------- */
@@ -209,6 +215,7 @@ export const leaseFieldLabels: Record<string, string> = {
   notes: "Notes",
   status: "Status",
   templateId: "Template",
+  endedOn: "Date it ended",
 };
 
 /** "Standard Lease – 12-month · v2": the lease's template and its pinned version; null without a template. */
@@ -223,12 +230,13 @@ export const leaseFieldLabel = (field: string) => leaseFieldLabels[field] ?? fie
  * A backend lease message that lists fields (backend names, in the backend's order):
  * - missing: 400 "Cannot activate lease: missing rent, deposit" (activate, or create as ACTIVE).
  * - activeNeeds: 400 "Lease LSE-2026-001 is ACTIVE, so it needs: rent. These can't be cleared on an ACTIVE lease." (PATCH).
- * - closed: 409 "Lease LSE-2026-001 is ENDED, so only notes and tags can be changed. Not allowed: rent, startDate." (PATCH).
+ * - closed: 409 "Lease LSE-2026-001 is ENDED, so only notes, tags and endedOn can be changed. Not allowed: rent, startDate." (PATCH);
+ *   history-only and cancelled leases say "only notes and tags" (`endedOn` false).
  */
 export type LeaseFieldsMessage =
   | { kind: "missing"; fields: string[] }
   | { kind: "activeNeeds"; leaseNumber: string; fields: string[] }
-  | { kind: "closed"; leaseNumber: string; status: "ENDED" | "TERMINATED"; fields: string[] };
+  | { kind: "closed"; leaseNumber: string; status: "ENDED" | "TERMINATED"; endedOn: boolean; fields: string[] };
 
 const fieldList = (text: string) =>
   text
@@ -242,8 +250,8 @@ export function parseLeaseFieldsMessage(message: string): LeaseFieldsMessage | n
   if (missing) return { kind: "missing", fields: fieldList(missing[1]) };
   const needs = /^Lease (\S+) is ACTIVE, so it needs: (.+?)\. These can't be cleared/.exec(message);
   if (needs) return { kind: "activeNeeds", leaseNumber: needs[1], fields: fieldList(needs[2]) };
-  const closed = /^Lease (\S+) is (ENDED|TERMINATED), so only notes and tags can be changed\. Not allowed: (.+?)\.?$/.exec(message);
-  if (closed) return { kind: "closed", leaseNumber: closed[1], status: closed[2] as "ENDED" | "TERMINATED", fields: fieldList(closed[3]) };
+  const closed = /^Lease (\S+) is (ENDED|TERMINATED), so only (notes and tags|notes, tags and endedOn) can be changed\. Not allowed: (.+?)\.?$/.exec(message);
+  if (closed) return { kind: "closed", leaseNumber: closed[1], status: closed[2] as "ENDED" | "TERMINATED", endedOn: closed[3].includes("endedOn"), fields: fieldList(closed[4]) };
   return null;
 }
 
@@ -257,7 +265,7 @@ export function parseMissingMessage(message: string): string[] | null {
  * A backend lease message with friendly field names; any other message unchanged.
  * "Cannot activate lease: missing rent" -> "Missing to activate: Monthly rent."
  * "Lease X is ACTIVE, so it needs: rent. ..." -> "Lease X is active, so these can't be cleared: Monthly rent."
- * "Lease X is ENDED, so only ... Not allowed: rent." -> "Lease X is ended, so only notes and tags can change. Not allowed: Monthly rent."
+ * "Lease X is ENDED, so only ... Not allowed: rent." -> "Lease X is ended, so only notes, tags and the end date can change. Not allowed: Monthly rent."
  */
 export function friendlyLeaseMessage(message: string): string {
   const parsed = parseLeaseFieldsMessage(message);
@@ -269,7 +277,7 @@ export function friendlyLeaseMessage(message: string): string {
     case "activeNeeds":
       return `Lease ${parsed.leaseNumber} is active, so these can't be cleared: ${names}.`;
     case "closed":
-      return `Lease ${parsed.leaseNumber} is ${parsed.status.toLowerCase()}, so only notes and tags can change. Not allowed: ${names}.`;
+      return `Lease ${parsed.leaseNumber} is ${parsed.status.toLowerCase()}, so only ${parsed.endedOn ? "notes, tags and the end date" : "notes and tags"} can change. Not allowed: ${names}.`;
   }
 }
 

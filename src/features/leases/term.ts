@@ -37,6 +37,8 @@ export interface TermView {
   tone: "success" | "warning" | "neutral";
   /** The line under the bar; null = nothing to say. */
   text: string | null;
+  /** A second line: the planned end of a lease that ended on another day. */
+  note?: string;
 }
 
 /**
@@ -44,8 +46,10 @@ export interface TermView {
  * - DRAFT, or ACTIVE before its start: "Starts in N days", empty bar. A draft whose start passed: "Start date passed".
  * - ACTIVE: "Month 7 of 12 · 156 days left" (days as in the Lease ends tile: local calendar days).
  * - ACTIVE past the end date: the alert's past-end sentence, full warning bar.
- * - ENDED / TERMINATED: full neutral bar. Ending a lease keeps its end date (the API has no date it really ended on),
- *   so TERMINATED, and ENDED with the date still ahead, only name the end date.
+ * - Cancelled: "Cancelled (never moved in) on {date}", empty bar.
+ * - ENDED / TERMINATED: full neutral bar, "Ended on {endedOn}", and the planned end when it was another day.
+ *   Leases ended before the API had `endedOn` only have their planned end date: "End date was {endDate}" ("is" while it is
+ *   after today), for both statuses.
  */
 export function termView(lease: Lease, now = new Date()): TermView {
   const { startDate, endDate } = lease;
@@ -54,12 +58,16 @@ export function termView(lease: Lease, now = new Date()): TermView {
   const toStart = daysUntil(startDate, now);
   const toEnd = daysUntil(endDate, now);
 
+  if (lease.cancelledOn) return { badge, percent: 0, tone: "neutral", text: `Cancelled (never moved in) on ${formatDate(lease.cancelledOn)}` };
+
   if (lease.status === "ENDED" || lease.status === "TERMINATED") {
-    const ahead = toEnd !== null && toEnd > 0;
-    const date = formatDate(endDate);
-    let text = ahead ? `Ended early · end date is ${date}` : `Ended on ${date}`;
-    if (lease.status === "TERMINATED") text = `Terminated · end date ${ahead ? "is" : "was"} ${date}`;
-    return { badge, percent: 100, tone: "neutral", text };
+    if (lease.endedOn) {
+      const view: TermView = { badge, percent: 100, tone: "neutral", text: `Ended on ${formatDate(lease.endedOn)}` };
+      if (endDate && lease.endedOn < endDate) view.note = `Ended early · planned end ${formatDate(endDate)}`;
+      else if (endDate && lease.endedOn > endDate) view.note = `Planned end ${formatDate(endDate)}`;
+      return view;
+    }
+    return { badge, percent: 100, tone: "neutral", text: `End date ${toEnd !== null && toEnd > 0 ? "is" : "was"} ${formatDate(endDate)}` };
   }
 
   if (lease.status === "DRAFT" || (toStart !== null && toStart > 0)) {

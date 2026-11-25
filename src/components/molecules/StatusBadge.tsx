@@ -7,8 +7,8 @@ import { Badge, type Tone } from "@/components/atoms/Badge";
  * rent, lease, esign, unit, insurance, approval, ticket and priority use the backend enums as keys (../property-os-api/docs/frontend-handoff/API.md section 2) and show a friendly label.
  */
 export type RentStatus = "PAID" | "PARTIAL" | "UNPAID" | "OVERDUE" | "NOT_BILLED";
-/** Backend LeaseStatus plus the UI-only "EXPIRING" (an ACTIVE lease with endingSoon = true). */
-export type LeaseStatus = "DRAFT" | "ACTIVE" | "EXPIRING" | "ENDED" | "TERMINATED";
+/** Backend LeaseStatus plus the UI-only "EXPIRING" (an ACTIVE lease with endingSoon = true) and "CANCELLED" (cancelledOn is set). */
+export type LeaseStatus = "DRAFT" | "ACTIVE" | "EXPIRING" | "ENDED" | "TERMINATED" | "CANCELLED";
 export type ESignStatus = "NOT_SENT" | "PENDING" | "SIGNED";
 /** Backend MaintenanceStatus plus the UI-only "PAST_SLA" (an active ticket with sla.pastSla = true). */
 export type TicketStatus = "OPEN" | "ASSIGNED" | "IN_PROGRESS" | "RESOLVED" | "CANCELLED" | "PAST_SLA";
@@ -24,7 +24,7 @@ export type TemplateStatus = "DEFAULT" | "ACTIVE" | "ARCHIVED";
 
 export const statusTone = {
   rent: { PAID: "success", PARTIAL: "warning", UNPAID: "warning", OVERDUE: "danger", NOT_BILLED: "neutral" },
-  lease: { DRAFT: "neutral", ACTIVE: "success", EXPIRING: "warning", ENDED: "neutral", TERMINATED: "danger" },
+  lease: { DRAFT: "neutral", ACTIVE: "success", EXPIRING: "warning", ENDED: "neutral", TERMINATED: "danger", CANCELLED: "neutral" },
   esign: { NOT_SENT: "neutral", PENDING: "warning", SIGNED: "success" },
   ticket: { OPEN: "neutral", ASSIGNED: "warning", IN_PROGRESS: "info", RESOLVED: "success", CANCELLED: "neutral", PAST_SLA: "danger" },
   priority: { EMERGENCY: "danger", URGENT: "warning", NORMAL: "info", LOW: "neutral" },
@@ -37,7 +37,7 @@ export const statusTone = {
 /** Friendly label per enum key. Domains not listed here already use display words as keys. */
 export const statusLabel = {
   rent: { PAID: "Paid", PARTIAL: "Partial", UNPAID: "Unpaid", OVERDUE: "Overdue", NOT_BILLED: "Not billed" },
-  lease: { DRAFT: "Draft", ACTIVE: "Active", EXPIRING: "Expiring", ENDED: "Ended", TERMINATED: "Terminated" },
+  lease: { DRAFT: "Draft", ACTIVE: "Active", EXPIRING: "Expiring", ENDED: "Ended", TERMINATED: "Terminated", CANCELLED: "Cancelled" },
   esign: { NOT_SENT: "Not sent", PENDING: "Pending", SIGNED: "Signed" },
   unit: { VACANT: "Vacant", OCCUPIED: "Occupied", RESERVED: "Reserved", UNDER_MAINTENANCE: "Under maintenance" },
   template: { DEFAULT: "Default", ACTIVE: "Active", ARCHIVED: "Archived" },

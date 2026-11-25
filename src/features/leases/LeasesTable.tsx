@@ -10,6 +10,7 @@ import { signatureStatusLabels, unitLabel } from "@/lib/labels";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { BalanceText } from "@/features/ledger/LedgerParts";
 import type { LeasePageState } from "@/features/leases/LeasePage";
+import { cancelledText, endActionLabel, leaseEndDate } from "@/features/leases/leaseEnd";
 import { LeaseBadge } from "@/features/leases/LeaseParts";
 import { coTenants, dueState, isPastEnd, notDueCaption, primaryTenant } from "@/features/leases/stats";
 import type { Lease } from "@/types/lease";
@@ -25,10 +26,18 @@ type Props = Pick<DataTableProps<Lease>, "rows" | "state" | "sort" | "onSortChan
   onDelete?: (lease: Lease) => void;
 };
 
-/** Expires date: red past the end date, amber when ending soon. */
+/** Expires date, or the day it ended or was cancelled: red past the end date, amber when ending soon. */
 function ExpiresText({ lease }: { lease: Lease }) {
-  if (!lease.endDate) return <Dash />;
-  return <span className={cn(isPastEnd(lease) ? "font-semibold text-danger" : lease.endingSoon && "font-semibold text-warning")}>{formatDate(lease.endDate)}</span>;
+  if (lease.cancelledOn) return <span>{cancelledText(lease.cancelledOn)}</span>;
+  const end = leaseEndDate(lease);
+  if (!end) return <Dash />;
+  return <span className={cn(isPastEnd(lease) ? "font-semibold text-danger" : lease.endingSoon && "font-semibold text-warning")}>{formatDate(end)}</span>;
+}
+
+/** The planned length, under the Expires date; not when the lease ended on another day than planned or was cancelled. */
+function termCaption(l: Lease): string | null {
+  if (l.termMonths === null || l.cancelledOn || (l.endedOn && l.endedOn !== l.endDate)) return null;
+  return `${l.termMonths} months`;
 }
 
 /** Tenant name with "+n" co-tenants, or null without a tenant. */
@@ -43,7 +52,7 @@ const fromLeases: LeasePageState = { from: "leases" };
 
 /**
  * The Leases list: a table from md up (or cards in a grid with `cards`), cards on phones (same rows, states and pagination).
- * Row / card opens the lease page; the kebab has Open, Edit, Activate, End lease, Delete draft.
+ * Row / card opens the lease page; the kebab has Open, Edit, Activate, End lease (Cancel lease before its start), Delete draft.
  */
 export function LeasesTable({ cards, onOpen, onEdit, onActivate, onEnd, onDelete, ...props }: Props) {
   const isMobile = useIsMobile();
@@ -52,7 +61,7 @@ export function LeasesTable({ cards, onOpen, onEdit, onActivate, onEnd, onDelete
       const items: MenuItem[] = [{ label: "Open", icon: <Eye strokeWidth={1.5} />, onSelect: () => onOpen(l) }];
       if (onEdit) items.push({ label: "Edit", icon: <Pencil strokeWidth={1.5} />, onSelect: () => onEdit(l) });
       if (onActivate && l.status === "DRAFT") items.push({ label: "Activate", icon: <Play strokeWidth={1.5} />, onSelect: () => onActivate(l) });
-      if (onEnd && l.status === "ACTIVE") items.push({ label: "End lease", icon: <Ban strokeWidth={1.5} />, onSelect: () => onEnd(l) });
+      if (onEnd && l.status === "ACTIVE") items.push({ label: endActionLabel(l), icon: <Ban strokeWidth={1.5} />, onSelect: () => onEnd(l) });
       if (onDelete && l.status === "DRAFT") {
         items.push({ label: "Delete draft", icon: <Trash2 strokeWidth={1.5} />, destructive: true, onSelect: () => onDelete(l) });
       }
@@ -130,7 +139,7 @@ export function LeasesTable({ cards, onOpen, onEdit, onActivate, onEnd, onDelete
         cell: (l) => (
           <div>
             <ExpiresText lease={l} />
-            {l.termMonths !== null && <Caption className="block">{l.termMonths} months</Caption>}
+            {termCaption(l) && <Caption className="block">{termCaption(l)}</Caption>}
           </div>
         ),
       },
@@ -185,7 +194,8 @@ export function LeasesTable({ cards, onOpen, onEdit, onActivate, onEnd, onDelete
               strip={overdue}
               facts={[
                 { label: "Rent", value: l.rent === null ? <Dash /> : <Num>{formatCurrency(l.rent)}</Num> },
-                { label: "Expires", value: <ExpiresText lease={l} /> },
+                // The label says "Cancelled", so the date fits the narrow column.
+                l.cancelledOn ? { label: "Cancelled", value: formatDate(l.cancelledOn) } : { label: "Expires", value: <ExpiresText lease={l} /> },
                 { label: "E-sign", value: <StatusBadge domain="esign" status={l.signatureStatus} /> },
               ]}
               actions={menu(l)}

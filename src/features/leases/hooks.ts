@@ -92,7 +92,7 @@ export function useActivateLease() {
   });
 }
 
-/** POST /leases/:id/end { status: ENDED | TERMINATED }. The unit becomes VACANT unless it has another ACTIVE lease. */
+/** POST /leases/:id/end { status: ENDED | TERMINATED, endedOn }. A lease that hasn't started is cancelled (no endedOn). The unit becomes VACANT unless it has another ACTIVE lease. */
 export function useEndLease() {
   const qc = useQueryClient();
   return useMutation({

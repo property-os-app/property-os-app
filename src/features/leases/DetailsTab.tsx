@@ -8,6 +8,8 @@ import { labelOptions, paymentFrequencyLabels, signatureStatusLabels } from "@/l
 import type { FieldName } from "@/features/leases/form";
 import { leaseErrorText, useUpdateLease } from "@/features/leases/hooks";
 import { LeaseDocumentCard } from "@/features/leases/LeaseDocumentCard";
+import { canEditEndDate } from "@/features/leases/leaseEnd";
+import { LeaseEndDateModal } from "@/features/leases/LeaseEndDateModal";
 import { PeopleCard } from "@/features/leases/PeopleCard";
 import { isClosed, isOldLease } from "@/features/leases/stats";
 import { TagEditor } from "@/features/leases/TagEditor";
@@ -31,7 +33,7 @@ export function DetailsTab({ lease, canEdit, onEdit }: DetailsTabProps) {
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
       <div className="flex min-w-0 flex-col gap-6 lg:col-span-8">
         <MoneyTermsCard lease={lease} onEdit={canEdit && !closed ? () => onEdit("rent") : undefined} />
-        <TermCard lease={lease} />
+        <TermCard lease={lease} canEdit={canEdit} />
         <PeopleCard lease={lease} />
         <NotesCard notes={lease.notes} onEdit={canEdit ? () => onEdit("notes") : undefined} />
       </div>
@@ -61,8 +63,12 @@ function HeaderButton({ icon, onClick, children }: { icon: ReactNode; onClick: (
 
 const pencil = <Pencil size={14} strokeWidth={1.5} />;
 
-/** Rent, Security deposit and Late fee side by side. "Edit terms" only while the terms can still change. */
+/**
+ * Rent, Security deposit and Late fee side by side. "Edit terms" only while the terms can still change.
+ * An old lease shows only its rent and deposit: its payment frequency and late fee are API defaults, not recorded values.
+ */
 function MoneyTermsCard({ lease, onEdit }: { lease: Lease; onEdit?: () => void }) {
+  const old = isOldLease(lease);
   const frequency = paymentFrequencyLabels[lease.paymentFrequency];
   const hasLateFee = toCents(lease.lateFeeAmount) !== 0;
   return (
@@ -81,14 +87,16 @@ function MoneyTermsCard({ lease, onEdit }: { lease: Lease; onEdit?: () => void }
         <MoneyTerm
           label="Rent"
           value={lease.rent === null ? <Dash /> : formatCurrency(lease.rent)}
-          note={lease.rentDueDay === null ? frequency : `${frequency}, due on the ${ordinal(lease.rentDueDay)}`}
+          note={old ? undefined : lease.rentDueDay === null ? frequency : `${frequency}, due on the ${ordinal(lease.rentDueDay)}`}
         />
         <MoneyTerm label="Security deposit" value={lease.deposit === null ? <Dash /> : formatCurrency(lease.deposit)} />
-        <MoneyTerm
-          label="Late fee"
-          value={hasLateFee ? formatCurrency(lease.lateFeeAmount) : "None"}
-          note={hasLateFee ? `After a ${lease.lateFeeGraceDays}-day grace period` : undefined}
-        />
+        {!old && (
+          <MoneyTerm
+            label="Late fee"
+            value={hasLateFee ? formatCurrency(lease.lateFeeAmount) : "None"}
+            note={hasLateFee ? `After a ${lease.lateFeeGraceDays}-day grace period` : undefined}
+          />
+        )}
       </dl>
     </Card>
   );
@@ -106,34 +114,51 @@ function MoneyTerm({ label, value, note }: { label: string; value: ReactNode; no
   );
 }
 
-/** Start and end dates with the progress bar between them (`termView`); an old lease shows only its dates. */
-function TermCard({ lease }: { lease: Lease }) {
+/** Start and end dates (the day it ended, once it has) with the progress bar between them (`termView`); an old lease shows only its dates. "Edit end date" on a lease that ended. */
+function TermCard({ lease, canEdit }: { lease: Lease; canEdit: boolean }) {
   const view = termView(lease);
+  const [editing, setEditing] = useState(false);
+  const showEdit = canEdit && canEditEndDate(lease);
   return (
     <Card>
       <CardHeader
         title={<H3>Term</H3>}
         action={
-          view.badge && (
-            <Badge tone="neutral" dot={false}>
-              {view.badge}
-            </Badge>
+          (view.badge || showEdit) && (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {view.badge && (
+                <Badge tone="neutral" dot={false}>
+                  {view.badge}
+                </Badge>
+              )}
+              {showEdit && (
+                <HeaderButton icon={pencil} onClick={() => setEditing(true)}>
+                  Edit end date
+                </HeaderButton>
+              )}
+            </div>
           )
         }
       />
       <div className="flex flex-col gap-3">
         <dl className="m-0 flex items-end justify-between gap-4">
           <TermDate label="Start" date={lease.startDate} />
-          <TermDate label="End" date={lease.endDate} right />
+          <TermDate label="End" date={lease.endedOn ?? lease.endDate} right />
         </dl>
         {view.percent !== null && <Bar value={view.percent} tone={view.tone} label="Lease term" valueText={view.text ?? undefined} className="h-1.5" />}
         {!isOldLease(lease) && (
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-            {view.text && <Small className={cn(view.tone === "warning" && "font-semibold text-warning")}>{view.text}</Small>}
+            {view.text && (
+              <div className="flex min-w-0 flex-col">
+                <Small className={cn(view.tone === "warning" && "font-semibold text-warning")}>{view.text}</Small>
+                {view.note && <Small>{view.note}</Small>}
+              </div>
+            )}
             <Small>Auto-renew: {lease.autoRenew ? "On" : "Off"}</Small>
           </div>
         )}
       </div>
+      {editing && <LeaseEndDateModal lease={lease} onClose={() => setEditing(false)} />}
     </Card>
   );
 }

@@ -36,6 +36,8 @@ function makeLease(over: Partial<Lease> = {}): Lease {
     signatureStatus: "SIGNED",
     startDate: "2026-01-01",
     endDate: "2026-12-31",
+    endedOn: null,
+    cancelledOn: null,
     paymentFrequency: "MONTHLY",
     rent: "1000.00",
     deposit: "1000.00",

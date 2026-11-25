@@ -84,21 +84,61 @@ describe("termView: draft", () => {
   });
 });
 
-describe("termView: ended and terminated", () => {
-  it("ENDED: on the end date, or early when it is still ahead", () => {
-    expect(termView(lease({ status: "ENDED", endDate: "2026-06-30" }), NOW)).toEqual({
+describe("termView: ended on a known date (endedOn)", () => {
+  it("on the planned day", () => {
+    expect(termView(lease({ status: "ENDED", endDate: "2026-06-30", endedOn: "2026-06-30" }), NOW)).toEqual({
       badge: "6-month fixed",
       percent: 100,
       tone: "neutral",
       text: "Ended on Jun 30, 2026",
     });
-    expect(termView(lease({ status: "ENDED", endDate: "2026-07-28" }), NOW).text).toBe("Ended on Jul 28, 2026");
-    expect(termView(lease({ status: "ENDED" }), NOW).text).toBe("Ended early · end date is Dec 31, 2026");
   });
 
-  it("TERMINATED never claims the end date as the day it ended", () => {
-    expect(termView(lease({ status: "TERMINATED" }), NOW)).toMatchObject({ percent: 100, tone: "neutral", text: "Terminated · end date is Dec 31, 2026" });
-    expect(termView(lease({ status: "TERMINATED", endDate: "2026-06-30" }), NOW).text).toBe("Terminated · end date was Jun 30, 2026");
+  it("ended early, whatever the label", () => {
+    for (const status of ["ENDED", "TERMINATED"] as const) {
+      expect(termView(lease({ status, endedOn: "2026-05-15" }), NOW)).toEqual({
+        badge: "12-month fixed",
+        percent: 100,
+        tone: "neutral",
+        text: "Ended on May 15, 2026",
+        note: "Ended early · planned end Dec 31, 2026",
+      });
+    }
+  });
+
+  it("ended later than planned: the planned end isn't lost", () => {
+    expect(termView(lease({ status: "ENDED", endDate: "2026-06-30", endedOn: "2026-07-20" }), NOW)).toMatchObject({
+      text: "Ended on Jul 20, 2026",
+      note: "Planned end Jun 30, 2026",
+    });
+  });
+});
+
+describe("termView: cancelled", () => {
+  it("never moved in: empty neutral bar, for both labels", () => {
+    for (const status of ["ENDED", "TERMINATED"] as const) {
+      expect(termView(lease({ status, startDate: "2026-09-01", endDate: "2027-08-31", cancelledOn: "2026-07-28" }), NOW)).toEqual({
+        badge: "12-month fixed",
+        percent: 0,
+        tone: "neutral",
+        text: "Cancelled (never moved in) on Jul 28, 2026",
+      });
+    }
+  });
+});
+
+describe("termView: ended and terminated before the API had endedOn", () => {
+  it("never claims the end date as the day it ended, past or ahead", () => {
+    for (const status of ["ENDED", "TERMINATED"] as const) {
+      expect(termView(lease({ status, endDate: "2026-06-30" }), NOW)).toEqual({
+        badge: "6-month fixed",
+        percent: 100,
+        tone: "neutral",
+        text: "End date was Jun 30, 2026",
+      });
+      expect(termView(lease({ status, endDate: "2026-07-28" }), NOW).text).toBe("End date was Jul 28, 2026");
+      expect(termView(lease({ status, endDate: "2026-07-29" }), NOW).text).toBe("End date is Jul 29, 2026");
+    }
   });
 });
 

@@ -14,14 +14,14 @@ Tenants: one directory page (/tenants) with Cards / Table views, the tenant draw
 
 ## stats.ts
 - `TenantRow`: a tenant, the visible leases they are on and their `current` lease.
-- `currentLease(leases)`: the ACTIVE one (soonest end), else the newest DRAFT, else the ENDED / TERMINATED one with the latest end.
+- `currentLease(leases)`: the ACTIVE one (soonest end), else the newest DRAFT, else the ENDED / TERMINATED one that ended last (`leaseEndDate`); a cancelled one only when there is nothing else.
 - `buildTenantRows(tenants, leases)`: rows sorted balance highest first (no lease last), then name.
 - `LeaseFilter`, `matchesLeaseFilter(row, filter)`: All / Active (includes expiring) / Expiring / Draft / Ended (+ terminated) / No lease.
 - `hasBalance(row)`: current lease balance above $0.
 - `RentStatus`, `rentStatus(lease)`: overdue / today / ok for an ACTIVE lease (UTC today, backend rule); null otherwise.
 - `unitLine(lease)`: "Unit 4B, Maple Court".
 - `tenantSearchText(row)`: name, email, phone, unit number, property name.
-- KPIs: `movedInThisQuarter` (valid "YYYY-MM-DD" move-in dates in the current local quarter), `activeLeaseCount`, `outstanding` (count + total, each lease once), `recentMoveOuts` (last 30 days; old (history-only) leases don't count).
+- KPIs: `movedInThisQuarter` (valid "YYYY-MM-DD" move-in dates in the current local quarter), `activeLeaseCount`, `outstanding` (count + total, each lease once), `recentMoveOuts` (ended in the last 30 days, `leaseEndDate`; old (history-only) and cancelled leases don't count). Tests: `stats.test.ts` (`currentLease`, `recentMoveOuts`).
 
 ## TenantParts.tsx
 - `TenantLeaseBadge`: current lease badge or neutral "No lease".

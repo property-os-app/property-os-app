@@ -34,6 +34,13 @@ export interface Lease {
   startDate: string | null;
   /** "YYYY-MM-DD"; null only on DRAFT. */
   endDate: string | null;
+  /**
+   * "YYYY-MM-DD": the day it actually ended. null on DRAFT / ACTIVE, cancelled and history-only leases, and on leases
+   * ended before the API had this field (show endDate instead).
+   */
+  endedOn: string | null;
+  /** "YYYY-MM-DD" (UTC): ended before it started, the tenant never moved in. Read-only; null on every other lease. */
+  cancelledOn: string | null;
   paymentFrequency: PaymentFrequency;
   /** Money string ("1200.00"); null only on DRAFT. */
   rent: string | null;
@@ -113,6 +120,8 @@ export type LeaseUpdateBody = Partial<
   primaryTenantId?: string | null;
   /** A different id re-pins to its current version; the same id changes nothing; null removes it. 409 while SIGNED. */
   templateId?: string | null;
+  /** Corrects the day an ENDED / TERMINATED lease ended (start date to UTC today; never null). 409 on any other, history-only or cancelled lease. */
+  endedOn?: string;
 };
 
 /**
@@ -131,7 +140,9 @@ export interface LeaseHistoryBody {
   tags?: string[];
 }
 
-/** POST /leases/:id/end body. Default ENDED. */
+/** POST /leases/:id/end body. Default ENDED. Never null: leave a field out instead. */
 export interface LeaseEndBody {
   status?: "ENDED" | "TERMINATED";
+  /** Start date to UTC today (default). Never for a lease that hasn't started (400): that one is cancelled. */
+  endedOn?: string;
 }

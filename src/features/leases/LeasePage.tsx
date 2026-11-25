@@ -18,11 +18,12 @@ import type { FieldName } from "@/features/leases/form";
 import { useActivateAction, useLease, type ActivateError } from "@/features/leases/hooks";
 import { LeaseAlert } from "@/features/leases/LeaseAlert";
 import { LeaseDeleteDialog } from "@/features/leases/LeaseDeleteDialog";
+import { endActionLabel, leaseEndDate } from "@/features/leases/leaseEnd";
 import { LeaseEndModal } from "@/features/leases/LeaseEndModal";
 import { LeaseBadge } from "@/features/leases/LeaseParts";
 import { TenantsTab } from "@/features/leases/LeaseTabs";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
-import { canDeleteLease, dueNote, dueState, isOldLease, primaryTenant } from "@/features/leases/stats";
+import { canDeleteLease, dueNote, dueState, isClosed, isOldLease, leasePeriod, primaryTenant } from "@/features/leases/stats";
 import { AddChargeModal } from "@/features/ledger/AddChargeModal";
 import { balanceText } from "@/features/ledger/balance";
 import { useLedger } from "@/features/ledger/hooks";
@@ -157,10 +158,10 @@ export function LeasePage() {
   return <LeaseDetail key={lease.data.id} lease={lease.data} />;
 }
 
-/** "Unit 4B, Maple Court · Nov 1, 2026 to Oct 31, 2027 · LSE-2026-001"; a DRAFT without both dates shows "Draft". */
+/** "Unit 4B, Maple Court · Nov 1, 2026 to Oct 31, 2027 · LSE-2026-001" (`leasePeriod`); a DRAFT without both dates shows "Draft". */
 function subtitle(lease: Lease): string {
   const unit = `${unitLabel(lease.unit.unitNumber)}, ${lease.unit.property.name}`;
-  const dates = lease.startDate && lease.endDate ? `${formatDate(lease.startDate)} to ${formatDate(lease.endDate)}` : lease.status === "DRAFT" ? "Draft" : formatDate(lease.endDate);
+  const dates = lease.startDate && lease.endDate ? leasePeriod(lease) : lease.status === "DRAFT" ? "Draft" : formatDate(leaseEndDate(lease));
   return [unit, dates, lease.leaseNumber].join(" · ");
 }
 
@@ -170,6 +171,21 @@ function endsNote(endDate: string | null): ReactNode {
   if (days === null) return <Dash />;
   if (days === 0) return "today";
   return days > 0 ? `in ${plural(days, "day")}` : `ended ${plural(-days, "day")} ago`;
+}
+
+/**
+ * The last tile: "Lease ends", or on a closed lease (not an old one) the day it ended or was cancelled. Leases ended before
+ * the API had `endedOn` only have their planned end date, so the tile says the real one isn't recorded.
+ */
+function EndTile({ lease }: { lease: Lease }) {
+  if (lease.cancelledOn) return <Tile label="Cancelled" loading={false} value={formatDate(lease.cancelledOn)} note="never moved in" />;
+  if (lease.endedOn) {
+    // A UTC day can still be tomorrow here.
+    const days = -(daysUntil(lease.endedOn) ?? 0);
+    return <Tile label="Ended" loading={false} value={formatDate(lease.endedOn)} note={days > 0 ? `${plural(days, "day")} ago` : "today"} />;
+  }
+  if (isClosed(lease)) return <Tile label="End date" loading={false} value={formatDate(lease.endDate)} note="actual date not recorded" />;
+  return <Tile label="Lease ends" loading={false} value={formatDate(lease.endDate)} note={endsNote(lease.endDate)} />;
 }
 
 function LeaseDetail({ lease }: { lease: Lease }) {
@@ -258,7 +274,7 @@ function LeaseDetail({ lease }: { lease: Lease }) {
   } else if (lease.status === "ACTIVE") {
     actions = (
       <>
-        {canEdit && <Button onClick={() => setEnding(true)}>End lease</Button>}
+        {canEdit && <Button onClick={() => setEnding(true)}>{endActionLabel(lease)}</Button>}
         {canEdit && (
           <Button icon={editIcon} onClick={() => setEditing(true)}>
             Edit
@@ -360,7 +376,7 @@ function LeaseDetail({ lease }: { lease: Lease }) {
               note={ledger.isError ? ledgerRetry : summary ? `of ${formatCurrency(summary.totalCharged)} charged` : <Dash />}
               className={summary ? "text-success" : undefined}
             />
-            <Tile label="Lease ends" loading={false} value={formatDate(lease.endDate)} note={endsNote(lease.endDate)} />
+            <EndTile lease={lease} />
           </div>
           )}
         </div>
