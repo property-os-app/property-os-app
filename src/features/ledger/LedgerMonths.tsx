@@ -21,6 +21,8 @@ export interface LedgerMonthsProps {
   onShowPayment: (paymentId: string) => void;
   /** The charge to scroll to and highlight (?card=). */
   focusCard: string | null;
+  /** "From deposit settlement" next to a DEPOSIT payment: opens the Deposit card. */
+  onOpenDeposit?: () => void;
 }
 
 /**
@@ -43,7 +45,7 @@ const UNDER_ROW = "@3xl:pl-[calc(9.5rem+0.75rem)]";
  * status and the kebab, with the payments applied in a line under it. VOID rows are muted and struck through with their
  * reason. A credit (`summary.credit`) shows on top.
  */
-export function LedgerMonths({ ledger, state, empty, error, actionsFor, onShowPayment, focusCard }: LedgerMonthsProps) {
+export function LedgerMonths({ ledger, state, empty, error, actionsFor, onShowPayment, focusCard, onOpenDeposit }: LedgerMonthsProps) {
   const months = useMemo(() => groupCardsByMonth(ledger?.cards ?? []), [ledger]);
   const credit = creditAmount(ledger?.summary);
 
@@ -82,14 +84,26 @@ export function LedgerMonths({ ledger, state, empty, error, actionsFor, onShowPa
         </div>
       )}
       {months.map((m) => (
-        <MonthGroup key={m.month} month={m} actionsFor={actionsFor} onShowPayment={onShowPayment} focusCard={focusCard} />
+        <MonthGroup key={m.month} month={m} actionsFor={actionsFor} onShowPayment={onShowPayment} focusCard={focusCard} onOpenDeposit={onOpenDeposit} />
       ))}
     </div>
   );
 }
 
 /** One month: a bordered group (a size container) with its header and the charge rows. */
-function MonthGroup({ month, actionsFor, onShowPayment, focusCard }: { month: CardMonth; actionsFor: (chargeId: string) => ReactNode; onShowPayment: (id: string) => void; focusCard: string | null }) {
+function MonthGroup({
+  month,
+  actionsFor,
+  onShowPayment,
+  focusCard,
+  onOpenDeposit,
+}: {
+  month: CardMonth;
+  actionsFor: (chargeId: string) => ReactNode;
+  onShowPayment: (id: string) => void;
+  focusCard: string | null;
+  onOpenDeposit?: () => void;
+}) {
   const titleId = useId();
   return (
     // No overflow-hidden: the ⋮ menus open past the group's edge.
@@ -112,7 +126,7 @@ function MonthGroup({ month, actionsFor, onShowPayment, focusCard }: { month: Ca
       </div>
       <ul className="m-0 list-none divide-y divide-border-subtle border-t border-border-subtle p-0">
         {month.cards.map((c) => (
-          <ChargeRow key={c.chargeId} card={c} actions={actionsFor(c.chargeId)} onShowPayment={onShowPayment} focused={c.chargeId === focusCard} />
+          <ChargeRow key={c.chargeId} card={c} actions={actionsFor(c.chargeId)} onShowPayment={onShowPayment} focused={c.chargeId === focusCard} onOpenDeposit={onOpenDeposit} />
         ))}
       </ul>
     </section>
@@ -120,7 +134,19 @@ function MonthGroup({ month, actionsFor, onShowPayment, focusCard }: { month: Ca
 }
 
 /** One charge as a row, the payments applied to it in a subtle line under it. VOID: muted and struck through, with its reason. */
-function ChargeRow({ card, actions, onShowPayment, focused }: { card: LedgerCard; actions: ReactNode; onShowPayment: (id: string) => void; focused: boolean }) {
+function ChargeRow({
+  card,
+  actions,
+  onShowPayment,
+  focused,
+  onOpenDeposit,
+}: {
+  card: LedgerCard;
+  actions: ReactNode;
+  onShowPayment: (id: string) => void;
+  focused: boolean;
+  onOpenDeposit?: () => void;
+}) {
   const voided = card.status === "VOID";
   const strike = voided ? "text-text-muted line-through" : undefined;
   return (
@@ -170,6 +196,14 @@ function ChargeRow({ card, actions, onShowPayment, focused }: { card: LedgerCard
                 </button>
                 {` · ${formatDate(p.date)} · ${paymentMethodLabel(p.method)} · `}
                 <Num className="text-text-primary">{formatCurrency(p.appliedAmount)}</Num>
+                {p.method === "DEPOSIT" && onOpenDeposit && (
+                  <>
+                    {" · "}
+                    <button type="button" onClick={onOpenDeposit} className={cn(textLink, "text-caption")}>
+                      From deposit settlement
+                    </button>
+                  </>
+                )}
               </li>
             ))}
           </ul>

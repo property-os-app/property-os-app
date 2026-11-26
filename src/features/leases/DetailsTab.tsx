@@ -1,11 +1,14 @@
 import { useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlarmClock, CalendarClock, Pencil, Plus, Scale, ShieldCheck } from "lucide-react";
+import { AlarmClock, Ban, CalendarClock, Pencil, Plus, Scale, ShieldCheck } from "lucide-react";
 import { Badge, Bar, Button, Dash, H3, Num, Select, Small, Tag, Toggle } from "@/components/atoms";
 import { Card, CardHeader, IconTile, IconTileGrid, InlineError, SectionCard, StatusBadge, toast } from "@/components/molecules";
 import { cn } from "@/lib/cn";
 import { formatCurrency, formatDate, ordinal, toCents } from "@/lib/format";
 import { labelOptions, paymentFrequencyLabels, signatureStatusLabels } from "@/lib/labels";
+import { DepositCard } from "@/features/deposits/DepositCard";
+import { depositBadge, leaseDepositTotal } from "@/features/deposits/endPreview";
+import { VoidAfterEndModal } from "@/features/deposits/VoidAfterEndModal";
 import { balanceText } from "@/features/ledger/balance";
 import { creditAmount } from "@/features/ledger/cards";
 import { useLedger } from "@/features/ledger/hooks";
@@ -14,7 +17,7 @@ import { leaseErrorText, useUpdateLease } from "@/features/leases/hooks";
 import { leaseKeys } from "@/features/leases/keys";
 import { LeaseCard } from "@/features/leases/LeaseCard";
 import { LeaseholdersCard } from "@/features/leases/LeaseholdersCard";
-import { canEditEndDate } from "@/features/leases/leaseEnd";
+import { canEditEndDate, canVoidAfterEnd } from "@/features/leases/leaseEnd";
 import { LeaseEndDateModal } from "@/features/leases/LeaseEndDateModal";
 import { autoRenewEditable, dueNote, dueState, isClosed, isOldLease } from "@/features/leases/stats";
 import { NotSet } from "@/features/shared/Missing";
@@ -27,22 +30,34 @@ export interface DetailsTabProps {
   canEdit: boolean;
   /** Opens the lease wizard at the step that has this field. */
   onEdit: (field: FieldName) => void;
-  /** Switches to the Documents tab ("+N more" signed copies). */
+  /** Switches to the Documents tab ("+N more" signed copies, refund proof). */
   onOpenDocuments: () => void;
+  /** Settle or edit the deposit (money.record). */
+  canSettle: boolean;
+  /** Void the rent after the end date (money.void). */
+  canVoid: boolean;
+  /** Shows a payment in the ledger's All entries (the deposit's DEPOSIT payment). */
+  onShowPayment: (paymentId: string) => void;
+  /** Scroll to the Deposit card (the ledger's "From deposit settlement" link). */
+  focusDeposit?: boolean;
 }
 
 /**
- * Details tab. Left: Financials, Lease (number, template, PDF, signed copy), Term, Leaseholders and Internal lease notes
- * (one column on phones). Right: E-signature and Tags.
+ * Details tab. Left: Financials, Deposit (ENDED / TERMINATED leases with a deposit), Lease (number, template, PDF, signed copy),
+ * Term, Leaseholders and Internal lease notes (one column on phones). Right: E-signature and Tags.
  */
-export function DetailsTab({ lease, canEdit, onEdit, onOpenDocuments }: DetailsTabProps) {
+export function DetailsTab({ lease, canEdit, onEdit, onOpenDocuments, canSettle, canVoid, onShowPayment, focusDeposit }: DetailsTabProps) {
   const closed = isClosed(lease);
+  const hasDeposit = toCents(leaseDepositTotal(lease)) > 0;
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
       <div className="flex min-w-0 flex-col gap-6 lg:col-span-8">
         <FinancialsCard lease={lease} onEdit={canEdit && !closed ? () => onEdit("rent") : undefined} />
+        {closed && hasDeposit && (
+          <DepositCard lease={lease} canSettle={canSettle} canUpload={canEdit} onOpenDocuments={onOpenDocuments} onShowPayment={onShowPayment} focus={focusDeposit} />
+        )}
         <LeaseCard lease={lease} canEdit={canEdit} onOpenDocuments={onOpenDocuments} />
-        <TermCard lease={lease} canEdit={canEdit} />
+        <TermCard lease={lease} canEdit={canEdit} canVoid={canVoid} />
         <LeaseholdersCard lease={lease} />
         <NotesCard notes={lease.notes} onEdit={canEdit ? () => onEdit("notes") : undefined} />
       </div>
@@ -70,7 +85,7 @@ function HeaderButton({ icon, onClick, children }: { icon: ReactNode; onClick: (
 const pencil = <Pencil size={14} strokeWidth={1.5} />;
 
 /**
- * Rent (payment frequency badge, due day), Balance, Security deposit and Late fee tiles. "Edit terms" only while the terms
+ * Rent (payment frequency badge, due day), Balance, Deposits (total, "Security $X · Pet $Y", deposit status) and Late fee tiles. "Edit terms" only while the terms
  * can still change. An old lease shows only its rent and deposit: its frequency and late fee are API defaults, not recorded values.
  */
 function FinancialsCard({ lease, onEdit }: { lease: Lease; onEdit?: () => void }) {
@@ -103,11 +118,7 @@ function FinancialsCard({ lease, onEdit }: { lease: Lease; onEdit?: () => void }
           note={!old && lease.rentDueDay !== null ? `Due on the ${ordinal(lease.rentDueDay)}` : undefined}
         />
         {!old && <BalanceTile lease={lease} />}
-        <IconTile
-          icon={<ShieldCheck strokeWidth={1.5} />}
-          label="Security deposit"
-          value={lease.deposit === null ? <NotSet /> : <Num>{formatCurrency(lease.deposit)}</Num>}
-        />
+        <DepositsTile lease={lease} />
         {!old && (
           <IconTile
             icon={<AlarmClock strokeWidth={1.5} />}
@@ -118,6 +129,22 @@ function FinancialsCard({ lease, onEdit }: { lease: Lease; onEdit?: () => void }
         )}
       </IconTileGrid>
     </SectionCard>
+  );
+}
+
+/** Deposits: security + pet total, "Security $X · Pet $Y", and the deposit status badge (Held, Returned... or Not tracked). */
+function DepositsTile({ lease }: { lease: Lease }) {
+  const total = leaseDepositTotal(lease);
+  const badge = depositBadge(lease.depositStatus, total, lease.status);
+  const none = lease.deposit === null && lease.petDeposit === null;
+  return (
+    <IconTile
+      icon={<ShieldCheck strokeWidth={1.5} />}
+      label="Deposits"
+      value={none ? <NotSet /> : <Num>{formatCurrency(total)}</Num>}
+      badge={badge ? <StatusBadge domain="deposit" status={badge} /> : undefined}
+      note={none ? undefined : `Security ${formatCurrency(lease.deposit ?? "0")} · Pet ${toCents(lease.petDeposit) > 0 ? formatCurrency(lease.petDeposit) : "none"}`}
+    />
   );
 }
 
@@ -152,17 +179,22 @@ function BalanceTile({ lease }: { lease: Lease }) {
   );
 }
 
-/** Start and end dates (the day it ended, once it has) with the progress bar between them (`termView`); an old lease shows only its dates. "Edit end date" on a lease that ended. */
-function TermCard({ lease, canEdit }: { lease: Lease; canEdit: boolean }) {
+/**
+ * Start and end dates (the day it ended, once it has) with the progress bar between them (`termView`); an old lease shows only
+ * its dates. "Edit end date" on a lease that ended; "Void rent after end date" (money.void) on one ended or cancelled in the app.
+ */
+function TermCard({ lease, canEdit, canVoid }: { lease: Lease; canEdit: boolean; canVoid: boolean }) {
   const view = termView(lease);
   const [editing, setEditing] = useState(false);
+  const [voiding, setVoiding] = useState(false);
   const showEdit = canEdit && canEditEndDate(lease);
+  const showVoid = canVoid && canVoidAfterEnd(lease);
   return (
     <Card>
       <CardHeader
         title={<H3>Term</H3>}
         action={
-          (view.badge || showEdit) && (
+          (view.badge || showEdit || showVoid) && (
             <div className="flex flex-wrap items-center justify-end gap-2">
               {view.badge && (
                 <Badge tone="neutral" dot={false}>
@@ -172,6 +204,11 @@ function TermCard({ lease, canEdit }: { lease: Lease; canEdit: boolean }) {
               {showEdit && (
                 <HeaderButton icon={pencil} onClick={() => setEditing(true)}>
                   Edit end date
+                </HeaderButton>
+              )}
+              {showVoid && (
+                <HeaderButton icon={<Ban size={14} strokeWidth={1.5} />} onClick={() => setVoiding(true)}>
+                  Void rent after end date
                 </HeaderButton>
               )}
             </div>
@@ -197,6 +234,7 @@ function TermCard({ lease, canEdit }: { lease: Lease; canEdit: boolean }) {
         )}
       </div>
       {editing && <LeaseEndDateModal lease={lease} onClose={() => setEditing(false)} />}
+      {voiding && <VoidAfterEndModal lease={lease} onClose={() => setVoiding(false)} />}
     </Card>
   );
 }

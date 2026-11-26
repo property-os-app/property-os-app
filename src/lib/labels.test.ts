@@ -1,14 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { labelOptions, paymentMethodLabel, paymentMethodLabels, readableValue, referenceHint, unitLabel } from "@/lib/labels";
-import type { PaymentMethod } from "@/types/ledger";
+import type { SelectablePaymentMethod } from "@/types/ledger";
 
-/** API.md section 2, `PaymentMethod`: the values in the order to show them. */
-const API_PAYMENT_METHODS: PaymentMethod[] = ["ACH", "CHECK", "CREDIT_CARD", "CASH", "VENMO", "ZELLE", "OTHER"];
+/** API.md section 2, `PaymentMethod`: the values a user can pick, in the order to show them (DEPOSIT is system only). */
+const API_PAYMENT_METHODS: SelectablePaymentMethod[] = ["ACH", "CHECK", "CREDIT_CARD", "CASH", "VENMO", "ZELLE", "OTHER"];
 
 describe("payment methods", () => {
   it("are the API's list in its order, Other last", () => {
     expect(Object.keys(paymentMethodLabels)).toEqual(API_PAYMENT_METHODS);
     expect(labelOptions(paymentMethodLabels).map((o) => o.label)).toEqual(["ACH bank transfer", "Check", "Credit card", "Cash", "Venmo", "Zelle", "Other"]);
+  });
+
+  it("never offer DEPOSIT in a Method select, and show it as \"Deposit applied\"", () => {
+    expect(Object.keys(paymentMethodLabels)).not.toContain("DEPOSIT");
+    expect(labelOptions(paymentMethodLabels).map((o) => o.value)).not.toContain("DEPOSIT");
+    expect(paymentMethodLabel("DEPOSIT")).toBe("Deposit applied");
   });
 
   it("show their label, and a readable fallback for an unknown value", () => {

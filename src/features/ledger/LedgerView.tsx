@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { currentMonthUTC, formatCurrency, formatDate } from "@/lib/format";
 import { paymentMethodLabel, plural } from "@/lib/labels";
 import { useIsMobile } from "@/lib/useIsMobile";
+import { textLink } from "@/features/shared/linkClass";
 import { AddChargeModal } from "@/features/ledger/AddChargeModal";
 import { useLedger } from "@/features/ledger/hooks";
 import { allocationOf } from "@/features/ledger/cards";
@@ -21,6 +22,9 @@ import { prefillFromEntry, type ChargePrefill, type PaymentPrefill } from "@/fea
 import { VoidEntryModal } from "@/features/ledger/VoidEntryModal";
 import type { Lease } from "@/types/lease";
 import type { LedgerEntry } from "@/types/ledger";
+
+/** A row's title: the charge's description, "Deposit applied" for a DEPOSIT payment, else "Payment received". */
+const entryTitle = (e: LedgerEntry) => (e.kind === "CHARGE" ? e.description : e.method === "DEPOSIT" ? "Deposit applied" : "Payment received");
 
 /** Amount cell: muted with strikethrough when voided. */
 function Amount({ entry, className }: { entry: LedgerEntry; className?: string }) {
@@ -66,6 +70,20 @@ export interface LedgerViewProps {
   canCharge: boolean;
   /** Re-enter a voided payment, add and delete payment files (payment.create). */
   canPay: boolean;
+  /** "From deposit settlement" on a DEPOSIT payment: opens the Deposit card. */
+  onOpenDeposit?: () => void;
+}
+
+/** A DEPOSIT payment (the part of the deposit applied at settlement): never voided or re-entered here. */
+const isDepositPayment = (e: LedgerEntry) => e.kind === "PAYMENT" && e.method === "DEPOSIT";
+
+/** "From deposit settlement": the link from a DEPOSIT payment to the lease's Deposit card. */
+export function DepositSettlementLink({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button type="button" onClick={onOpen} className={cn(textLink, "pointer-events-auto relative self-start text-caption")}>
+      From deposit settlement
+    </button>
+  );
 }
 
 /**
@@ -74,8 +92,9 @@ export interface LedgerViewProps {
  * a card opens All entries at that payment (highlighted).
  * A payment's paperclip opens its files (`PaymentFilesDrawer`), voided payments too.
  * Kebab: Void on live rows (`canVoid`), Re-enter on voided rows (opens Add charge / Record Payment prefilled, so the user checks before saving).
+ * A DEPOSIT payment reads "Deposit applied" with a "From deposit settlement" link and has neither (the settlement changes it).
  */
-export function LedgerView({ lease, canVoid, canCharge, canPay }: LedgerViewProps) {
+export function LedgerView({ lease, canVoid, canCharge, canPay, onOpenDeposit }: LedgerViewProps) {
   const ledger = useLedger(lease.id);
   const [voiding, setVoiding] = useState<LedgerEntry | null>(null);
   const [reentry, setReentry] = useState<Reentry | null>(null);
@@ -100,7 +119,8 @@ export function LedgerView({ lease, canVoid, canCharge, canPay }: LedgerViewProp
   const kebab = useMemo(
     () => (e: LedgerEntry) => {
       let items: MenuItem[] = [];
-      if (!e.voided) {
+      if (isDepositPayment(e)) items = [];
+      else if (!e.voided) {
         if (canVoid) items = [{ label: e.kind === "CHARGE" ? "Void charge" : "Void payment", icon: <Ban strokeWidth={1.5} />, destructive: true, onSelect: () => setVoiding(e) }];
       } else {
         const allowed = e.kind === "CHARGE" ? canCharge : canPay;
@@ -127,11 +147,12 @@ export function LedgerView({ lease, canVoid, canCharge, canPay }: LedgerViewProp
             className={cn("flex min-w-40 scroll-mt-24 flex-col rounded-control", e.voided && "text-text-muted", e.id === focusPayment && "bg-info-soft px-2 ring-2 ring-info")}
           >
             <span className="flex flex-wrap items-center gap-2">
-              {e.kind === "CHARGE" ? e.description : "Payment received"}
+              {entryTitle(e)}
               {e.voided && <Badge tone="neutral">Voided</Badge>}
             </span>
             <Caption>{e.number}</Caption>
             {paidLine(e)}
+            {isDepositPayment(e) && onOpenDeposit && <DepositSettlementLink onOpen={onOpenDeposit} />}
             {e.voided && e.voidReason && <Caption>Reason: {e.voidReason}</Caption>}
           </div>
         ),
@@ -167,7 +188,7 @@ export function LedgerView({ lease, canVoid, canCharge, canPay }: LedgerViewProp
     <>
       <SegmentedControl<LedgerViewMode> aria-label="Ledger view" value={view} onChange={setView} segments={VIEW_SEGMENTS} className="self-start" />
       {view === "months" ? (
-        <LedgerMonths ledger={ledger.data} state={state} empty={empty} error={error} actionsFor={actionsFor} onShowPayment={showPayment} focusCard={focusCard} />
+        <LedgerMonths ledger={ledger.data} state={state} empty={empty} error={error} actionsFor={actionsFor} onShowPayment={showPayment} focusCard={focusCard} onOpenDeposit={onOpenDeposit} />
       ) : isMobile ? (
         <CardList
           rows={rows}
@@ -180,7 +201,7 @@ export function LedgerView({ lease, canVoid, canCharge, canPay }: LedgerViewProp
             <div id={e.kind === "PAYMENT" ? entryAnchor(e.id) : undefined} className={cn("scroll-mt-24 rounded-card", e.id === focusPayment && "ring-2 ring-info")}>
             <ListCard
               muted={e.voided}
-              title={e.kind === "CHARGE" ? e.description : "Payment received"}
+              title={entryTitle(e)}
               subtitle={[e.number, formatDate(e.date), e.method ? paymentMethodLabel(e.method) : null].filter(Boolean).join(" · ")}
               badge={
                 <>
@@ -206,10 +227,11 @@ export function LedgerView({ lease, canVoid, canCharge, canPay }: LedgerViewProp
                   : []),
               ]}
               note={
-                paidLine(e) || (e.voided && e.voidReason) ? (
+                paidLine(e) || (e.voided && e.voidReason) || isDepositPayment(e) ? (
                   <>
                     {paidLine(e)}
                     {e.voided && e.voidReason ? `Reason: ${e.voidReason}` : null}
+                    {isDepositPayment(e) && onOpenDeposit && <DepositSettlementLink onOpen={onOpenDeposit} />}
                   </>
                 ) : undefined
               }

@@ -20,9 +20,9 @@ import { ReceiptField, type ReceiptErrors } from "@/features/ledger/ReceiptField
 import { UnclearPayment, type UnclearState } from "@/features/ledger/UnclearPayment";
 import { balanceText } from "@/features/ledger/balance";
 import type { PaymentPrefill } from "@/features/ledger/reenter";
-import type { PaymentCreateBody, PaymentMethod } from "@/types/ledger";
+import type { PaymentCreateBody, SelectablePaymentMethod } from "@/types/ledger";
 
-const METHODS = Object.keys(paymentMethodLabels) as [PaymentMethod, ...PaymentMethod[]];
+const METHODS = Object.keys(paymentMethodLabels) as [SelectablePaymentMethod, ...SelectablePaymentMethod[]];
 const FIELDS = ["amount", "method", "paymentDate", "referenceNumber", "notes"] as const;
 const MAX_REFERENCE = 100;
 const MAX_NOTES = 1000;

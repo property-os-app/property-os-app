@@ -1,3 +1,4 @@
+import { leaseEndDate } from "@/features/leases/leaseEnd";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { Badge, Bar, Dash, Num } from "@/components/atoms";
@@ -190,7 +191,8 @@ export function YearTable({ data, groups, year, rowsBy = "unit", visible, state,
     { key: "rent", header: "Rent", headerLabel: "Current rent", align: "right", minWidth: RENT_WIDTH, width: RENT_WIDTH, className: "text-small", columnClassName: "px-1.5", cell: (r) => money(r.lease?.rent) },
     { key: "market", optional: "market", header: "Market rent", align: "right", cell: (r) => (r.unit.monthlyRent === null ? <NotSet /> : money(r.unit.monthlyRent)) },
     { key: "start", optional: "start", header: "Lease start", cell: (r) => (r.lease?.startDate ? formatDate(r.lease.startDate) : <Dash />) },
-    { key: "end", optional: "end", header: "Lease end", cell: (r) => (r.lease?.endDate ? formatDate(r.lease.endDate) : <Dash />) },
+    // The day it really ended (or was cancelled), else the agreed end.
+    { key: "end", optional: "end", header: "Lease end", cell: (r) => (r.lease && leaseEndDate(r.lease) ? formatDate(leaseEndDate(r.lease)) : <Dash />) },
     { key: "deposit", optional: "deposit", header: "Deposit", align: "right", cell: (r) => money(r.lease?.deposit) },
     ...months.map((m, i): YearColumn => {
       const now = isCurrentMonth(m);

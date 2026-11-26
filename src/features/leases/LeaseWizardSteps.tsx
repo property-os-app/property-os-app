@@ -409,6 +409,18 @@ export function DepositStep({ form, closed }: StepContext) {
       )}
 
       {closed ? (
+        <FormField label="Pet deposit" htmlFor="lw-pet-deposit"><ReadOnly id="lw-pet-deposit" value={v.petDeposit === "" ? "None" : moneyText(v.petDeposit)} /></FormField>
+      ) : (
+        <FormField label="Pet deposit" htmlFor="lw-pet-deposit" help={errors.petDeposit ? undefined : "Optional. Held and settled with the security deposit."} error={errors.petDeposit?.message}>
+          <Controller
+            control={control}
+            name="petDeposit"
+            render={({ field }) => <CurrencyInput id="lw-pet-deposit" name={field.name} value={field.value} onChange={field.onChange} onBlur={field.onBlur} />}
+          />
+        </FormField>
+      )}
+
+      {closed ? (
         <FormField label="E-signature status" htmlFor="lw-esign"><ReadOnly id="lw-esign" value={signatureStatusLabels[v.signatureStatus]} /></FormField>
       ) : (
         <FormField label="E-signature status" htmlFor="lw-esign" error={errors.signatureStatus?.message}>
@@ -505,6 +517,7 @@ export function ReviewStep({ form, closed, units, unitLine, lookupTenant, templa
             value: <Num>{lateFee === 0 ? "None" : `${formatCurrency(lateFee)} after a ${v.lateFeeGraceDays || 0}-day grace period`}</Num>,
           },
           { label: "Security deposit", value: v.deposit === "" ? <Dash /> : <Num>{formatCurrency(v.deposit)}</Num> },
+          { label: "Pet deposit", value: v.petDeposit === "" ? "None" : <Num>{formatCurrency(v.petDeposit)}</Num> },
           { label: "Auto-renew", value: v.autoRenew ? "On" : "Off" },
           { label: "Tags", value: v.tags.length > 0 ? v.tags.join(", ") : <Dash /> },
           { label: "E-signature", value: signatureStatusLabels[v.signatureStatus] },

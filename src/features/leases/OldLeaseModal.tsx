@@ -205,6 +205,9 @@ export function OldLeaseModal({ presetUnit, presetUnitLine, presetPropertyId, on
         <FormField label="Security deposit" htmlFor="ol-deposit" help={errors.deposit ? undefined : "Optional."} error={errors.deposit}>
           <CurrencyInput id="ol-deposit" value={values.deposit} disabled={busy} onChange={(v) => set("deposit", v)} />
         </FormField>
+        <FormField label="Pet deposit" htmlFor="ol-pet-deposit" help={errors.petDeposit ? undefined : "Optional."} error={errors.petDeposit}>
+          <CurrencyInput id="ol-pet-deposit" value={values.petDeposit} disabled={busy} onChange={(v) => set("petDeposit", v)} />
+        </FormField>
 
         <FormField label="Notes" htmlFor="ol-notes" error={errors.notes} className="md:col-span-2">
           <Textarea id="ol-notes" rows={3} value={values.notes} disabled={busy} placeholder="e.g. From the previous owner's paper files" onChange={(e) => set("notes", e.target.value)} />

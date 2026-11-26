@@ -218,6 +218,7 @@ export const leaseFieldLabels: Record<string, string> = {
   unitId: "Unit",
   coTenantIds: "Co-tenants",
   lateFeeAmount: "Late fee",
+  petDeposit: "Pet deposit",
   lateFeeGraceDays: "Grace period",
   autoRenew: "Auto-renew",
   signatureStatus: "E-signature status",

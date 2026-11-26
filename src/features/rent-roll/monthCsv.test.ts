@@ -34,7 +34,9 @@ const summary: RentRollResponse["summary"] = {
   overdueCount: 0,
   overdueTotal: "0.00",
   securityDepositsHeld: "0.00",
+  petDepositsHeld: "0.00",
   activeDepositCount: 0,
+  depositApplied: "0.00",
 };
 
 const parse = (csv: string) => csv.trimEnd().split("\r\n");

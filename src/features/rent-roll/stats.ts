@@ -216,6 +216,20 @@ export function collectionBreakdown(rows: RentRollRow[]): CollectionBreakdown {
 }
 
 /** "Includes $200.00 toward earlier balances and $50.00 paid in advance" (non-zero parts only); null when both are 0. */
+/** Under "Collected": "incl. $500.00 from deposits" when deposits were applied to balances this month; null otherwise. */
+export function depositAppliedNote(depositApplied: string | undefined): string | null {
+  return toCents(depositApplied) > 0 ? `incl. ${formatCurrency(depositApplied)} from deposits` : null;
+}
+
+/**
+ * Under "Deposits held": "incl. $300.00 pet · 4 leases" (security + pet of ACTIVE leases and ended ones not settled yet;
+ * ", as of today" on another month: the figure ignores the month).
+ */
+export function depositsHeldNote(petDepositsHeld: string | undefined, count: number, isCurrent: boolean): string {
+  const pet = toCents(petDepositsHeld) > 0 ? `incl. ${formatCurrency(petDepositsHeld)} pet · ` : "";
+  return `${pet}${plural(count, "lease")}${isCurrent ? "" : ", as of today"}`;
+}
+
 export function collectionNote({ towardEarlierCents, inAdvanceCents }: CollectionBreakdown): string | null {
   const parts = [
     towardEarlierCents > 0 ? `${formatCurrency(centsToAmount(towardEarlierCents))} toward earlier balances` : null,

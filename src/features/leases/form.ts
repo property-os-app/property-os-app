@@ -16,7 +16,7 @@ export const STEPS = ["Parties", "Terms", "Deposit", "Review"] as const;
 const FREQUENCIES = Object.keys(paymentFrequencyLabels) as [PaymentFrequency, ...PaymentFrequency[]];
 const SIGNATURES = Object.keys(signatureStatusLabels) as [SignatureStatus, ...SignatureStatus[]];
 
-/** rent, deposit, lateFeeAmount: 0 to 9,999,999,999.99 (API.md, POST /leases). */
+/** rent, deposit, petDeposit, lateFeeAmount: 0 to 9,999,999,999.99 (API.md, POST /leases). */
 const MAX_MONEY_CENTS = 999_999_999_999;
 /** lateFeeGraceDays: integer 0 to 2,147,483,647. */
 const MAX_GRACE_DAYS = 2_147_483_647;
@@ -55,6 +55,8 @@ export const schema = z
       .transform(Number),
     autoRenew: z.boolean(),
     deposit: money("Security deposit"),
+    /** Optional on every status (not needed to activate). */
+    petDeposit: money("Pet deposit"),
     tags: z.array(z.string()).max(MAX_TAGS, `A lease can have at most ${MAX_TAGS} tags.`),
     signatureStatus: z.enum(SIGNATURES),
     notes: z.string().trim(),
@@ -74,7 +76,7 @@ export type FieldName = keyof FormInput;
 export const STEP_FIELDS: FieldName[][] = [
   ["propertyId", "unitId", "primaryTenantId", "coTenantIds"],
   ["templateId", "startDate", "endDate", "rent", "paymentFrequency", "rentDueDay", "lateFeeAmount", "lateFeeGraceDays", "autoRenew"],
-  ["deposit", "tags", "signatureStatus", "notes"],
+  ["deposit", "petDeposit", "tags", "signatureStatus", "notes"],
   [],
 ];
 
@@ -93,6 +95,7 @@ export const SERVER_FIELDS = [
   "lateFeeGraceDays",
   "autoRenew",
   "deposit",
+  "petDeposit",
   "tags",
   "signatureStatus",
   "notes",
@@ -142,6 +145,7 @@ export function defaults({ lease, unit, propertyId, tenantId }: WizardPresets): 
       lateFeeGraceDays: String(lease.lateFeeGraceDays),
       autoRenew: lease.autoRenew,
       deposit: moneyValue(lease.deposit),
+      petDeposit: moneyValue(lease.petDeposit),
       tags: lease.tags,
       signatureStatus: lease.signatureStatus,
       notes: lease.notes ?? "",
@@ -165,6 +169,7 @@ export function defaults({ lease, unit, propertyId, tenantId }: WizardPresets): 
     lateFeeGraceDays: "5",
     autoRenew: false,
     deposit: "",
+    petDeposit: "",
     tags: [],
     signatureStatus: "NOT_SENT",
     notes: "",
@@ -200,6 +205,7 @@ export function createBody(v: FormOutput, activate: boolean): LeaseCreateBody {
     ...(v.endDate ? { endDate: v.endDate } : {}),
     ...(v.rent !== "" ? { rent: v.rent } : {}),
     ...(v.deposit !== "" ? { deposit: v.deposit } : {}),
+    ...(v.petDeposit !== "" ? { petDeposit: v.petDeposit } : {}),
     ...(v.rentDueDay !== null ? { rentDueDay: v.rentDueDay } : {}),
     ...(v.notes ? { notes: v.notes } : {}),
     ...(v.templateId ? { templateId: v.templateId } : {}),
@@ -211,7 +217,7 @@ const sameIds = (a: string[], b: string[]) => a.length === b.length && a.every((
 /**
  * PATCH /leases/:id body with only the changed fields. Never status. templateId only when it changed (the same id would keep
  * the pinned version anyway); cleared = null. Never on ENDED / TERMINATED.
- * ENDED / TERMINATED: only tags and notes. ACTIVE: never unitId, never null for dates, rent, deposit, rentDueDay
+ * ENDED / TERMINATED: only tags and notes (the deposits are locked). ACTIVE: never unitId, never null for dates, rent, deposit, rentDueDay
  * or the primary tenant. DRAFT: everything, cleared fields become null. Tenants only when they changed.
  */
 export function updateBody(v: FormOutput, lease: Lease): LeaseUpdateBody {
@@ -241,6 +247,9 @@ export function updateBody(v: FormOutput, lease: Lease): LeaseUpdateBody {
   const deposit = v.deposit === "" ? null : toCents(v.deposit);
   clearable(deposit, lease.deposit === null ? null : toCents(lease.deposit), () => (body.deposit = v.deposit === "" ? null : v.deposit));
   clearable(v.rentDueDay, lease.rentDueDay, (x) => (body.rentDueDay = x));
+  // Optional even on an ACTIVE lease: clearing it sends null on DRAFT and ACTIVE.
+  const pet = v.petDeposit === "" ? null : toCents(v.petDeposit);
+  if (pet !== (lease.petDeposit === null ? null : toCents(lease.petDeposit))) body.petDeposit = v.petDeposit === "" ? null : v.petDeposit;
 
   const lateFee = v.lateFeeAmount === "" ? 0 : v.lateFeeAmount;
   if (toCents(lateFee) !== toCents(lease.lateFeeAmount)) body.lateFeeAmount = lateFee;

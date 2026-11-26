@@ -22,8 +22,11 @@ const leaseRow: RentRollYearUnitRow = {
     signatureStatus: "SIGNED",
     startDate: "2026-01-01",
     endDate: "2026-12-31",
+    endedOn: null,
+    cancelledOn: null,
     rent: "2850.00",
     deposit: "2850.00",
+    petDeposit: null,
     tenants: [
       { id: "t1", fullName: 'Ana "AJ" Reyes', isPrimary: true },
       { id: "t2", fullName: "=HYPERLINK(\"x\")", isPrimary: false },

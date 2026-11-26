@@ -11,7 +11,7 @@ import { RatingInput } from "@/features/shared/Rating";
 import { resolveBody, resolveSchema, type ResolveInput } from "@/features/maintenance/form";
 import { useTicketAction } from "@/features/maintenance/hooks";
 import { ticketNo } from "@/features/maintenance/ticketText";
-import type { PaymentMethod } from "@/types/ledger";
+import type { SelectablePaymentMethod } from "@/types/ledger";
 import type { MaintenanceTicket } from "@/types/maintenance";
 
 type Field = keyof ResolveInput;
@@ -130,7 +130,7 @@ export function ResolveModal({ ticket, onSaved, onClose }: { ticket: Maintenance
                   id="resolve-method"
                   value={values.paymentMethod}
                   disabled={busy}
-                  onChange={(e) => set("paymentMethod", e.target.value as PaymentMethod | "")}
+                  onChange={(e) => set("paymentMethod", e.target.value as SelectablePaymentMethod | "")}
                 >
                   <option value="">Not set</option>
                   {labelOptions(paymentMethodLabels).map((o) => (

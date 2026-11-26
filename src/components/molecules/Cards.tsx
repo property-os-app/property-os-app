@@ -137,7 +137,7 @@ export function SectionCard({
           </h3>
           {subtitle && <Small className="mt-0.5 block">{subtitle}</Small>}
         </div>
-        {action && <div className="flex shrink-0 flex-wrap items-center gap-2">{action}</div>}
+        {action && <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">{action}</div>}
       </div>
       {children}
     </Card>

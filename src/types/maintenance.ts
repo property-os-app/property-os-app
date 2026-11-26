@@ -1,6 +1,6 @@
 /** Types for the maintenance ticket endpoints. Source: ../property-os-api/docs/frontend-handoff/API.md section 4 ("MaintenanceTicket", "TicketList", "TicketSummary") and section 5 ("Maintenance tickets"). */
 import type { ExpenseStatus } from "@/types/expense";
-import type { PaymentMethod } from "@/types/ledger";
+import type { SelectablePaymentMethod } from "@/types/ledger";
 
 /** Also the `sort=priority` order. */
 export type MaintenancePriority = "EMERGENCY" | "URGENT" | "NORMAL" | "LOW";
@@ -172,5 +172,5 @@ export interface TicketResolveBody {
   /** Integer 1–5, only when the ticket has a vendor. */
   vendorRating?: number;
   reference?: string;
-  paymentMethod?: PaymentMethod;
+  paymentMethod?: SelectablePaymentMethod;
 }

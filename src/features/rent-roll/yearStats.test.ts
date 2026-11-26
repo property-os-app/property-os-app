@@ -68,8 +68,11 @@ const LEASE: RentRollYearLease = {
   signatureStatus: "SIGNED",
   startDate: "2026-01-01",
   endDate: "2026-12-31",
+  endedOn: null,
+  cancelledOn: null,
   rent: "2850.00",
   deposit: "2850.00",
+  petDeposit: null,
   tenants: [
     { id: "t1", fullName: "Ana Reyes", isPrimary: true },
     { id: "t2", fullName: "Ben Cole", isPrimary: false },
@@ -229,6 +232,12 @@ describe("daysToEndText", () => {
     expect(daysToEndText(past)).toBe("Ended Nov 14, 2026");
     // Even if the alert were missing.
     expect(daysToEndText({ ...past, renewalAlert: null })).toBe("Ended Nov 14, 2026");
+  });
+  it("shows the day it really ended (endedOn), and Cancelled for a lease that never started", () => {
+    const early = makeRow({ daysToLeaseEnd: null, renewalAlert: "ENDED", lease: { ...makeRow().lease!, status: "ENDED", endDate: "2026-12-31", endedOn: "2026-09-30" } });
+    expect(daysToEndText(early)).toBe("Ended Sep 30, 2026");
+    const cancelled = makeRow({ daysToLeaseEnd: null, renewalAlert: "ENDED", lease: { ...makeRow().lease!, status: "ENDED", startDate: "2027-01-01", cancelledOn: "2026-11-20" } });
+    expect(daysToEndText(cancelled)).toBe("Cancelled Nov 20, 2026");
   });
   it("shows Ended with the end date for ended / terminated leases (daysToLeaseEnd null)", () => {
     const ended = makeRow({ daysToLeaseEnd: null, renewalAlert: "ENDED", lease: { ...makeRow().lease!, status: "TERMINATED", endDate: "2026-06-30" } });

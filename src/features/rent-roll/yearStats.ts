@@ -3,6 +3,7 @@
  * rows params, the response check, cell tones / labels / tooltip text, the unit's leases (who a month belongs to, earlier tenants for the CSV), lease-end and renewal
  * text, search, the chip filters, the property groups and the Collected % / summary counts. No React here, so it is all tested.
  */
+import { cancelledText, leaseEndDate } from "@/features/leases/leaseEnd";
 import { statusLabel } from "@/components/molecules/StatusBadge";
 import { currentMonthUTC, EMPTY, formatCurrency, formatCurrencyShort, formatDate, isMonth, toCents, todayUTC } from "@/lib/format";
 import type {
@@ -299,12 +300,17 @@ export function isLeaseEnded(row: Pick<RentRollYearRow, "lease" | "renewalAlert"
 }
 
 /**
- * "Ends in 52 days" / "Ends tomorrow" / "Ends today", or "Ended Nov 30, 2026" once over. Never a negative number.
+ * "Ends in 52 days" / "Ends tomorrow" / "Ends today", or "Ended Nov 30, 2026" once over (the day it really ended: endedOn,
+ * else endDate), "Cancelled Nov 25, 2026" for a lease cancelled before it started. Never a negative number.
  * null for vacant rows and an active lease without an end date (render a Dash).
  */
 export function daysToEndText(row: Pick<RentRollYearRow, "lease" | "renewalAlert" | "daysToLeaseEnd">): string | null {
   if (!row.lease) return null;
-  if (isLeaseEnded(row)) return row.lease.endDate ? `Ended ${formatDate(row.lease.endDate)}` : "Ended";
+  if (row.lease.cancelledOn) return cancelledText(row.lease.cancelledOn);
+  if (isLeaseEnded(row)) {
+    const end = leaseEndDate(row.lease);
+    return end ? `Ended ${formatDate(end)}` : "Ended";
+  }
   const days = row.daysToLeaseEnd;
   if (days === null) return null;
   if (days === 0) return "Ends today";

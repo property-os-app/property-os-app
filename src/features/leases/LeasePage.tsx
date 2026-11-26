@@ -16,6 +16,7 @@ import { useDocuments } from "@/features/documents/hooks";
 import { DetailsTab } from "@/features/leases/DetailsTab";
 import type { FieldName } from "@/features/leases/form";
 import { useActivateAction, useLease, type ActivateError } from "@/features/leases/hooks";
+import { leaseDepositTotal } from "@/features/deposits/endPreview";
 import { LeaseAlert } from "@/features/leases/LeaseAlert";
 import { LeaseDeleteDialog } from "@/features/leases/LeaseDeleteDialog";
 import { endActionLabel, leaseEndDate } from "@/features/leases/leaseEnd";
@@ -221,6 +222,7 @@ function LeaseDetail({ lease }: { lease: Lease }) {
   const canCharge = can(user, "charge.create");
   const canPay = can(user, "payment.create");
   const canVoid = can(user, "entry.void");
+  const canSettle = can(user, "deposit.settle");
 
   // An old (history-only) lease is never billed: no ledger call, no Ledger tab, no money actions.
   const old = isOldLease(lease);
@@ -241,6 +243,32 @@ function LeaseDetail({ lease }: { lease: Lease }) {
       // Keep the router state (back arrow, activation error): a URL change without it would drop it.
       { replace: true, preventScrollReset: true, state: location.state },
     );
+
+  /** The ledger's "From deposit settlement" link: open Details and scroll to the Deposit card (reset by any other tab change). */
+  const [focusDeposit, setFocusDeposit] = useState(false);
+  const changeTab = (next: Tab) => {
+    setFocusDeposit(false);
+    setTab(next);
+  };
+  const openDeposit = () => {
+    setTab("details");
+    setFocusDeposit(true);
+  };
+  /** The Deposit card's payment link: Ledger tab, All entries, scrolled to that payment (highlighted). */
+  const showPayment = (paymentId: string) => {
+    setFocusDeposit(false);
+    setParams(
+      (prev) => {
+        const out = new URLSearchParams(prev);
+        out.set("tab", "ledger");
+        out.set("ledger", "entries");
+        out.delete("card");
+        out.set("payment", paymentId);
+        return out;
+      },
+      { replace: true, preventScrollReset: true, state: location.state },
+    );
+  };
 
   const [activateError, setActivateError] = useState<ActivateError | null>((location.state as LeasePageState | null)?.activateError ?? null);
   // The edit wizard: closed, open at its first step (true), or at the step with a field (Details tab).
@@ -373,7 +401,12 @@ function LeaseDetail({ lease }: { lease: Lease }) {
           {old ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Tile label="Monthly rent" loading={false} value={formatCurrency(lease.rent)} note="As recorded" />
-              <Tile label="Deposit" loading={false} value={formatCurrency(lease.deposit)} note="As recorded" />
+              <Tile
+                label="Deposit"
+                loading={false}
+                value={formatCurrency(leaseDepositTotal(lease))}
+                note={toCents(lease.petDeposit) > 0 ? `Security ${formatCurrency(lease.deposit ?? "0")} · Pet ${formatCurrency(lease.petDeposit)}` : "As recorded"}
+              />
               <Tile label="Term" loading={false} value={lease.termMonths !== null ? plural(lease.termMonths, "month") : <Dash />} note={formatDate(lease.startDate)} />
               <Tile label="Ended" loading={false} value={formatDate(lease.endDate)} note={endsNote(lease.endDate)} />
             </div>
@@ -408,7 +441,7 @@ function LeaseDetail({ lease }: { lease: Lease }) {
         <div className="px-6">
           <Tabs<Tab>
             value={tab}
-            onChange={setTab}
+            onChange={changeTab}
             className="border-b-0"
             tabs={[
               ...(old ? [] : [{ value: "ledger" as const, label: "Ledger", count: ledger.data?.entries.length }]),
@@ -445,10 +478,19 @@ function LeaseDetail({ lease }: { lease: Lease }) {
             <EmptyState icon={<Wallet strokeWidth={1.5} />} title="No ledger on a draft" description="Activate the lease to add charges and payments." />
           </Card>
         ) : (
-          <LedgerView lease={lease} canVoid={canVoid} canCharge={canCharge} canPay={canPay} />
+          <LedgerView lease={lease} canVoid={canVoid} canCharge={canCharge} canPay={canPay} onOpenDeposit={openDeposit} />
         )
       ) : tab === "details" ? (
-        <DetailsTab lease={lease} canEdit={canEdit} onEdit={setEditing} onOpenDocuments={() => setTab("documents")} />
+        <DetailsTab
+          lease={lease}
+          canEdit={canEdit}
+          onEdit={setEditing}
+          onOpenDocuments={() => changeTab("documents")}
+          canSettle={canSettle}
+          canVoid={canVoid}
+          onShowPayment={showPayment}
+          focusDeposit={focusDeposit}
+        />
       ) : tab === "documents" ? (
         <DocumentsPanel target={{ owner: "leases", ownerId: lease.id }} onOpenLedger={() => setTab("ledger")} emptyText="No documents on this lease yet." />
       ) : (

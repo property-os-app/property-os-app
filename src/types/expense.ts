@@ -1,5 +1,5 @@
 /** Types for the expense endpoints. Source: ../property-os-api/docs/frontend-handoff/API.md section 4 ("Expense", "ExpenseList", "ExpenseSummary", "Catalog items") and section 5 ("Expenses"). */
-import type { PaymentMethod } from "@/types/ledger";
+import type { SelectablePaymentMethod } from "@/types/ledger";
 
 export type ExpenseType = "OPERATING" | "CAPITAL";
 
@@ -39,7 +39,8 @@ export interface Expense {
   amount: string;
   /** Vendor invoice or other reference number. */
   reference: string | null;
-  paymentMethod: PaymentMethod | null;
+  /** Never DEPOSIT (refused on every expense body). */
+  paymentMethod: SelectablePaymentMethod | null;
   notes: string | null;
   status: ExpenseStatus;
   /** null = portfolio-wide (no single property, Owner only). */
@@ -159,7 +160,7 @@ export interface ExpenseCreateBody {
   unitId?: string;
   vendorId?: string;
   reference?: string;
-  paymentMethod?: PaymentMethod;
+  paymentMethod?: SelectablePaymentMethod;
   notes?: string;
 }
 
@@ -174,6 +175,6 @@ export interface ExpenseUpdateBody {
   unitId?: string | null;
   vendorId?: string | null;
   reference?: string | null;
-  paymentMethod?: PaymentMethod | null;
+  paymentMethod?: SelectablePaymentMethod | null;
   notes?: string | null;
 }

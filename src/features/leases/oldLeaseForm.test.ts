@@ -143,6 +143,12 @@ describe("oldLeaseBody", () => {
     expect(Object.keys(body)).not.toContain("propertyId");
   });
 
+  it("sends the pet deposit when filled, and checks its limit", () => {
+    expect(oldLeaseBody(filled({ petDeposit: 300 })).petDeposit).toBe(300);
+    expect(oldLeaseBody(filled({ petDeposit: "" }))).not.toHaveProperty("petDeposit");
+    expect(oldLeaseErrorField("petDeposit must not be less than 0", 400)).toBe("petDeposit");
+  });
+
   it("leaves blank notes out", () => {
     expect(oldLeaseBody(filled({ notes: "   " })).notes).toBeUndefined();
   });

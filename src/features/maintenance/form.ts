@@ -2,11 +2,11 @@
 import { z } from "zod";
 import { centsToAmount, toCents } from "@/lib/format";
 import { paymentMethodLabels, priorityLabels } from "@/lib/labels";
-import type { PaymentMethod } from "@/types/ledger";
+import type { SelectablePaymentMethod } from "@/types/ledger";
 import type { MaintenancePriority, MaintenanceTicket, TicketCreateBody, TicketResolveBody, TicketUpdateBody } from "@/types/maintenance";
 
 const PRIORITY_KEYS = Object.keys(priorityLabels) as [MaintenancePriority, ...MaintenancePriority[]];
-const METHODS = Object.keys(paymentMethodLabels) as [PaymentMethod, ...PaymentMethod[]];
+const METHODS = Object.keys(paymentMethodLabels) as [SelectablePaymentMethod, ...SelectablePaymentMethod[]];
 /** Money: 0 to 9,999,999,999.99. */
 const MAX_CENTS = 999_999_999_999;
 
@@ -113,7 +113,7 @@ export function resolutionChanges(v: { resolutionNote: string; vendorRating: num
 export interface ResolveInput {
   resolutionNote: string;
   actualCost: number | "";
-  paymentMethod: PaymentMethod | "";
+  paymentMethod: SelectablePaymentMethod | "";
   reference: string;
   vendorRating: number | null;
 }

@@ -3,6 +3,7 @@
  * per unit, or per lease "By tenant" (it follows the response's rowsBy).
  * Always the whole year for the selected property (search and chips are ignored), so the API's subtotals and total match.
  */
+import { leaseEndDate } from "@/features/leases/leaseEnd";
 import { centsToCsv, csvLines, csvMoney, csvText, propertySuffix, saveCsv } from "@/features/rent-roll/rentRollCsv";
 import { toCents } from "@/lib/format";
 import { unitLabel } from "@/lib/labels";
@@ -48,7 +49,7 @@ function rowCells(row: RentRollYearRow): string[] {
     csvMoney(lease?.rent),
     csvMoney(row.unit.monthlyRent),
     lease?.startDate ?? "",
-    lease?.endDate ?? "",
+    (lease && leaseEndDate(lease)) ?? "",
     csvMoney(lease?.deposit),
     ...row.months.map(cellValue),
     csvMoney(row.totalPaid),

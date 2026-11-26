@@ -4,8 +4,14 @@ import type { Document } from "@/types/document";
 
 export type ChargeType = "RENT" | "LATE_FEE" | "OTHER";
 
-/** In the order to show them (API.md section 2). Payments, expenses and the ticket resolve form share it. */
-export type PaymentMethod = "ACH" | "CHECK" | "CREDIT_CARD" | "CASH" | "VENMO" | "ZELLE" | "OTHER";
+/**
+ * In the order to show them (API.md section 2). DEPOSIT is set only by a deposit settlement (the part applied to the balance):
+ * every request body refuses it. Show it as "Deposit applied".
+ */
+export type PaymentMethod = SelectablePaymentMethod | "DEPOSIT";
+
+/** The methods a user can pick (every Method select: payments, expenses, ticket resolve, deposit refund). Never DEPOSIT. */
+export type SelectablePaymentMethod = "ACH" | "CHECK" | "CREDIT_CARD" | "CASH" | "VENMO" | "ZELLE" | "OTHER";
 
 /** POST /leases/:id/charges answer (ChargeResponse). */
 export interface Charge {
@@ -169,7 +175,7 @@ export interface ChargeCreateBody {
 /** POST /leases/:id/payments body. Overpayment is allowed. */
 export interface PaymentCreateBody {
   amount: number;
-  method: PaymentMethod;
+  method: SelectablePaymentMethod;
   paymentDate: string;
   referenceNumber?: string;
   notes?: string;

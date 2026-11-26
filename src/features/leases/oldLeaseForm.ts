@@ -41,6 +41,8 @@ export interface OldLeaseValues {
   endDate: string;
   rent: number | "";
   deposit: number | "";
+  /** Optional, like the deposit. */
+  petDeposit: number | "";
   notes: string;
   tags: string[];
 }
@@ -53,7 +55,7 @@ export interface NewTenantErrors {
   existing?: { id: string; fullName: string };
 }
 
-export type OldLeaseField = "unitId" | "tenants" | "startDate" | "endDate" | "rent" | "deposit" | "notes" | "tags" | "file";
+export type OldLeaseField = "unitId" | "tenants" | "startDate" | "endDate" | "rent" | "deposit" | "petDeposit" | "notes" | "tags" | "file";
 export type OldLeaseErrors = Partial<Record<OldLeaseField, string>> & {
   /** By row key. */
   newTenants?: Record<string, NewTenantErrors>;
@@ -62,7 +64,7 @@ export type OldLeaseErrors = Partial<Record<OldLeaseField, string>> & {
 /** Existing and new tenants together. */
 export const MAX_OLD_LEASE_TENANTS = 10;
 
-/** rent and deposit: 0 to 9,999,999,999.99 (as on POST /leases). */
+/** rent, deposit and petDeposit: 0 to 9,999,999,999.99 (as on POST /leases). */
 const MAX_MONEY_CENTS = 999_999_999_999;
 
 export function emptyOldLease(preset: { propertyId?: string; unitId?: string } = {}): OldLeaseValues {
@@ -75,6 +77,7 @@ export function emptyOldLease(preset: { propertyId?: string; unitId?: string } =
     endDate: "",
     rent: "",
     deposit: "",
+    petDeposit: "",
     notes: "",
     tags: [],
   };
@@ -162,6 +165,7 @@ export function validateOldLease(v: OldLeaseValues, today = todayUTC()): OldLeas
   else if (parseDateOnly(v.startDate) && v.endDate <= v.startDate) errors.endDate = "The end date must be after the start date.";
   if (v.rent !== "" && toCents(v.rent) > MAX_MONEY_CENTS) errors.rent = "Rent can be at most $9,999,999,999.99.";
   if (v.deposit !== "" && toCents(v.deposit) > MAX_MONEY_CENTS) errors.deposit = "Deposit can be at most $9,999,999,999.99.";
+  if (v.petDeposit !== "" && toCents(v.petDeposit) > MAX_MONEY_CENTS) errors.petDeposit = "Pet deposit can be at most $9,999,999,999.99.";
   if (v.tags.length > MAX_TAGS) errors.tags = `A lease can have at most ${MAX_TAGS} tags.`;
   return errors;
 }
@@ -189,6 +193,7 @@ export function oldLeaseBody(v: OldLeaseValues): LeaseHistoryBody {
   if (created.length > 0) body.newTenants = created;
   if (v.rent !== "") body.rent = centsToAmount(toCents(v.rent));
   if (v.deposit !== "") body.deposit = centsToAmount(toCents(v.deposit));
+  if (v.petDeposit !== "") body.petDeposit = centsToAmount(toCents(v.petDeposit));
   const notes = v.notes.trim();
   if (notes) body.notes = notes;
   if (v.tags.length > 0) body.tags = v.tags;
@@ -213,6 +218,7 @@ export function oldLeaseErrorField(message: string, status: number): OldLeaseFie
   if (/^(Tenant|primaryTenantId|coTenantIds|newTenants|each value in coTenantIds|At least one tenant|Exactly one tenant)/.test(message)) return "tenants";
   if (message.startsWith("rent ")) return "rent";
   if (message.startsWith("deposit")) return "deposit";
+  if (message.startsWith("petDeposit")) return "petDeposit";
   if (message.startsWith("tags") || message.startsWith("each value in tags")) return "tags";
   if (message.startsWith("notes ")) return "notes";
   if (message.startsWith("unitId")) return "unitId";

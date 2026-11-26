@@ -7,7 +7,7 @@ import { documentKeys } from "@/features/documents/keys";
 import { oldLeaseRequest } from "@/features/leases/oldLeaseForm";
 import { tenantKeys } from "@/features/tenants/keys";
 import { unitKeys } from "@/features/units/keys";
-import type { Lease, LeaseCreateBody, LeaseEndBody, LeaseHistoryBody, LeaseUpdateBody, OldLeaseCreated } from "@/types/lease";
+import type { Lease, LeaseCreateBody, LeaseEndBody, LeaseEnded, LeaseHistoryBody, LeaseUpdateBody, OldLeaseCreated } from "@/types/lease";
 import { unitLabel } from "@/lib/labels";
 
 const leasePath = (id: string) => `/leases/${encodeURIComponent(id)}`;
@@ -101,11 +101,14 @@ export function useActivateLease() {
   });
 }
 
-/** POST /leases/:id/end { status: ENDED | TERMINATED, endedOn }. A lease that hasn't started is cancelled (no endedOn). The unit becomes VACANT unless it has another ACTIVE lease. */
+/**
+ * POST /leases/:id/end { status, endedOn, voidChargesAfterEnd, deposit }: ends, voids and settles in one transaction. A lease
+ * that hasn't started is cancelled (no endedOn). The unit becomes VACANT unless it has another ACTIVE lease. Never retried.
+ */
 export function useEndLease() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: LeaseEndBody }) => apiFetch<Lease>(`${leasePath(id)}/end`, { method: "POST", body }),
+    mutationFn: ({ id, body }: { id: string; body: LeaseEndBody }) => apiFetch<LeaseEnded>(`${leasePath(id)}/end`, { method: "POST", body, retry: false }),
     onSuccess: () => refreshAfterLeaseChange(qc),
   });
 }
