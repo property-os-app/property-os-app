@@ -1,17 +1,14 @@
 import { useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlarmClock, Ban, CalendarClock, Pencil, Plus, Scale, ShieldCheck } from "lucide-react";
+import { AlarmClock, Ban, PawPrint, Pencil, Plus, ShieldCheck, Wallet } from "lucide-react";
 import { Badge, Bar, Button, Dash, H3, Num, Select, Small, Tag, Toggle } from "@/components/atoms";
 import { Card, CardHeader, IconTile, IconTileGrid, InlineError, SectionCard, StatusBadge, toast } from "@/components/molecules";
 import { cn } from "@/lib/cn";
-import { formatCurrency, formatDate, ordinal, toCents } from "@/lib/format";
-import { labelOptions, paymentFrequencyLabels, signatureStatusLabels } from "@/lib/labels";
+import { formatCurrency, formatDate, toCents } from "@/lib/format";
+import { labelOptions, signatureStatusLabels } from "@/lib/labels";
 import { DepositCard } from "@/features/deposits/DepositCard";
 import { depositBadge, leaseDepositTotal } from "@/features/deposits/endPreview";
 import { VoidAfterEndModal } from "@/features/deposits/VoidAfterEndModal";
-import { balanceText } from "@/features/ledger/balance";
-import { creditAmount } from "@/features/ledger/cards";
-import { useLedger } from "@/features/ledger/hooks";
 import type { FieldName } from "@/features/leases/form";
 import { leaseErrorText, useUpdateLease } from "@/features/leases/hooks";
 import { leaseKeys } from "@/features/leases/keys";
@@ -19,7 +16,7 @@ import { LeaseCard } from "@/features/leases/LeaseCard";
 import { LeaseholdersCard } from "@/features/leases/LeaseholdersCard";
 import { canEditEndDate, canVoidAfterEnd } from "@/features/leases/leaseEnd";
 import { LeaseEndDateModal } from "@/features/leases/LeaseEndDateModal";
-import { autoRenewEditable, dueNote, dueState, isClosed, isOldLease } from "@/features/leases/stats";
+import { autoRenewEditable, isClosed, isOldLease } from "@/features/leases/stats";
 import { NotSet } from "@/features/shared/Missing";
 import { TagEditor } from "@/features/leases/TagEditor";
 import { termView } from "@/features/leases/term";
@@ -85,16 +82,21 @@ function HeaderButton({ icon, onClick, children }: { icon: ReactNode; onClick: (
 const pencil = <Pencil size={14} strokeWidth={1.5} />;
 
 /**
- * Rent (payment frequency badge, due day), Balance, Deposits (total, "Security $X · Pet $Y", deposit status) and Late fee tiles. "Edit terms" only while the terms
- * can still change. An old lease shows only its rent and deposit: its frequency and late fee are API defaults, not recorded values.
+ * "Deposits and fees": Deposits (security + pet total with the deposit status badge), Security deposit, Pet deposit ("None"
+ * without one) and Late fee (with its grace period). Rent and balance are in the header tiles. "Edit terms" only while the
+ * terms can still change. An old lease shows only its deposits: its late fee is an API default, not a recorded value.
  */
 function FinancialsCard({ lease, onEdit }: { lease: Lease; onEdit?: () => void }) {
   const old = isOldLease(lease);
   const hasLateFee = toCents(lease.lateFeeAmount) !== 0;
+  const total = leaseDepositTotal(lease);
+  const badge = depositBadge(lease.depositStatus, total, lease.status);
+  const noDeposits = lease.deposit === null && lease.petDeposit === null;
+  const hasPet = toCents(lease.petDeposit) > 0;
   return (
     <SectionCard
       title="Financials"
-      subtitle={old ? "Rent and deposit, as recorded" : "Rent, balance, deposit and fees"}
+      subtitle={old ? "Deposits, as recorded" : "Deposits and fees"}
       action={
         onEdit && (
           <HeaderButton icon={pencil} onClick={onEdit}>
@@ -105,20 +107,14 @@ function FinancialsCard({ lease, onEdit }: { lease: Lease; onEdit?: () => void }
     >
       <IconTileGrid>
         <IconTile
-          icon={<CalendarClock strokeWidth={1.5} />}
-          label="Rent"
-          value={lease.rent === null ? <NotSet /> : <Num>{formatCurrency(lease.rent)}</Num>}
-          badge={
-            old ? undefined : (
-              <Badge tone="neutral" dot={false}>
-                {paymentFrequencyLabels[lease.paymentFrequency]}
-              </Badge>
-            )
-          }
-          note={!old && lease.rentDueDay !== null ? `Due on the ${ordinal(lease.rentDueDay)}` : undefined}
+          icon={<ShieldCheck strokeWidth={1.5} />}
+          label="Deposits"
+          value={noDeposits ? <NotSet /> : <Num>{formatCurrency(total)}</Num>}
+          badge={badge ? <StatusBadge domain="deposit" status={badge} /> : undefined}
+          note={noDeposits ? undefined : "Security + pet, held together"}
         />
-        {!old && <BalanceTile lease={lease} />}
-        <DepositsTile lease={lease} />
+        <IconTile icon={<Wallet strokeWidth={1.5} />} label="Security deposit" value={lease.deposit === null ? <NotSet /> : <Num>{formatCurrency(lease.deposit)}</Num>} />
+        <IconTile icon={<PawPrint strokeWidth={1.5} />} label="Pet deposit" value={hasPet ? <Num>{formatCurrency(lease.petDeposit)}</Num> : "None"} />
         {!old && (
           <IconTile
             icon={<AlarmClock strokeWidth={1.5} />}
@@ -129,53 +125,6 @@ function FinancialsCard({ lease, onEdit }: { lease: Lease; onEdit?: () => void }
         )}
       </IconTileGrid>
     </SectionCard>
-  );
-}
-
-/** Deposits: security + pet total, "Security $X · Pet $Y", and the deposit status badge (Held, Returned... or Not tracked). */
-function DepositsTile({ lease }: { lease: Lease }) {
-  const total = leaseDepositTotal(lease);
-  const badge = depositBadge(lease.depositStatus, total, lease.status);
-  const none = lease.deposit === null && lease.petDeposit === null;
-  return (
-    <IconTile
-      icon={<ShieldCheck strokeWidth={1.5} />}
-      label="Deposits"
-      value={none ? <NotSet /> : <Num>{formatCurrency(total)}</Num>}
-      badge={badge ? <StatusBadge domain="deposit" status={badge} /> : undefined}
-      note={none ? undefined : `Security ${formatCurrency(lease.deposit ?? "0")} · Pet ${toCents(lease.petDeposit) > 0 ? formatCurrency(lease.petDeposit) : "none"}`}
-    />
-  );
-}
-
-/** The lease's balance with our due wording (`dueState`): "Clear" at $0, red with the Overdue badge when overdue; "Credit $…" from the ledger's `summary.credit`. */
-function BalanceTile({ lease }: { lease: Lease }) {
-  // The lease page has already loaded the ledger (same query): the credit comes from summary.credit.
-  const ledger = useLedger(lease.id, { enabled: lease.status !== "DRAFT" });
-  const credit = creditAmount(ledger.data?.summary);
-  const icon = <Scale strokeWidth={1.5} />;
-  if (credit) return <IconTile icon={icon} label="Balance" value={<Num>Credit {formatCurrency(credit)}</Num>} valueClassName="text-success" note="Paid ahead" />;
-  if (lease.status === "DRAFT") return <IconTile icon={icon} label="Balance" value={<Num>{formatCurrency(lease.balance)}</Num>} note="No ledger on a draft" />;
-  const due = dueState(lease);
-  const badge =
-    due.kind === "none" ? (
-      <Badge tone="success" dot={false}>
-        Clear
-      </Badge>
-    ) : due.kind === "overdue" ? (
-      <StatusBadge domain="rent" status="OVERDUE" />
-    ) : due.kind === "today" ? (
-      <Badge tone="warning">Due today</Badge>
-    ) : undefined;
-  return (
-    <IconTile
-      icon={icon}
-      label="Balance"
-      value={<Num>{balanceText(lease.balance)}</Num>}
-      valueClassName={due.kind === "overdue" ? "text-danger" : undefined}
-      badge={badge}
-      note={due.kind === "overdue" || due.kind === "future" ? dueNote(due) : undefined}
-    />
   );
 }
 

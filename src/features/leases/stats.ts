@@ -1,5 +1,5 @@
 /** Lease money and date helpers shared by the leases page, the unit drawer and the tenants page. Money math in integer cents. */
-import { addDaysISO, addMonthsISO, addMonthsYM, currentMonth, dayInMonth, daysSince, daysUntil, formatDate, formatShortDate, parseDateOnly, todayUTC, toCents } from "@/lib/format";
+import { addDaysISO, addMonthsISO, addMonthsYM, centsToAmount, currentMonth, dayInMonth, daysSince, daysUntil, formatCurrency, formatDate, formatShortDate, parseDateOnly, todayUTC, toCents } from "@/lib/format";
 import { plural, unitLabel } from "@/lib/labels";
 import { cancelledText, leaseEndDate } from "@/features/leases/leaseEnd";
 import type { Lease, LeaseStatus, LeaseTenant } from "@/types/lease";
@@ -33,6 +33,30 @@ export function dueState(lease: Lease, today = todayUTC()): DueState {
   if (due < today) return { kind: "overdue", since: due };
   if (due === today) return { kind: "today" };
   return { kind: "future", next: due };
+}
+
+/** The colour of a lease balance, the same everywhere it shows. */
+export type BalanceTone = "success" | "warning" | "danger";
+
+/**
+ * Credit (the ledger's summary.credit, or a negative balance) or $0.00: success. Owed but not overdue yet (due today or
+ * later, e.g. rent billed early): warning. Overdue: danger.
+ */
+export function balanceTone(due: DueState, credit?: string | null): BalanceTone {
+  if (credit && toCents(credit) > 0) return "success";
+  if (due.kind === "overdue") return "danger";
+  if (due.kind === "today" || due.kind === "future") return "warning";
+  return "success";
+}
+
+/** Text classes for a `BalanceTone`. */
+export const balanceToneClass: Record<BalanceTone, string> = { success: "text-success", warning: "text-warning", danger: "text-danger" };
+
+/** The balance as shown: "Credit $X" (summary.credit, else a negative balance), else the amount owed without a sign. */
+export function balanceValueText(balance: string, credit?: string | null): string {
+  if (credit && toCents(credit) > 0) return `Credit ${formatCurrency(credit)}`;
+  const cents = toCents(balance);
+  return cents < 0 ? `Credit ${formatCurrency(centsToAmount(-cents))}` : formatCurrency(balance);
 }
 
 /** "Balance" card note. */

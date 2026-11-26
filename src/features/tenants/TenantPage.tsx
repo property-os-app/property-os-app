@@ -17,7 +17,7 @@ import { creditAmount } from "@/features/ledger/cards";
 import { useLedger } from "@/features/ledger/hooks";
 import type { LeasePageState } from "@/features/leases/LeasePage";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
-import { dueNote, dueState, leaseEndsNote } from "@/features/leases/stats";
+import { balanceTone, balanceToneClass, balanceValueText, dueNote, dueState, leaseEndsNote } from "@/features/leases/stats";
 import { BackBreadcrumb, PageSkeleton, Tile } from "@/features/shared/DetailParts";
 import { useGoBack, useTabParam } from "@/features/shared/detailNav";
 import { textLink } from "@/features/shared/linkClass";
@@ -156,9 +156,9 @@ function TenantDetailView({ tenant }: { tenant: TenantDetail }) {
             <Tile
               label="Balance"
               loading={leases.isPending}
-              value={active ? (credit ? `Credit ${formatCurrency(credit)}` : formatCurrency(active.balance)) : noLease}
+              value={active ? balanceValueText(active.balance, credit) : noLease}
               note={credit ? "Paid ahead" : due ? dueNote(due) : "No active lease"}
-              className={cn(credit ? "text-success" : due?.kind === "overdue" && "text-danger")}
+              className={due ? balanceToneClass[balanceTone(due, credit)] : undefined}
             />
             <Tile
               label="Lease ends"

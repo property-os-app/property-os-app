@@ -6,7 +6,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { unitStatusLabels, unitTypeLabels } from "@/lib/labels";
 import type { LeasePageState } from "@/features/leases/LeasePage";
 import { LeaseBadge } from "@/features/leases/LeaseParts";
-import { dueNote, dueState, leaseEndsNote, leasePeriod } from "@/features/leases/stats";
+import { balanceTone, balanceToneClass, balanceValueText, dueNote, dueState, leaseEndsNote, leasePeriod } from "@/features/leases/stats";
 import { ContactActions } from "@/features/shared/ContactActions";
 import { NotSet } from "@/features/shared/Missing";
 import { useTenants } from "@/features/tenants/hooks";
@@ -72,8 +72,8 @@ export function UnitCurrentLease({
         <IconTile
           icon={<Scale strokeWidth={1.5} />}
           label="Balance"
-          value={<Num>{credit ? `Credit ${formatCurrency(credit)}` : formatCurrency(lease.balance)}</Num>}
-          valueClassName={credit ? "text-success" : due.kind === "overdue" ? "text-danger" : undefined}
+          value={<Num>{balanceValueText(lease.balance, credit)}</Num>}
+          valueClassName={balanceToneClass[balanceTone(due, credit)]}
           note={credit ? "Paid ahead" : dueNote(due)}
         />
         <IconTile icon={<CalendarCheck strokeWidth={1.5} />} label="Lease ends" value={formatDate(lease.endDate)} note={leaseEndsNote(lease)} />
