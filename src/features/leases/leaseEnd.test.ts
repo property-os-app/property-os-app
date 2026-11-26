@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canEditEndDate, defaultEndedOn, endActionLabel, endedOnError, endedOnServerError, isNotStarted, leaseEndDate, splitEndedOnErrors } from "@/features/leases/leaseEnd";
+import { canEditEndDate, canVoidAfterEnd, defaultEndedOn, endActionLabel, endedOnError, endedOnServerError, isNotStarted, leaseEndDate, splitEndedOnErrors } from "@/features/leases/leaseEnd";
 import { compareLeasesDefault, friendlyLeaseMessage, leasePeriod } from "@/features/leases/stats";
 import type { Lease } from "@/types/lease";
 
@@ -68,6 +68,18 @@ describe("canEditEndDate", () => {
     expect(canEditEndDate(lease({ isHistorical: true }), TODAY)).toBe(false);
     expect(canEditEndDate(lease({ cancelledOn: TODAY }), TODAY)).toBe(false);
     expect(canEditEndDate(lease({ startDate: "2026-11-26" }), TODAY)).toBe(false);
+  });
+});
+
+describe("canVoidAfterEnd", () => {
+  const base = { status: "ENDED" as const, isHistorical: false, endedOn: "2026-09-30", cancelledOn: null };
+  it("needs a lease ended or cancelled in the app", () => {
+    expect(canVoidAfterEnd(base)).toBe(true);
+    expect(canVoidAfterEnd({ ...base, status: "TERMINATED" })).toBe(true);
+    expect(canVoidAfterEnd({ ...base, endedOn: null, cancelledOn: "2026-11-20" })).toBe(true);
+    expect(canVoidAfterEnd({ ...base, endedOn: null })).toBe(false);
+    expect(canVoidAfterEnd({ ...base, isHistorical: true })).toBe(false);
+    expect(canVoidAfterEnd({ ...base, status: "ACTIVE" })).toBe(false);
   });
 });
 

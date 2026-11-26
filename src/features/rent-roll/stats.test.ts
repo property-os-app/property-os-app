@@ -3,6 +3,8 @@ import {
   billingKind,
   collectionBreakdown,
   collectionNote,
+  depositAppliedNote,
+  depositsHeldNote,
   isFutureMonth,
   isPastMonth,
   monthFromParam,
@@ -41,6 +43,8 @@ function makeLease(over: Partial<Lease> = {}): Lease {
     paymentFrequency: "MONTHLY",
     rent: "1000.00",
     deposit: "1000.00",
+    petDeposit: null,
+    depositStatus: null,
     lateFeeAmount: "0.00",
     lateFeeGraceDays: 0,
     rentDueDay: 1,
@@ -78,6 +82,8 @@ function makeRow(over: Partial<RentRollRow> = {}): RentRollRow {
     openingBalance: "0.00",
     charged: "1000.00",
     paid: "0.00",
+    rentPaid: "0.00",
+    remaining: "1000.00",
     balance: "1000.00",
     oldestUnpaidDueDate: null,
     status: "UNPAID",
@@ -364,5 +370,19 @@ describe("rentRollKeys", () => {
   it("keeps the month and year queries under the prefix that a saved payment refreshes", () => {
     for (const key of [rentRollKeys.month("2026-11", null), rentRollKeys.year(2026, "p1"), rentRollKeys.year(2026, null, "lease")])
       expect(key.slice(0, rentRollKeys.all.length)).toEqual([...rentRollKeys.all]);
+  });
+});
+
+describe("deposit notes", () => {
+  it("shows the deposits applied inside Collected only when there are some", () => {
+    expect(depositAppliedNote("500.00")).toBe("incl. $500.00 from deposits");
+    expect(depositAppliedNote("0.00")).toBeNull();
+    expect(depositAppliedNote(undefined)).toBeNull();
+  });
+
+  it("shows the pet part of the deposits held", () => {
+    expect(depositsHeldNote("300.00", 4, true)).toBe("incl. $300.00 pet · 4 leases");
+    expect(depositsHeldNote("0.00", 1, true)).toBe("1 lease");
+    expect(depositsHeldNote("0.00", 2, false)).toBe("2 leases, as of today");
   });
 });

@@ -10,7 +10,7 @@ export interface LeaseDeleteDialogProps {
   /** The draft or old lease to delete; null keeps the dialog closed. */
   lease: Lease | null;
   onClose: () => void;
-  /** After a successful delete (e.g. close the drawer). */
+  /** After a successful delete (e.g. leave the page). */
   onDeleted?: () => void;
 }
 

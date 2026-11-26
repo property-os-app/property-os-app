@@ -202,6 +202,11 @@ export function missingToActivate(p: ActivationParts): string[] {
   return missing;
 }
 
+/** PATCH autoRenew is allowed on DRAFT and ACTIVE leases (ENDED and TERMINATED give 409); never on an old lease. */
+export function autoRenewEditable(lease: Pick<Lease, "status" | "isHistorical">): boolean {
+  return !isOldLease(lease) && (lease.status === "DRAFT" || lease.status === "ACTIVE");
+}
+
 /** missingToActivate for a saved lease. */
 export function leaseMissing(lease: Lease): string[] {
   return missingToActivate({ ...lease, primaryTenantId: primaryTenant(lease)?.id });
@@ -213,6 +218,7 @@ export const leaseFieldLabels: Record<string, string> = {
   unitId: "Unit",
   coTenantIds: "Co-tenants",
   lateFeeAmount: "Late fee",
+  petDeposit: "Pet deposit",
   lateFeeGraceDays: "Grace period",
   autoRenew: "Auto-renew",
   signatureStatus: "E-signature status",

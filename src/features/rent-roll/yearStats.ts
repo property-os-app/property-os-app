@@ -3,6 +3,7 @@
  * rows params, the response check, cell tones / labels / tooltip text, the unit's leases (who a month belongs to, earlier tenants for the CSV), lease-end and renewal
  * text, search, the chip filters, the property groups and the Collected % / summary counts. No React here, so it is all tested.
  */
+import { cancelledText, leaseEndDate } from "@/features/leases/leaseEnd";
 import { statusLabel } from "@/components/molecules/StatusBadge";
 import { currentMonthUTC, EMPTY, formatCurrency, formatCurrencyShort, formatDate, isMonth, toCents, todayUTC } from "@/lib/format";
 import type {
@@ -183,10 +184,11 @@ export function cellDisplay(cell: RentRollYearCell): string | null {
 }
 
 /**
- * Tooltip and screen-reader text, e.g. "Mar 2026 · John Smith · Paid $2,000.00 of $2,000.00 · Paid" (exact amounts).
+ * Tooltip and screen-reader text, e.g. "Mar 2026 · John Smith · Charged $2,000.00 · Rent paid $2,000.00 · Cash received
+ * this month $0.00 · Paid" (exact amounts). `rentPaid` is what was applied to the month's own charges whenever it was
+ * paid; `paid` is the cash received in the month. Remaining and balance only when not zero.
  * `tenants`: who the month belongs to ("John Smith → Sarah Lee" when two leases share it; see `cellTenants`).
- * Balance only when not zero; vacant (or reserved) and outside-lease months name what they are. OVERDUE is balance-based
- * (an older month can still be owed), so it says so.
+ * Vacant (or reserved) and outside-lease months name what they are. The status is the month's own (from its ledger cards).
  */
 export function cellDescription(cell: RentRollYearCell, opts: { reserved?: boolean; tenants?: string } = {}): string {
   const month = shortMonthYear(cell.month);
@@ -202,11 +204,16 @@ export function cellDescription(cell: RentRollYearCell, opts: { reserved?: boole
       return `${month}${who} · ${cellStatusLabels[cell.status]}${paid}`;
     }
     default: {
+      const remaining = toCents(cell.remaining) > 0 ? ` · Remaining ${formatCurrency(cell.remaining)}` : "";
       const balance = toCents(cell.balance) !== 0 ? ` · Balance ${formatCurrency(cell.balance)}` : "";
-      const status = cell.status === "OVERDUE" ? "Overdue · balance includes earlier months" : cellStatusLabels[cell.status];
-      return `${month}${who} · Paid ${formatCurrency(cell.paid)} of ${formatCurrency(cell.charged)}${balance} · ${status}`;
+      return `${month}${who} · ${chargedLine(cell)}${remaining}${balance} · ${cellStatusLabels[cell.status]}`;
     }
   }
+}
+
+/** "Charged $X · Rent paid $Y · Cash received this month $Z": a month's money (yearly cell or monthly row). */
+export function chargedLine(m: { charged: string; rentPaid: string; paid: string }): string {
+  return `Charged ${formatCurrency(m.charged)} · Rent paid ${formatCurrency(m.rentPaid)} · Cash received this month ${formatCurrency(m.paid)}`;
 }
 
 /**
@@ -293,12 +300,17 @@ export function isLeaseEnded(row: Pick<RentRollYearRow, "lease" | "renewalAlert"
 }
 
 /**
- * "Ends in 52 days" / "Ends tomorrow" / "Ends today", or "Ended Nov 30, 2026" once over. Never a negative number.
+ * "Ends in 52 days" / "Ends tomorrow" / "Ends today", or "Ended Nov 30, 2026" once over (the day it really ended: endedOn,
+ * else endDate), "Cancelled Nov 25, 2026" for a lease cancelled before it started. Never a negative number.
  * null for vacant rows and an active lease without an end date (render a Dash).
  */
 export function daysToEndText(row: Pick<RentRollYearRow, "lease" | "renewalAlert" | "daysToLeaseEnd">): string | null {
   if (!row.lease) return null;
-  if (isLeaseEnded(row)) return row.lease.endDate ? `Ended ${formatDate(row.lease.endDate)}` : "Ended";
+  if (row.lease.cancelledOn) return cancelledText(row.lease.cancelledOn);
+  if (isLeaseEnded(row)) {
+    const end = leaseEndDate(row.lease);
+    return end ? `Ended ${formatDate(end)}` : "Ended";
+  }
   const days = row.daysToLeaseEnd;
   if (days === null) return null;
   if (days === 0) return "Ends today";

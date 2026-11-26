@@ -3,13 +3,13 @@ import { z } from "zod";
 import { centsToAmount, todayISO, toCents } from "@/lib/format";
 import { expenseTypeLabels, paymentMethodLabels } from "@/lib/labels";
 import type { Expense, ExpenseCreateBody, ExpenseType, ExpenseUpdateBody } from "@/types/expense";
-import type { PaymentMethod } from "@/types/ledger";
+import type { SelectablePaymentMethod } from "@/types/ledger";
 
 /** The Property select's value for "Portfolio-wide (no single property)" (no propertyId, Owner only). */
 export const PORTFOLIO = "portfolio";
 
 const TYPES = Object.keys(expenseTypeLabels) as [ExpenseType, ...ExpenseType[]];
-const METHODS = Object.keys(paymentMethodLabels) as [PaymentMethod, ...PaymentMethod[]];
+const METHODS = Object.keys(paymentMethodLabels) as [SelectablePaymentMethod, ...SelectablePaymentMethod[]];
 /** amount: 0.01 to 9,999,999,999.99. */
 const MAX_AMOUNT_CENTS = 999_999_999_999;
 

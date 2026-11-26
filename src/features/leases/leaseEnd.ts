@@ -32,6 +32,15 @@ export function canEditEndDate(lease: Pick<Lease, "status" | "isHistorical" | "c
   return closed && !lease.isHistorical && !lease.cancelledOn && !(lease.startDate && lease.startDate > today);
 }
 
+/**
+ * "Void rent after end date" applies: ENDED / TERMINATED through the app (endedOn or cancelledOn set), not history-only
+ * (the API answers 409 on leases ended before endedOn existed).
+ */
+export function canVoidAfterEnd(lease: Pick<Lease, "status" | "isHistorical" | "endedOn" | "cancelledOn">): boolean {
+  const closed = lease.status === "ENDED" || lease.status === "TERMINATED";
+  return closed && !lease.isHistorical && (lease.endedOn !== null || lease.cancelledOn !== null);
+}
+
 /** The End lease form's date: today, as the earlier of the local and UTC day (the API refuses later ones), never before the start. */
 export function defaultEndedOn(startDate: string | null, now = new Date()): string {
   const local = todayISO(now);

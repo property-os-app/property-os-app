@@ -16,6 +16,7 @@ import { useDocuments } from "@/features/documents/hooks";
 import { DetailsTab } from "@/features/leases/DetailsTab";
 import type { FieldName } from "@/features/leases/form";
 import { useActivateAction, useLease, type ActivateError } from "@/features/leases/hooks";
+import { leaseDepositTotal } from "@/features/deposits/endPreview";
 import { LeaseAlert } from "@/features/leases/LeaseAlert";
 import { LeaseDeleteDialog } from "@/features/leases/LeaseDeleteDialog";
 import { endActionLabel, leaseEndDate } from "@/features/leases/leaseEnd";
@@ -25,7 +26,7 @@ import { TenantsTab } from "@/features/leases/LeaseTabs";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
 import { canDeleteLease, dueNote, dueState, isClosed, isOldLease, leasePeriod, primaryTenant } from "@/features/leases/stats";
 import { AddChargeModal } from "@/features/ledger/AddChargeModal";
-import { balanceText } from "@/features/ledger/balance";
+import { balanceOrCreditText, creditAmount } from "@/features/ledger/cards";
 import { useLedger } from "@/features/ledger/hooks";
 import { balanceSplit, type BalanceSplit } from "@/features/ledger/overdue";
 import { LedgerView } from "@/features/ledger/LedgerView";
@@ -33,19 +34,24 @@ import { RecordPaymentModal } from "@/features/ledger/RecordPaymentModal";
 import { leasePaymentTarget } from "@/features/ledger/targets";
 import { BackBreadcrumb, Tile, type Crumb } from "@/features/shared/DetailParts";
 import { linkFocus, textLink } from "@/features/shared/linkClass";
+import type { UnitPageState } from "@/features/units/origin";
 import type { Lease } from "@/types/lease";
 
 type Tab = "ledger" | "details" | "tenants" | "documents";
 const TABS: Tab[] = ["ledger", "details", "tenants", "documents"];
 
 /** Where an in-app click came from: names the first crumb (the place the back arrow goes) and picks the Sidebar item. */
-export type LeaseOrigin = "leases" | "rent-roll" | "dashboard" | "tenants" | "units" | "property";
+export type LeaseOrigin = "leases" | "rent-roll" | "dashboard" | "tenants" | "units" | "property" | "tenant" | "unit";
 
 /** Router state from every link into the lease page. Without `from` (pasted link, new tab) the parent is Leases (or the Rent Roll month from the URL). */
 export interface LeasePageState {
   from?: LeaseOrigin;
-  /** With from "property" (the Unit drawer on a property page): the crumb names it and links to it. */
+  /** With from "property": the crumb names it and links to it. */
   property?: { id: string; name: string };
+  /** With from "tenant" (the tenant page): the crumb names the tenant and links to the page. */
+  tenant?: { id: string; name: string };
+  /** With from "unit" (the unit page): the crumb "Unit 4B, Maple Court" links to it. */
+  unit?: { id: string; name: string };
   /** A failed kebab Activate on the Leases list, shown under the header. */
   activateError?: ActivateError;
 }
@@ -74,6 +80,12 @@ function useParent(): { parent: Crumb; nav: ModuleKey; backInHistory: boolean } 
   if (from === "dashboard") return { parent: { label: "Dashboard", to: "/" }, nav: "dashboard", backInHistory };
   if (from === "tenants") return { parent: { label: "Tenants", to: "/tenants" }, nav: "tenants", backInHistory };
   if (from === "units") return { parent: { label: "Units", to: "/units" }, nav: "units", backInHistory };
+  if (from === "tenant" && state?.tenant) {
+    return { parent: { label: state.tenant.name, to: `/tenants/${encodeURIComponent(state.tenant.id)}?tab=leases` }, nav: "tenants", backInHistory };
+  }
+  if (from === "unit" && state?.unit) {
+    return { parent: { label: state.unit.name, to: `/units/${encodeURIComponent(state.unit.id)}?tab=history` }, nav: "units", backInHistory };
+  }
   if (from === "property" && state?.property) {
     return { parent: { label: state.property.name, to: `/properties/${encodeURIComponent(state.property.id)}` }, nav: "properties", backInHistory };
   }
@@ -158,11 +170,22 @@ export function LeasePage() {
   return <LeaseDetail key={lease.data.id} lease={lease.data} />;
 }
 
-/** "Unit 4B, Maple Court · Nov 1, 2026 to Oct 31, 2027 · LSE-2026-001" (`leasePeriod`); a DRAFT without both dates shows "Draft". */
-function subtitle(lease: Lease): string {
+/**
+ * "Unit 4B, Maple Court · Nov 1, 2026 to Oct 31, 2027 · LSE-2026-001" (`leasePeriod`); a DRAFT without both dates shows
+ * "Draft". The unit links to its page (Back returns to this lease).
+ */
+function Subtitle({ lease }: { lease: Lease }) {
   const unit = `${unitLabel(lease.unit.unitNumber)}, ${lease.unit.property.name}`;
   const dates = lease.startDate && lease.endDate ? leasePeriod(lease) : lease.status === "DRAFT" ? "Draft" : formatDate(leaseEndDate(lease));
-  return [unit, dates, lease.leaseNumber].join(" · ");
+  const state: UnitPageState = { from: "lease", lease: { id: lease.id, number: lease.leaseNumber } };
+  return (
+    <>
+      <Link to={`/units/${encodeURIComponent(lease.unit.id)}`} state={state} className={cn("text-text-secondary underline-offset-2 hover:text-text-primary hover:underline", linkFocus)}>
+        {unit}
+      </Link>
+      {` · ${[dates, lease.leaseNumber].join(" · ")}`}
+    </>
+  );
 }
 
 /** "in 12 days", "today", "ended 3 days ago", or Dash without an end date. */
@@ -199,6 +222,7 @@ function LeaseDetail({ lease }: { lease: Lease }) {
   const canCharge = can(user, "charge.create");
   const canPay = can(user, "payment.create");
   const canVoid = can(user, "entry.void");
+  const canSettle = can(user, "deposit.settle");
 
   // An old (history-only) lease is never billed: no ledger call, no Ledger tab, no money actions.
   const old = isOldLease(lease);
@@ -219,6 +243,32 @@ function LeaseDetail({ lease }: { lease: Lease }) {
       // Keep the router state (back arrow, activation error): a URL change without it would drop it.
       { replace: true, preventScrollReset: true, state: location.state },
     );
+
+  /** The ledger's "From deposit settlement" link: open Details and scroll to the Deposit card (reset by any other tab change). */
+  const [focusDeposit, setFocusDeposit] = useState(false);
+  const changeTab = (next: Tab) => {
+    setFocusDeposit(false);
+    setTab(next);
+  };
+  const openDeposit = () => {
+    setTab("details");
+    setFocusDeposit(true);
+  };
+  /** The Deposit card's payment link: Ledger tab, All entries, scrolled to that payment (highlighted). */
+  const showPayment = (paymentId: string) => {
+    setFocusDeposit(false);
+    setParams(
+      (prev) => {
+        const out = new URLSearchParams(prev);
+        out.set("tab", "ledger");
+        out.set("ledger", "entries");
+        out.delete("card");
+        out.set("payment", paymentId);
+        return out;
+      },
+      { replace: true, preventScrollReset: true, state: location.state },
+    );
+  };
 
   const [activateError, setActivateError] = useState<ActivateError | null>((location.state as LeasePageState | null)?.activateError ?? null);
   // The edit wizard: closed, open at its first step (true), or at the step with a field (Details tab).
@@ -331,7 +381,9 @@ function LeaseDetail({ lease }: { lease: Lease }) {
               <Avatar name={primary?.fullName ?? "-"} size={56} />
               <div className="flex min-w-0 flex-col gap-1">
                 <H1 className="truncate">{primary?.fullName ?? "No tenant yet"}</H1>
-                <Small className="block">{subtitle(lease)}</Small>
+                <Small className="block">
+                  <Subtitle lease={lease} />
+                </Small>
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <LeaseBadge lease={lease} />
                   <StatusBadge domain="esign" status={lease.signatureStatus} />
@@ -349,7 +401,12 @@ function LeaseDetail({ lease }: { lease: Lease }) {
           {old ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Tile label="Monthly rent" loading={false} value={formatCurrency(lease.rent)} note="As recorded" />
-              <Tile label="Deposit" loading={false} value={formatCurrency(lease.deposit)} note="As recorded" />
+              <Tile
+                label="Deposit"
+                loading={false}
+                value={formatCurrency(leaseDepositTotal(lease))}
+                note={toCents(lease.petDeposit) > 0 ? `Security ${formatCurrency(lease.deposit ?? "0")} · Pet ${formatCurrency(lease.petDeposit)}` : "As recorded"}
+              />
               <Tile label="Term" loading={false} value={lease.termMonths !== null ? plural(lease.termMonths, "month") : <Dash />} note={formatDate(lease.startDate)} />
               <Tile label="Ended" loading={false} value={formatDate(lease.endDate)} note={endsNote(lease.endDate)} />
             </div>
@@ -358,8 +415,9 @@ function LeaseDetail({ lease }: { lease: Lease }) {
             <Tile
               label="Current balance"
               loading={ledger.isPending}
-              value={summary ? balanceText(summary.balance) : <Dash />}
-              note={ledger.isError ? ledgerRetry : balanceNote(dueNote(due), split, balanceCents)}
+              // A credit comes from summary.credit (money paid ahead), never from the balance's sign.
+              value={summary ? balanceOrCreditText(summary) : <Dash />}
+              note={ledger.isError ? ledgerRetry : creditAmount(summary) ? "Paid ahead" : balanceNote(dueNote(due), split, balanceCents)}
               // Red only when part of it is overdue: a balance above $0 can be rent billed early.
               className={summary ? (due.kind === "overdue" ? "text-danger" : balanceCents > 0 ? undefined : "text-success") : undefined}
             />
@@ -383,7 +441,7 @@ function LeaseDetail({ lease }: { lease: Lease }) {
         <div className="px-6">
           <Tabs<Tab>
             value={tab}
-            onChange={setTab}
+            onChange={changeTab}
             className="border-b-0"
             tabs={[
               ...(old ? [] : [{ value: "ledger" as const, label: "Ledger", count: ledger.data?.entries.length }]),
@@ -420,10 +478,19 @@ function LeaseDetail({ lease }: { lease: Lease }) {
             <EmptyState icon={<Wallet strokeWidth={1.5} />} title="No ledger on a draft" description="Activate the lease to add charges and payments." />
           </Card>
         ) : (
-          <LedgerView lease={lease} canVoid={canVoid} canCharge={canCharge} canPay={canPay} />
+          <LedgerView lease={lease} canVoid={canVoid} canCharge={canCharge} canPay={canPay} onOpenDeposit={openDeposit} />
         )
       ) : tab === "details" ? (
-        <DetailsTab lease={lease} canEdit={canEdit} onEdit={setEditing} />
+        <DetailsTab
+          lease={lease}
+          canEdit={canEdit}
+          onEdit={setEditing}
+          onOpenDocuments={() => changeTab("documents")}
+          canSettle={canSettle}
+          canVoid={canVoid}
+          onShowPayment={showPayment}
+          focusDeposit={focusDeposit}
+        />
       ) : tab === "documents" ? (
         <DocumentsPanel target={{ owner: "leases", ownerId: lease.id }} onOpenLedger={() => setTab("ledger")} emptyText="No documents on this lease yet." />
       ) : (

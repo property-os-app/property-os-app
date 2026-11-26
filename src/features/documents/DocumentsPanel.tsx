@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { Download, Eye, Trash2 } from "lucide-react";
 import { Badge, Button, Caption, H3, Small } from "@/components/atoms";
-import { Card, KebabMenu, ListCard, toast } from "@/components/molecules";
+import { Card, KebabMenu, ListCard } from "@/components/molecules";
 import { CardList, DataTable, type Column } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -16,9 +16,9 @@ import { DocumentUpload } from "@/features/documents/DocumentUpload";
 import { FileKindIcon } from "@/features/documents/FileKindIcon";
 import { categoryLabel } from "@/features/documents/categories";
 import { canViewInBrowser, fileKind } from "@/features/documents/fileKind";
-import { useDocumentCategories, useDocuments, useDownloadDocument, useViewDocument } from "@/features/documents/hooks";
+import { useDocumentCategories, useDocuments } from "@/features/documents/hooks";
 import { ownerOfDocument, sourceText } from "@/features/documents/source";
-import { openBlankTab, POPUP_BLOCKED_MESSAGE } from "@/features/documents/view";
+import { useDocumentActions } from "@/features/documents/useDocumentActions";
 import { textLink } from "@/features/shared/linkClass";
 import type { DocumentRef, ListedDocument } from "@/types/document";
 
@@ -32,7 +32,7 @@ export interface DocumentsPanelProps {
   emptyText?: string;
 }
 
-/** Table View / Download: icon-only squares (like Delete) while the panel is under 48rem wide, so the drawer tables don't scroll sideways. */
+/** Table View / Download: icon-only squares (like Delete) while the panel is under 48rem wide, so narrow tables don't scroll sideways. */
 const NARROW_ICON_ONLY = "@max-3xl:w-8 @max-3xl:px-0";
 
 /**
@@ -72,32 +72,10 @@ export function DocumentsPanel({ target, leaseState, onOpenLedger, emptyText = "
     }
     return text;
   };
-  const download = useDownloadDocument();
-  const view = useViewDocument();
+  const { onView, onDownload, viewingId, downloadingId: pendingId } = useDocumentActions();
   const isMobile = useIsMobile();
   const [deleting, setDeleting] = useState<ListedDocument | null>(null);
 
-  const onDownload = (doc: ListedDocument) => download.mutate(doc.id, { onError: (err) => toast.error(`Couldn't download ${doc.name}`, { description: errorText(err) }) });
-  const pendingId = download.isPending ? download.variables : null;
-
-  // The tab must open in the click itself (before any await) or popup blockers stop it.
-  const onView = (doc: ListedDocument) => {
-    const tab = openBlankTab();
-    if (!tab) {
-      toast.error(`Couldn't open ${doc.name}`, { description: POPUP_BLOCKED_MESSAGE });
-      return;
-    }
-    view.mutate(
-      { docId: doc.id, tab },
-      {
-        onError: (err) => {
-          tab.close(); // showInTab already closes it; this also covers any other failure (closing twice is harmless).
-          toast.error(`Couldn't open ${doc.name}`, { description: errorText(err) });
-        },
-      },
-    );
-  };
-  const viewingId = view.isPending ? view.variables?.docId : null;
 
   const state = docs.isError ? "error" : docs.isPending ? "loading" : docs.data.length === 0 ? "empty" : "ideal";
   const empty = { title: ofPayment ? "No files" : "No documents", description: canManage ? `${emptyText} ${ofPayment ? "Add" : "Upload"} one above.` : emptyText };
@@ -111,7 +89,7 @@ export function DocumentsPanel({ target, leaseState, onOpenLedger, emptyText = "
       cell: (d) => (
         <div className="flex min-w-0 items-center gap-3 py-1.5">
           <FileKindIcon kind={fileKind(d.contentType)} />
-          {/* Capped in narrow panels (drawers) so long names and labels truncate instead of widening the table. */}
+          {/* Capped in narrow panels (the payment files drawer) so long names and labels truncate instead of widening the table. */}
           <div className="flex min-w-0 flex-col gap-1 @max-3xl:max-w-[180px]">
             <span className="truncate font-semibold text-text-primary" title={d.name}>
               {d.name}
@@ -185,7 +163,7 @@ export function DocumentsPanel({ target, leaseState, onOpenLedger, emptyText = "
   ];
 
   return (
-    // A size container: in narrow places (the tenant and unit drawers) View and Download show only their icons.
+    // A size container: in narrow places (the payment files drawer, small screens) View and Download show only their icons.
     <div className="@container flex flex-col gap-4">
       {canManage && (
         <Card className="flex flex-col gap-4">

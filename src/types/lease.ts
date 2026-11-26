@@ -1,5 +1,6 @@
 /** Types for the leases endpoints. Source: ../property-os-api/docs/frontend-handoff/API.md sections 2 and 4 ("Lease"). */
 
+import type { DepositBody, DepositResponse, DepositStatus, VoidedCharge } from "@/types/deposit";
 import type { Document } from "@/types/document";
 
 export type LeaseStatus = "DRAFT" | "ACTIVE" | "ENDED" | "TERMINATED";
@@ -49,6 +50,10 @@ export interface Lease {
   rent: string | null;
   /** Money string ("1200.00"); null only on DRAFT. */
   deposit: string | null;
+  /** Money string, optional on every status; held and settled with `deposit`. Locked once ENDED / TERMINATED, like it. */
+  petDeposit: string | null;
+  /** HELD while a tracked deposit isn't settled, then RETURNED / PARTIALLY_RETURNED / KEPT; null without a deposit or when not tracked. */
+  depositStatus: DepositStatus | null;
   /** Money string, default "0.00". */
   lateFeeAmount: string;
   lateFeeGraceDays: number;
@@ -94,6 +99,7 @@ export interface LeaseCreateBody {
   paymentFrequency?: PaymentFrequency;
   rent?: number;
   deposit?: number;
+  petDeposit?: number;
   lateFeeAmount?: number;
   lateFeeGraceDays?: number;
   rentDueDay?: number;
@@ -112,12 +118,14 @@ export interface LeaseCreateBody {
  * null on any other field gives 400 "<field> cannot be null; omit it to leave it unchanged".
  */
 export type LeaseUpdateBody = Partial<
-  Omit<LeaseCreateBody, "status" | "startDate" | "endDate" | "rent" | "deposit" | "rentDueDay" | "notes" | "primaryTenantId" | "templateId">
+  Omit<LeaseCreateBody, "status" | "startDate" | "endDate" | "rent" | "deposit" | "petDeposit" | "rentDueDay" | "notes" | "primaryTenantId" | "templateId">
 > & {
   startDate?: string | null;
   endDate?: string | null;
   rent?: number | null;
   deposit?: number | null;
+  /** null clears it (DRAFT or ACTIVE). */
+  petDeposit?: number | null;
   rentDueDay?: number | null;
   notes?: string | null;
   primaryTenantId?: string | null;
@@ -153,6 +161,7 @@ export interface LeaseHistoryBody {
   endDate: string;
   rent?: number;
   deposit?: number;
+  petDeposit?: number;
   notes?: string;
   tags?: string[];
 }
@@ -162,4 +171,11 @@ export interface LeaseEndBody {
   status?: "ENDED" | "TERMINATED";
   /** Start date to UTC today (default). Never for a lease that hasn't started (400): that one is cancelled. */
   endedOn?: string;
+  /** Voids the RENT charges for months fully after endedOn (all of them when cancelled). Needs money.void. */
+  voidChargesAfterEnd?: boolean;
+  /** Settles the deposit in the same transaction (the PUT /leases/:id/deposit body). Needs money.record. */
+  deposit?: DepositBody;
 }
+
+/** POST /leases/:id/end answer: the lease, plus voidedCharges (with voidChargesAfterEnd) and depositSettlement (with deposit). */
+export type LeaseEnded = Lease & { voidedCharges?: VoidedCharge[]; depositSettlement?: DepositResponse };

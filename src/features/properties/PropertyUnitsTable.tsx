@@ -59,7 +59,7 @@ type Props = Pick<DataTableProps<UnitRow>, "state" | "empty" | "error" | "onRowC
 
 /**
  * Units of one property with their lease (Overview "Units needing attention" and the Units tab). 25 per page.
- * Row / card opens the unit drawer. On phones: flat cards inside the parent card.
+ * Row / card opens the unit page. On phones: flat cards inside the parent card.
  */
 export function PropertyUnitsTable({ rows, state, empty, error, caption, onRowClick }: Props) {
   const table = useClientTable({ rows });

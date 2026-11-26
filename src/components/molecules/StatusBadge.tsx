@@ -19,11 +19,13 @@ export type UnitStatus = "VACANT" | "OCCUPIED" | "RESERVED" | "UNDER_MAINTENANCE
 export type InsuranceStatus = "VALID" | "EXPIRING" | "EXPIRED" | "NONE";
 /** Backend ExpenseStatus. */
 export type ApprovalStatus = "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+/** Backend DepositStatus plus the UI-only "NOT_TRACKED" (status null on a lease whose deposit was settled outside the app). */
+export type DepositStatus = "HELD" | "PARTIALLY_RETURNED" | "RETURNED" | "KEPT" | "NOT_TRACKED";
 /** UI status of a lease template, from isDefault and archivedAt (GET /lease-templates). */
 export type TemplateStatus = "DEFAULT" | "ACTIVE" | "ARCHIVED";
 
 export const statusTone = {
-  rent: { PAID: "success", PARTIAL: "warning", UNPAID: "warning", OVERDUE: "danger", NOT_BILLED: "neutral" },
+  rent: { PAID: "success", PARTIAL: "warning", UNPAID: "warning", OVERDUE: "danger", NOT_BILLED: "neutral", VOID: "neutral" },
   lease: { DRAFT: "neutral", ACTIVE: "success", EXPIRING: "warning", ENDED: "neutral", TERMINATED: "danger", CANCELLED: "neutral" },
   esign: { NOT_SENT: "neutral", PENDING: "warning", SIGNED: "success" },
   ticket: { OPEN: "neutral", ASSIGNED: "warning", IN_PROGRESS: "info", RESOLVED: "success", CANCELLED: "neutral", PAST_SLA: "danger" },
@@ -32,11 +34,12 @@ export const statusTone = {
   insurance: { VALID: "success", EXPIRING: "warning", EXPIRED: "danger", NONE: "neutral" },
   approval: { PENDING_APPROVAL: "warning", APPROVED: "success", REJECTED: "danger" },
   template: { DEFAULT: "success", ACTIVE: "neutral", ARCHIVED: "neutral" },
+  deposit: { HELD: "info", PARTIALLY_RETURNED: "warning", RETURNED: "success", KEPT: "neutral", NOT_TRACKED: "neutral" },
 } as const satisfies Record<string, Record<string, Tone>>;
 
 /** Friendly label per enum key. Domains not listed here already use display words as keys. */
 export const statusLabel = {
-  rent: { PAID: "Paid", PARTIAL: "Partial", UNPAID: "Unpaid", OVERDUE: "Overdue", NOT_BILLED: "Not billed" },
+  rent: { PAID: "Paid", PARTIAL: "Partial", UNPAID: "Unpaid", OVERDUE: "Overdue", NOT_BILLED: "Not billed", VOID: "Void" },
   lease: { DRAFT: "Draft", ACTIVE: "Active", EXPIRING: "Expiring", ENDED: "Ended", TERMINATED: "Terminated", CANCELLED: "Cancelled" },
   esign: { NOT_SENT: "Not sent", PENDING: "Pending", SIGNED: "Signed" },
   unit: { VACANT: "Vacant", OCCUPIED: "Occupied", RESERVED: "Reserved", UNDER_MAINTENANCE: "Under maintenance" },
@@ -45,6 +48,7 @@ export const statusLabel = {
   approval: { PENDING_APPROVAL: "Pending approval", APPROVED: "Approved", REJECTED: "Rejected" },
   ticket: { OPEN: "Open", ASSIGNED: "Assigned", IN_PROGRESS: "In progress", RESOLVED: "Resolved", CANCELLED: "Cancelled", PAST_SLA: "Past SLA" },
   priority: { EMERGENCY: "Emergency", URGENT: "Urgent", NORMAL: "Normal", LOW: "Low" },
+  deposit: { HELD: "Held", PARTIALLY_RETURNED: "Partially returned", RETURNED: "Returned", KEPT: "Kept", NOT_TRACKED: "Not tracked" },
 } as const satisfies Partial<{ [D in keyof typeof statusTone]: Record<keyof (typeof statusTone)[D], string> }>;
 
 export type StatusDomain = keyof typeof statusTone;

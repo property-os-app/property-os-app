@@ -58,7 +58,7 @@ import type {
 const MONTHS = Array.from({ length: 12 }, (_, i) => `2026-${String(i + 1).padStart(2, "0")}`);
 
 function cell(month: string, status: RentRollYearCellStatus, paid = "0.00", charged = "0.00", balance = "0.00", leaseIds: string[] = []): RentRollYearUnitCell {
-  return { month, status, paid, charged, balance, leaseIds, leaseId: leaseIds[leaseIds.length - 1] ?? null };
+  return { month, status, paid, charged, rentPaid: paid, remaining: Math.max(0, Number(charged) - Number(paid)).toFixed(2), balance, leaseIds, leaseId: leaseIds[leaseIds.length - 1] ?? null };
 }
 
 const LEASE: RentRollYearLease = {
@@ -68,8 +68,11 @@ const LEASE: RentRollYearLease = {
   signatureStatus: "SIGNED",
   startDate: "2026-01-01",
   endDate: "2026-12-31",
+  endedOn: null,
+  cancelledOn: null,
   rent: "2850.00",
   deposit: "2850.00",
+  petDeposit: null,
   tenants: [
     { id: "t1", fullName: "Ana Reyes", isPrimary: true },
     { id: "t2", fullName: "Ben Cole", isPrimary: false },
@@ -188,10 +191,16 @@ describe("cellDisplay", () => {
 
 describe("cellDescription", () => {
   it("reads like the design's tooltip", () => {
-    expect(cellDescription(cell("2026-10", "PAID", "2850.00", "2850.00"))).toBe("Oct 2026 · Paid $2,850.00 of $2,850.00 · Paid");
-    expect(cellDescription(cell("2026-10", "PARTIAL", "1000.00", "2850.00", "1850.00"))).toBe(
-      "Oct 2026 · Paid $1,000.00 of $2,850.00 · Balance $1,850.00 · Partial",
+    expect(cellDescription(cell("2026-10", "PAID", "2850.00", "2850.00"))).toBe(
+      "Oct 2026 · Charged $2,850.00 · Rent paid $2,850.00 · Cash received this month $2,850.00 · Paid",
     );
+    expect(cellDescription(cell("2026-10", "PARTIAL", "1000.00", "2850.00", "1850.00"))).toBe(
+      "Oct 2026 · Charged $2,850.00 · Rent paid $1,000.00 · Cash received this month $1,000.00 · Remaining $1,850.00 · Balance $1,850.00 · Partial",
+    );
+  });
+  it("a month paid late: rent paid, but no cash that month", () => {
+    const late = { ...cell("2026-05", "PAID", "0.00", "2850.00"), rentPaid: "2850.00", remaining: "0.00" };
+    expect(cellDescription(late)).toBe("May 2026 · Charged $2,850.00 · Rent paid $2,850.00 · Cash received this month $0.00 · Paid");
   });
   it("names vacant, outside-lease and not-billed months", () => {
     expect(cellDescription(cell("2026-05", "VACANT"))).toBe("May 2026 · Vacant");
@@ -199,9 +208,9 @@ describe("cellDescription", () => {
     expect(cellDescription(cell("2026-12", "FUTURE"))).toBe("Dec 2026 · Not billed yet");
     expect(cellDescription(cell("2026-11", "NOT_BILLED", "100.00"))).toBe("Nov 2026 · Not billed · Paid $100.00");
   });
-  it("says an overdue balance can include earlier months", () => {
+  it("an overdue month shows what is left of it", () => {
     expect(cellDescription(cell("2026-10", "OVERDUE", "0.00", "2850.00", "5700.00"))).toBe(
-      "Oct 2026 · Paid $0.00 of $2,850.00 · Balance $5,700.00 · Overdue · balance includes earlier months",
+      "Oct 2026 · Charged $2,850.00 · Rent paid $0.00 · Cash received this month $0.00 · Remaining $2,850.00 · Balance $5,700.00 · Overdue",
     );
   });
   it("formats the month without Date math", () => {
@@ -223,6 +232,12 @@ describe("daysToEndText", () => {
     expect(daysToEndText(past)).toBe("Ended Nov 14, 2026");
     // Even if the alert were missing.
     expect(daysToEndText({ ...past, renewalAlert: null })).toBe("Ended Nov 14, 2026");
+  });
+  it("shows the day it really ended (endedOn), and Cancelled for a lease that never started", () => {
+    const early = makeRow({ daysToLeaseEnd: null, renewalAlert: "ENDED", lease: { ...makeRow().lease!, status: "ENDED", endDate: "2026-12-31", endedOn: "2026-09-30" } });
+    expect(daysToEndText(early)).toBe("Ended Sep 30, 2026");
+    const cancelled = makeRow({ daysToLeaseEnd: null, renewalAlert: "ENDED", lease: { ...makeRow().lease!, status: "ENDED", startDate: "2027-01-01", cancelledOn: "2026-11-20" } });
+    expect(daysToEndText(cancelled)).toBe("Cancelled Nov 20, 2026");
   });
   it("shows Ended with the end date for ended / terminated leases (daysToLeaseEnd null)", () => {
     const ended = makeRow({ daysToLeaseEnd: null, renewalAlert: "ENDED", lease: { ...makeRow().lease!, status: "TERMINATED", endDate: "2026-06-30" } });
@@ -388,9 +403,11 @@ describe("a unit with two leases in the year", () => {
     const apr = row.months[3]!;
     expect(cellTenants(row, jan)).toBe("John Smith");
     expect(cellTenants(row, apr)).toBe("John Smith → Sarah Lee");
-    expect(cellDescription(jan, { tenants: cellTenants(row, jan) })).toBe("Jan 2026 · John Smith · Paid $2,000.00 of $2,000.00 · Paid");
+    expect(cellDescription(jan, { tenants: cellTenants(row, jan) })).toBe(
+      "Jan 2026 · John Smith · Charged $2,000.00 · Rent paid $2,000.00 · Cash received this month $2,000.00 · Paid",
+    );
     expect(cellDescription(apr, { tenants: cellTenants(row, apr) })).toBe(
-      "Apr 2026 · John Smith → Sarah Lee · Paid $2,000.00 of $4,000.00 · Balance $2,000.00 · Overdue · balance includes earlier months",
+      "Apr 2026 · John Smith → Sarah Lee · Charged $4,000.00 · Rent paid $2,000.00 · Cash received this month $2,000.00 · Remaining $2,000.00 · Balance $2,000.00 · Overdue",
     );
     expect(cellTenants(vacantRow(), vacantRow().months[0]!)).toBe("");
   });
@@ -441,7 +458,7 @@ describe("yearSummary", () => {
 /* ---------- By unit | By tenant (rows=unit / rows=lease) ---------- */
 
 /** A rows=unit cell as rows=lease sends it (no leaseIds / leaseId). */
-const toLeaseCell = (c: RentRollYearCell): RentRollYearCell => ({ month: c.month, charged: c.charged, paid: c.paid, balance: c.balance, status: c.status });
+const toLeaseCell = (c: RentRollYearCell): RentRollYearCell => ({ month: c.month, charged: c.charged, paid: c.paid, rentPaid: c.rentPaid, remaining: c.remaining, balance: c.balance, status: c.status });
 
 /** A rows=unit row as rows=lease sends it: no `leases`, plain cells. */
 function toLeaseRow(r: RentRollYearUnitRow): RentRollYearLeaseRow {

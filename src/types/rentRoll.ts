@@ -18,6 +18,7 @@ export interface RentRollRow {
   primaryTenant: { id: string; fullName: string } | null;
   /** Money (fixed 2) or null. */
   rent: string | null;
+  /** deposit + petDeposit while held; null once settled, without a deposit, or not tracked. */
   depositHeld: string | null;
   /** rentDueDay in this month, clamped to the last day. */
   dueDate: string | null;
@@ -25,8 +26,12 @@ export interface RentRollRow {
   openingBalance: string;
   /** Non-voided charges of any type due in the month. */
   charged: string;
-  /** Non-voided payments dated in the month. */
+  /** Non-voided payments dated in the month (cash received). */
   paid: string;
+  /** Of `charged`, what the payments recorded so far have paid (FIFO, as the ledger cards; a later payment counts). */
+  rentPaid: string;
+  /** charged - rentPaid: still open of the month's charges. */
+  remaining: string;
   /** As of the month's last day; negative = credit. */
   balance: string;
   oldestUnpaidDueDate: string | null;
@@ -48,8 +53,14 @@ export interface RentRollResponse {
     outstandingBalance: string;
     overdueCount: number;
     overdueTotal: string;
+    /** Security + pet deposits held now (ACTIVE leases and ended / cancelled leases not settled yet); ignores the month. */
     securityDepositsHeld: string;
+    /** The pet part of securityDepositsHeld. */
+    petDepositsHeld: string;
+    /** How many leases securityDepositsHeld counts (the name is kept). */
     activeDepositCount: number;
+    /** DEPOSIT payments dated in the month (already in collected). */
+    depositApplied: string;
   };
 }
 
@@ -72,7 +83,11 @@ export interface RentRollYearCell {
   /** "YYYY-MM". */
   month: string;
   charged: string;
+  /** Cash received in the month. */
   paid: string;
+  /** Of `charged`, what has been paid (whenever). rentPaid + remaining = charged. */
+  rentPaid: string;
+  remaining: string;
   balance: string;
   status: RentRollYearCellStatus;
 }
@@ -96,8 +111,13 @@ export interface RentRollYearLease {
   signatureStatus: SignatureStatus;
   startDate: string | null;
   endDate: string | null;
+  /** The day it really ended (null on ACTIVE, cancelled, history-only and leases ended before the field existed). */
+  endedOn: string | null;
+  /** Ended before it started: occupies no month. */
+  cancelledOn: string | null;
   rent: string | null;
   deposit: string | null;
+  petDeposit: string | null;
   /** Primary first, then fullName A→Z. */
   tenants: { id: string; fullName: string; isPrimary: boolean }[];
 }

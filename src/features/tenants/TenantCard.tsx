@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 import { Pencil, Trash2 } from "lucide-react";
 import { Avatar, Divider, Overline, Skeleton, Small } from "@/components/atoms";
 import { Card, KebabMenu, type MenuItem } from "@/components/molecules";
 import { ContactLink } from "@/features/shared/ContactLink";
 import { NotProvided } from "@/features/shared/Missing";
 import { BalanceValue, RentStatusBadge, TenantLeaseBadge } from "@/features/tenants/TenantParts";
+import type { TenantPageState } from "@/features/tenants/origin";
 import { rentStatus, unitLine, type TenantRow } from "@/features/tenants/stats";
 
 function Stat({ label, children }: { label: string; children: ReactNode }) {
@@ -18,7 +20,6 @@ function Stat({ label, children }: { label: string; children: ReactNode }) {
 
 export interface TenantCardProps {
   row: TenantRow;
-  onOpen: (row: TenantRow) => void;
   /** Omit to hide the Edit item (role can't edit). */
   onEdit?: (row: TenantRow) => void;
   /** Omit to hide the Delete item (role can't delete). */
@@ -26,42 +27,39 @@ export interface TenantCardProps {
 }
 
 /**
- * Compact clickable card for the Cards view; opens the tenant drawer. The kebab and the email / phone links and copy
- * buttons (ContactLink) stop the click from opening it.
+ * Compact card for the Cards view: a real link to the tenant page (`from: "tenants"`; Ctrl / middle click opens a new tab).
+ * The kebab and the email / phone links and copy buttons (ContactLink) sit on top of the link and keep working.
  * Red left strip: behind on rent only (the Rent status badge says "Overdue").
  */
-export function TenantCard({ row, onOpen, onEdit, onDelete }: TenantCardProps) {
+export function TenantCard({ row, onEdit, onDelete }: TenantCardProps) {
   const { tenant, current } = row;
   const items: MenuItem[] = [];
   if (onEdit) items.push({ label: "Edit", icon: <Pencil strokeWidth={1.5} />, onSelect: () => onEdit(row) });
   if (onDelete) items.push({ label: "Delete", icon: <Trash2 strokeWidth={1.5} />, destructive: true, onSelect: () => onDelete(row) });
 
   return (
-    <Card
-      padding="compact"
-      role="button"
-      tabIndex={0}
-      aria-label={`Open ${tenant.fullName}`}
-      onClick={() => onOpen(row)}
-      onKeyDown={(e) => {
-        if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
-          e.preventDefault();
-          onOpen(row);
-        }
-      }}
-      className="relative flex cursor-pointer flex-col gap-3 transition-colors duration-fast hover:border-border-strong focus-visible:focus-ring"
-    >
-      {rentStatus(current) === "overdue" && <span aria-hidden className="absolute -inset-y-px -left-px w-1 rounded-l-card bg-danger" />}
-      <div className="flex items-start gap-3">
+    <Card padding="compact" className="relative flex flex-col gap-3 transition-colors duration-fast hover:border-border-strong">
+      <Link
+        to={`/tenants/${encodeURIComponent(tenant.id)}`}
+        state={{ from: "tenants" } satisfies TenantPageState}
+        aria-label={`Open ${tenant.fullName}`}
+        className="absolute inset-0 rounded-card focus-visible:focus-ring"
+      />
+      {rentStatus(current) === "overdue" && <span aria-hidden className="pointer-events-none absolute -inset-y-px -left-px w-1 rounded-l-card bg-danger" />}
+      <div className="pointer-events-none relative flex items-start gap-3">
         <Avatar name={tenant.fullName} size={40} />
         <div className="min-w-0 flex-1">
           <div className="truncate font-bold text-text-primary">{tenant.fullName}</div>
           <Small className="block truncate">{unitLine(current) ?? "No lease"}</Small>
         </div>
-        {items.length > 0 && <KebabMenu label={`Actions for ${tenant.fullName}`} items={items} />}
+        {items.length > 0 && (
+          <span className="pointer-events-auto">
+            <KebabMenu label={`Actions for ${tenant.fullName}`} items={items} />
+          </span>
+        )}
       </div>
 
-      <div className="flex min-w-0 flex-col gap-0.5">
+      <div className="pointer-events-none relative flex min-w-0 flex-col gap-0.5">
         <Small className="block truncate">
           <ContactLink kind="email" value={tenant.email} empty={<NotProvided what="Email" />} />
         </Small>
@@ -70,9 +68,9 @@ export function TenantCard({ row, onOpen, onEdit, onDelete }: TenantCardProps) {
         </Small>
       </div>
 
-      <Divider />
+      <Divider className="pointer-events-none relative" />
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="pointer-events-none relative grid grid-cols-3 gap-3">
         <Stat label="Lease">
           <TenantLeaseBadge lease={current} />
         </Stat>

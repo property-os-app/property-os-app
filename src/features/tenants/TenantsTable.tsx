@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { useMemo } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { Avatar, Caption, Dash, Small } from "@/components/atoms";
@@ -9,6 +10,7 @@ import { NotProvided } from "@/features/shared/Missing";
 import { BalanceValue, RentStatusBadge, TenantLeaseBadge } from "@/features/tenants/TenantParts";
 import { rentStatus, unitLine, type TenantRow } from "@/features/tenants/stats";
 import { unitLabel } from "@/lib/labels";
+import type { TenantPageState } from "@/features/tenants/origin";
 
 type Props = Pick<DataTableProps<TenantRow>, "rows" | "state" | "sort" | "onSortChange" | "empty" | "error" | "footer"> & {
   onOpen: (row: TenantRow) => void;
@@ -20,7 +22,7 @@ type Props = Pick<DataTableProps<TenantRow>, "rows" | "state" | "sort" | "onSort
 
 /**
  * The Table view of the tenants directory (from md up); on phones the same rows as cards. Row or card opens the
- * tenant drawer; Tenant and Balance sort.
+ * tenant page; Tenant and Balance sort.
  */
 export function TenantsTable({ onOpen, onEdit, onDelete, ...props }: Props) {
   const isMobile = useIsMobile();
@@ -109,7 +111,8 @@ export function TenantsTable({ onOpen, onEdit, onDelete, ...props }: Props) {
           const { tenant, current } = row;
           return (
             <ListCard
-              onOpen={() => onOpen(row)}
+              href={`/tenants/${encodeURIComponent(tenant.id)}`}
+              renderLink={(href, p) => <Link to={href} state={{ from: "tenants" } satisfies TenantPageState} {...p} />}
               openLabel={`Open ${tenant.fullName}`}
               leading={<Avatar name={tenant.fullName} size={32} />}
               title={tenant.fullName}

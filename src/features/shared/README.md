@@ -4,11 +4,16 @@ Small page pieces used by more than one feature area (built only from design sys
 
 ## DetailParts.tsx
 
-Pieces of the detail pages (`/properties/:id`, `/leases/:id`).
+Pieces of the detail pages (`/properties/:id`, `/leases/:id`, `/tenants/:id`, `/units/:id`).
 
 - `BackBreadcrumb({ parent, current, backInHistory })`: one line on top of a detail page, "[←] Parent › Current [✕]". The arrow (aria-label "Back to {Parent}", 44px on phones), the Parent crumb, the ✕ at the right end (aria-label and tooltip "Close", 44px on phones, 32px from md) and Esc (`useEscapeClose`) go to the same place: back in history when `backInHistory` and there is an in-app entry (keeps the list's month, filters and search), else `parent.to`. The crumb is a real link (ctrl / middle click opens a new tab). Never wraps: Parent shortens with an ellipsis, Current stays whole (`aria-current="page"`). `Crumb`: `{ label, to }`.
 - `Crumb`: one breadcrumb link (`label`, `to`).
 - `Tile({ label, value, note, loading, className })`: KPI tile inside the header card; skeleton while `loading`.
+- `PageSkeleton({ top, tiles })`: the header card placeholder while a tenant or unit loads.
+
+## detailNav.ts
+- `useGoBack(parent, backInHistory)`: `goBack()` leaves a detail page like its back arrow (back in history when opened from inside the app, else `parent.to`); used by `BackBreadcrumb` and after a Delete. `canGoBack()`.
+- `useTabParam(tabs)`: the tab in ?tab= (unknown or hidden: the first) and a setter that replaces the URL and keeps the router state. Tenant, unit and property pages.
 
 ## escapeClose.ts
 - `canEscapeClose(event, doc)`: true for a plain, single Esc when no modal, drawer or menu is open and focus isn't in a text field or select.
@@ -25,16 +30,19 @@ Pieces of the detail pages (`/properties/:id`, `/leases/:id`).
 - `RentReminderInput`, `RentReminderLinks`: its types.
 
 ## ContactLink.tsx
-- `ContactLink({ kind, value, wrap, empty })` (`empty`: shown without a value, a dash by default): a tenant's phone (`tel:` via `telHref`) or email (`mailto:` via `mailtoHref`) as a link to the user's own phone / email app, plus a 28px copy button (44px tap area) that shows "Phone number copied" / "Email copied" (`copyText`, works on plain http too; "Couldn't copy" info toast if both ways fail). Clicks and keys stop there, so it never opens the card or table row it sits in; `pointer-events-auto` makes it tappable inside a `ListCard`. Truncates with a tooltip, or wraps with `wrap`. Dash when empty. Used by the Tenants table, cards and drawer, the lease Tenants tab and the unit drawer.
+- `ContactLink({ kind, value, wrap, empty })` (`empty`: shown without a value, a dash by default): a tenant's phone (`tel:` via `telHref`) or email (`mailto:` via `mailtoHref`) as a link to the user's own phone / email app, plus a 28px copy button (44px tap area) that shows "Phone number copied" / "Email copied" (`copyText`, works on plain http too; "Couldn't copy" info toast if both ways fail). Clicks and keys stop there, so it never opens the card or table row it sits in; `pointer-events-auto` makes it tappable inside a `ListCard`. Truncates with a tooltip, or wraps with `wrap`. Dash when empty. Used by the Tenants table and cards and the lease Tenants tab.
 
 ## Missing.tsx
 - `NotSet`: muted "Not set" (a unit's null rent or floor area). `NotProvided({ what })`: muted "Not provided", or "Email not provided" where there is no label.
 
 ## ContactActions.tsx
-- `ContactActions({ name, phone, email })`: `ContactLink` as icon buttons: call (`tel:`), email (`mailto:`) and a ⋮ menu with "Copy phone number" / "Copy email". What is missing is left out; a phone without digits can only be copied. 44px on phones; sits on top of a row's stretched button. Used by the lease page's People card. `ContactActionsProps`.
+- `ContactActions({ name, phone, email })`: `ContactLink` as icon buttons: call (`tel:`), email (`mailto:`) and a ⋮ menu with "Copy phone number" / "Copy email". What is missing is left out; a phone without digits can only be copied. 44px on phones; sits on top of a row's stretched button. Used by the lease page's Leaseholders card, the unit page's primary tenant tile and the tenant page's Contact card. `ContactActionsProps`.
+
+## CopyButton.tsx
+- `CopyButton({ text, what })`: icon-only "Copy {what}" button (32px, 44px on phones) with the copy toast. For an `IconTile` action: lease number, property address, manager email.
 
 ## copyToast.ts
-- `copyWithToast(text, what, anchor?)`: `copyText`, then an "Email copied" toast, or how to copy it by hand. Used by `ContactLink`, `ContactActions` and the lease number.
+- `copyWithToast(text, what, anchor?)`: `copyText`, then an "Email copied" toast, or how to copy it by hand. Used by `ContactLink`, `ContactActions` and `CopyButton`.
 
 ## linkClass.ts
 - `linkFocus`: rounded keyboard-only focus ring with no offset (`focus-ring-tight`), so it doesn't touch the next word. For inline links and link-style buttons.

@@ -29,7 +29,7 @@ Small building blocks with no domain knowledge.
 | `CurrencyInput` | "$" prefix, right-aligned, formats on blur; digits and one dot, max 2 decimals, never `NaN` | `value: number \| ""`, `onChange(number \| "")` | Money inputs (rent, deposit, payment). Use with react-hook-form `Controller`. |
 | `Radio` | Styled radio button with label | `label`, native radio props (same `name` in a group, inside a labelled `role="radiogroup"`) | One choice among rows, e.g. the primary tenant. |
 | `Checkbox` | Styled checkbox with label | `label`, native checkbox props | Yes/no inside a form. |
-| `Toggle` | 40×22 switch | `checked`, `onChange(boolean)`, needs `aria-label` | On/off settings (auto-renew). |
+| `Toggle` | 40×22 switch (`role="switch"`, 44px tap area under md, dimmed when `disabled`) | `checked`, `onChange(boolean)`, `disabled`, needs `aria-label` or a `<label>` | On/off settings (auto-renew). |
 | `Kbd` | Keyboard hint (⌘K) | - | Shortcut hints. |
 | `Avatar` | Initials or image circle | `name`, `src`, `size` 24/32/40/56, `online` | People in lists and the sidebar. |
 | `Skeleton` | Shimmer block | `className` for size | Loading placeholders (no spinners). |
@@ -44,7 +44,7 @@ Atoms combined to do one job.
 
 | Component | What it does | Main props | When to use |
 | --- | --- | --- | --- |
-| `StatusBadge` | Maps a domain status to a tone and a friendly label | `domain` rent/lease/esign/ticket/priority/unit/insurance/approval/template, `status` (API enum for rent/lease/esign/unit/insurance/approval/ticket/priority, e.g. `UNDER_MAINTENANCE`, `EXPIRING`, `PENDING_APPROVAL`, `IN_PROGRESS`, `EMERGENCY`; lease also takes UI-only `EXPIRING` and `CANCELLED`, ticket UI-only `PAST_SLA`; template takes UI `DEFAULT`/`ACTIVE`/`ARCHIVED`), `children` (label override). `statusLabel` holds the labels. | Every status in a table or drawer. |
+| `StatusBadge` | Maps a domain status to a tone and a friendly label | `domain` rent (incl. VOID)/lease/esign/ticket/priority/unit/insurance/approval/template/deposit (HELD, PARTIALLY_RETURNED, RETURNED, KEPT, UI-only NOT_TRACKED), `status` (API enum for rent/lease/esign/unit/insurance/approval/ticket/priority, e.g. `UNDER_MAINTENANCE`, `EXPIRING`, `PENDING_APPROVAL`, `IN_PROGRESS`, `EMERGENCY`; lease also takes UI-only `EXPIRING` and `CANCELLED`, ticket UI-only `PAST_SLA`; template takes UI `DEFAULT`/`ACTIVE`/`ARCHIVED`), `children` (label override). `statusLabel` holds the labels. | Every status in a table or drawer. |
 | `FormField` | Label, control, help or error text | `label`, `htmlFor`, `required`, `help`, `error`, `action` | Wrap every form control. |
 | `SearchInput` | Input with a search icon | Input props, `shortcut` | Toolbar search. |
 | `SegmentedControl` | Button group with counts; scrolls sideways inside itself when too wide | `value`, `onChange`, `segments`, `aria-label` | Status filter (Rent Roll). |
@@ -55,6 +55,9 @@ Atoms combined to do one job.
 | `CardHeader` | Card title row | `title`, `description`, `action` | Top of a card. |
 | `KpiCard` | Label, big value, delta chip on its own line, then the note (each block on its own line). In a `KpiRow` it is a 4-row subgrid, so labels, values, chips and notes line up across a row | `label`, `value`, `tone`, `delta`, `note`, `onClick`/`href`, `renderLink` (router link for `href`) | KPI row cards. |
 | `HeroStatCard` | Big stat with colored top border; the value is 24 / 32 / 48px by the card's own width (container query) so "$42,500.00" always fits | `label`, `value`, `note`, `tone` | Total due / collected / outstanding. |
+| `SectionCard` | Titled card (`<section>`): H3 title, small subtitle under it, optional action top right (wraps under on narrow widths), then the content | `title`, `subtitle`, `action`, `padding` (`compact` in drawers) | Detail pages and drawers (lease Details, property Overview, unit and tenant drawers). |
+| `IconTile` | Bordered tile: icon in a soft box (or an Avatar with `bareIcon`), small label, bold value (wraps), optional badge, note and action; the action drops to its own line when the tile is too narrow; `onOpen` stretches a button over the tile (actions stay clickable) | `icon`, `bareIcon`, `label`, `value`, `valueClassName`, `note`, `badge`, `action`, `onOpen`, `openLabel` | Facts on detail cards. Pass a "Not set" / "Not provided" text for a missing value, never a dash. |
+| `IconTileGrid` | Grid of IconTiles: 1 per row on phones, 2 from sm (640px) | `className` | Around IconTiles. |
 | `KeyValueList` | Two-column label/value grid | `items`, `labelWidth` | Details in drawers. |
 | `InternalNote` | Amber "not visible to tenant" note | `author`, `date` | Staff-only notes. |
 | `EmptyState` | Icon, title, sentence, action | `icon`, `title`, `description`, `action` | Empty lists (used by DataTable). |
@@ -145,7 +148,7 @@ Based on docs/BRIEF.md (admin portal: login, Properties, Units, Tenants, Leases,
 
 **Used**
 - Atoms: Button, LinkButton, Badge, Tag, Count, Delta, Typography (H1-H3, Body, Small, Caption, Overline, Display, Num, Dash), Input, Textarea, Select, CurrencyInput, Checkbox, Radio, Toggle, Avatar, Skeleton, Divider, CollectionProgress, Bar
-- Molecules: StatusBadge, FormField, SearchInput, SegmentedControl, Tabs, FilterChip, Card, CardHeader, KpiCard, HeroStatCard, KeyValueList, EmptyState, InlineError, Toaster + toast, KebabMenu, Stepper (Add Lease wizard), ThemeSwitch (Topbar), TimelineItem (ticket history)
+- Molecules: StatusBadge, FormField, SearchInput, SegmentedControl, Tabs, FilterChip, Card, CardHeader, SectionCard, IconTile, IconTileGrid, KpiCard, HeroStatCard, KeyValueList, EmptyState, InlineError, Toaster + toast, KebabMenu, Stepper (Add Lease wizard), ThemeSwitch (Topbar), TimelineItem (ticket history)
 - Organisms: Sidebar, Topbar, PageHeader, Toolbar, KpiRow, DataTable, Pagination, Drawer, Modal, ConfirmDialog, BarChart, StackedBar
 - Templates: WorkspaceShell, AuthLayout, SettingsLayout
 - Dashboard: HeroStatCard, CollectionProgress, BarChart, StackedBar (RentCollectionHero is not used: see Known gaps)
@@ -267,3 +270,8 @@ Facts seen in the code. Fixed gaps are removed from this list and logged in "Cha
 | 2026-11-25 | `atoms/Progress.tsx` (`Bar`) | New `tone="neutral"`, and optional `label` + `valueText` that give it `role="progressbar"` with a name and a spoken value. Without them nothing changes. `BarProps` exported. | The lease page's Term card needs a grey bar for ended leases and a bar screen readers can read. |
 | 2026-11-25 | `molecules/StatusBadge.tsx` | lease domain: new UI-only `CANCELLED`, neutral "Cancelled". The others unchanged. | A lease ended before it started (`cancelledOn`) must not read as Ended or Terminated. |
 | 2026-11-25 | `atoms/Input.tsx` | New `Radio` (`RadioProps`): a round `Checkbox`, same sizes, colors and focus ring. Nothing else changed. | Add old lease: exactly one Primary among the tenant rows; there was no radio button. |
+| 2026-11-26 | `molecules/Cards.tsx` | New `SectionCard` (titled `<section>` card: H3 title, subtitle under it, optional action top right that wraps on narrow widths), `IconTile` (bordered tile: icon box or Avatar, label, bold value that wraps, badge, note, action slot that drops to its own line when the tile is too narrow, optional stretched `onOpen` button) and `IconTileGrid` (1 per row, 2 from sm). Existing cards unchanged. | Client feedback: one "card + icon tile" style for the lease Details tab, property Overview and the unit and tenant drawers; `CardHeader` puts its description above the title as an overline, and there was no tile with an icon and an action. |
+| 2026-11-26 | `atoms/Input.tsx` (`Toggle`) | Dimmed with a not-allowed cursor when `disabled`; the tap area grows to 44×44 under md (`after:`). Same props and look otherwise. | The lease Term card's auto-renew switch saves at once: it is disabled while saving, and it must be easy to tap on phones. |
+| 2026-11-27 | `molecules/StatusBadge.tsx` | rent domain: new `VOID`, neutral "Void". The others unchanged. | Ledger cards (GET /leases/:id/ledger `cards[].status`) can be VOID: a voided charge shows grey with our badge style. |
+| 2026-11-26 | `molecules/StatusBadge.tsx` | New `deposit` domain (`DepositStatus` type): HELD info "Held", PARTIALLY_RETURNED warning "Partially returned", RETURNED success "Returned", KEPT neutral "Kept", UI-only NOT_TRACKED neutral "Not tracked". Other domains unchanged. | Lease deposits (`Lease.depositStatus`, GET /leases/:id/deposit) need a status badge; keeps the colours out of feature code. |
+| 2026-11-26 | `molecules/Cards.tsx` (`SectionCard`) | The action area gets `max-w-full`, so several action buttons wrap inside the card. One button looks the same. | The lease Deposit card ("Upload refund proof" + "Edit settlement") pushed its second button past the card's edge at 375px. |

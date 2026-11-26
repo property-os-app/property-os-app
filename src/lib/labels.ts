@@ -8,7 +8,7 @@ import type { UserRole } from "@/types/auth";
 import type { LeaseStatus, PaymentFrequency, SignatureStatus } from "@/types/lease";
 import type { MaintenancePriority, MaintenanceStatus } from "@/types/maintenance";
 import type { ExpenseStatus, ExpenseType } from "@/types/expense";
-import type { ChargeType, LedgerEntryKind, PaymentMethod } from "@/types/ledger";
+import type { ChargeType, LedgerEntryKind, SelectablePaymentMethod } from "@/types/ledger";
 import type { PropertyType } from "@/types/property";
 import type { RentRollStatus } from "@/types/rentRoll";
 import type { ContactMethod, TenantType } from "@/types/tenant";
@@ -79,8 +79,8 @@ export const paymentFrequencyLabels: Record<PaymentFrequency, string> = {
   QUARTERLY: "Quarterly",
 };
 
-/** In the API's order (Other last): every Method select lists them like this. */
-export const paymentMethodLabels: Record<PaymentMethod, string> = {
+/** In the API's order (Other last): every Method select lists them like this. Never DEPOSIT (system only, see paymentMethodLabel). */
+export const paymentMethodLabels: Record<SelectablePaymentMethod, string> = {
   ACH: "ACH bank transfer",
   CHECK: "Check",
   CREDIT_CARD: "Credit card",
@@ -96,13 +96,14 @@ export function readableValue(value: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-/** How a payment method is shown: its label, or a readable fallback for a value this app doesn't know (never the raw value). */
+/** How a payment method is shown: its label, "Deposit applied" for DEPOSIT, or a readable fallback for a value this app doesn't know (never the raw value). */
 export function paymentMethodLabel(method: string): string {
-  return Object.hasOwn(paymentMethodLabels, method) ? paymentMethodLabels[method as PaymentMethod] : readableValue(method);
+  if (method === "DEPOSIT") return "Deposit applied";
+  return Object.hasOwn(paymentMethodLabels, method) ? paymentMethodLabels[method as SelectablePaymentMethod] : readableValue(method);
 }
 
 /** The hint under a reference field for methods whose reference is an app's transaction ID; undefined for the others. */
-export function referenceHint(method: PaymentMethod | "" | null | undefined): string | undefined {
+export function referenceHint(method: SelectablePaymentMethod | "" | null | undefined): string | undefined {
   return method === "VENMO" || method === "ZELLE" ? "Transaction ID (optional)" : undefined;
 }
 

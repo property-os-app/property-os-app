@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { Avatar, Button, Caption, Select, Skeleton, Small } from "@/components/atoms";
-import { Card, CardHeader, InlineError, toast } from "@/components/molecules";
+import { Avatar, Button, Caption, Select, Skeleton } from "@/components/atoms";
+import { IconTile, InlineError, SectionCard, toast } from "@/components/molecules";
 import { ConfirmDialog } from "@/components/organisms";
 import { errorText } from "@/lib/api";
+import { CopyButton } from "@/features/shared/CopyButton";
 import { useAssignManager, useManagers, usePropertyManagers, useRemoveManager } from "@/features/properties/hooks";
 import type { ManagerSummary } from "@/types/manager";
 import type { Property } from "@/types/property";
 
-/** "Managers" card on the property detail. OWNER (canAssign) also gets Remove per manager and the Assign select. */
+/** "Managers" card on the property detail: a tile per manager (email with Copy). OWNER (canAssign) also gets Remove per manager and the Assign select. */
 export function PropertyManagersCard({ property, canAssign }: { property: Property; canAssign: boolean }) {
   const managers = usePropertyManagers(property.id);
   const allManagers = useManagers();
@@ -41,8 +42,7 @@ export function PropertyManagersCard({ property, canAssign }: { property: Proper
   };
 
   return (
-    <Card>
-      <CardHeader title="Managers" />
+    <SectionCard title="Managers" subtitle="Who manages this property">
       <div className="flex flex-col gap-4">
         {managers.isPending ? (
           <Skeleton className="h-10" />
@@ -53,24 +53,33 @@ export function PropertyManagersCard({ property, canAssign }: { property: Proper
         ) : (
           <ul className="m-0 flex list-none flex-col gap-3 p-0">
             {managers.data.map((m) => (
-              <li key={m.id} className="flex items-center gap-3">
-                <Avatar name={m.name} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-semibold text-text-primary">{m.name}</div>
-                  <Small className="block truncate">{m.email}</Small>
-                </div>
-                {canAssign && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      remove.reset();
-                      setRemoving(m);
-                    }}
-                  >
-                    Remove
-                  </Button>
-                )}
+              <li key={m.id}>
+                <IconTile
+                  bareIcon
+                  icon={<Avatar name={m.name} size={40} />}
+                  label="Property manager"
+                  value={m.name}
+                  note={m.email}
+                  action={
+                    <>
+                      <CopyButton text={m.email} what="email" />
+                      {canAssign && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="max-md:h-11"
+                          aria-label={`Remove ${m.name}`}
+                          onClick={() => {
+                            remove.reset();
+                            setRemoving(m);
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </>
+                  }
+                />
               </li>
             ))}
           </ul>
@@ -127,6 +136,6 @@ export function PropertyManagersCard({ property, canAssign }: { property: Proper
         busy={remove.isPending}
         error={remove.isError ? errorText(remove.error) : null}
       />
-    </Card>
+    </SectionCard>
   );
 }

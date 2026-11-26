@@ -24,7 +24,7 @@ import { useYearFullscreen } from "@/features/rent-roll/useYearFullscreen";
 import { YearLegend } from "@/features/rent-roll/YearLegend";
 import { YearSummary } from "@/features/rent-roll/YearSummary";
 import { YearTable } from "@/features/rent-roll/YearTable";
-import { YearUnitDrawer } from "@/features/rent-roll/YearUnitDrawer";
+import { unitPathFromRentRoll, type UnitPageState } from "@/features/units/origin";
 import {
   chipsFromParam,
   currentYearUTC,
@@ -144,15 +144,14 @@ export function RentRollYearView() {
   // Band colours by the full property list by name, then id (the groups' order, so neighbours differ): independent of the filters, same on every view.
   const accentOrder = useMemo(() => accentOrderOf(properties.data ?? []), [properties.data]);
 
-  const [openUnit, setOpenUnit] = useState<{ id: string; unitNumber: string; propertyName: string } | null>(null);
-  // A row opens its lease on the Ledger tab (by unit: the current one); vacant / reserved units the Unit drawer.
+  // A row opens its lease on the Ledger tab (by unit: the current one); vacant / reserved units the unit page. Both keep the year in the URL.
   const openLease = (leaseId: string) => void navigate(yearLeasePath(leaseId, year, "ledger"), { state: { from: "rent-roll" } satisfies LeasePageState });
   const onOpen = (r: RentRollYearRow) => {
     if (r.lease) openLease(r.lease.id);
-    else setOpenUnit({ id: r.unit.id, unitNumber: r.unit.unitNumber, propertyName: r.unit.property.name });
+    else void navigate(unitPathFromRentRoll(r.unit.id, String(year)), { state: { from: "rent-roll" } satisfies UnitPageState });
   };
 
-  // Full screen (desktop table only): same data, filters and columns; the Unit drawer opens over it, a lease page leaves it.
+  // Full screen (desktop table only): same data, filters and columns; opening a lease or a unit page leaves it.
   const fullscreenButton = useRef<HTMLButtonElement>(null);
   const fullscreen = useYearFullscreen(fullscreenButton);
 
@@ -320,7 +319,6 @@ export function RentRollYearView() {
       )}
 
       {paying && <RecordPaymentModal targets={targets} onClose={() => setPaying(false)} />}
-      {openUnit && <YearUnitDrawer unitId={openUnit.id} unitNumber={openUnit.unitNumber} propertyName={openUnit.propertyName} onClose={() => setOpenUnit(null)} />}
     </>
   );
 }

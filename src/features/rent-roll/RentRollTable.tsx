@@ -10,6 +10,7 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { BalanceText } from "@/features/ledger/LedgerParts";
 import { balanceText } from "@/features/ledger/balance";
 import { paidCaption, rowTotals, statusDate, type UpcomingRow } from "@/features/rent-roll/stats";
+import { chargedLine } from "@/features/rent-roll/yearStats";
 import { MergedSortHeader } from "@/features/shared/MergedSortHeader";
 import type { RentRollRow } from "@/types/rentRoll";
 
@@ -138,7 +139,18 @@ export function RentRollTable({ cards, totalRows, showProperty, pastMonth, billi
         sortable: true,
         cell: (r) => <PreviousBalance value={r.openingBalance} />,
       },
-      { key: "charged", header: "Rent due", align: "right", cell: (r) => <Num>{formatCurrency(r.charged)}</Num> },
+      {
+        key: "charged",
+        header: "Rent due",
+        align: "right",
+        // The tooltip and screen readers get the month's money: charged, rent paid (whenever) and the cash received in it.
+        cell: (r) => (
+          <span title={chargedLine(r)}>
+            <Num>{formatCurrency(r.charged)}</Num>
+            <span className="sr-only"> · {chargedLine(r)}</span>
+          </span>
+        ),
+      },
       {
         key: "paid",
         header: "Paid",
@@ -146,7 +158,7 @@ export function RentRollTable({ cards, totalRows, showProperty, pastMonth, billi
         sortable: true,
         cell: (r) => (
           <WithCaption caption={paidCaption(r)} wrap>
-            <Num>{formatCurrency(r.paid)}</Num>
+            <Num title={chargedLine(r)}>{formatCurrency(r.paid)}</Num>
           </WithCaption>
         ),
       },
@@ -246,6 +258,8 @@ export function RentRollTable({ cards, totalRows, showProperty, pastMonth, billi
                     </span>
                   ),
                 },
+                // What was applied to this month's charges, whenever it was paid (`paid` above is the cash received in the month).
+                { label: "Rent paid", value: <Num>{`${formatCurrency(r.rentPaid)} of ${formatCurrency(r.charged)}`}</Num> },
                 ...(toCents(r.openingBalance) !== 0 ? [{ label: "Previous balance", value: <PreviousBalance value={r.openingBalance} /> }] : []),
               ]}
               actions={menu(r)}

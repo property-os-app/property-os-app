@@ -7,7 +7,7 @@ export interface TenantDeleteDialogProps {
   /** The tenant to delete; null keeps the dialog closed. */
   tenant: { id: string; fullName: string } | null;
   onClose: () => void;
-  /** After a successful delete (e.g. close the drawer). */
+  /** After a successful delete (e.g. leave the tenant page). */
   onDeleted?: () => void;
 }
 

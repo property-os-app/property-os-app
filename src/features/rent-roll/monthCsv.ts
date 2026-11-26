@@ -3,7 +3,7 @@
  * loaded: one line per lease, in the API's order, then a "Total" line. Always the whole month for the selected property
  * (search, status and sort are ignored), like the yearly CSV. Same rules: BOM, formula guard, money as plain numbers.
  */
-import { formatMonth } from "@/lib/format";
+import { formatMonth, toCents } from "@/lib/format";
 import { leaseStatusLabels, rentStatusLabels, unitLabel } from "@/lib/labels";
 import { centsToCsv, csvLines, csvMoney, csvText, propertySuffix, saveCsv } from "@/features/rent-roll/rentRollCsv";
 import { rowTotals } from "@/features/rent-roll/stats";
@@ -20,6 +20,8 @@ export const MONTH_CSV_HEADER = [
   "Previous balance",
   "Charged",
   "Paid",
+  "Rent paid",
+  "Remaining",
   "Balance",
   "Status",
   "Oldest unpaid due date",
@@ -40,6 +42,8 @@ function rowCells(r: RentRollRow): string[] {
     csvMoney(r.openingBalance),
     csvMoney(r.charged),
     csvMoney(r.paid),
+    csvMoney(r.rentPaid),
+    csvMoney(r.remaining),
     csvMoney(r.balance),
     rentStatusLabels[r.status],
     r.oldestUnpaidDueDate ?? "",
@@ -49,12 +53,18 @@ function rowCells(r: RentRollRow): string[] {
 }
 
 /**
- * The CSV text (CRLF lines, no BOM: `downloadMonthCsv` adds it). The Total line sums Previous balance, Charged, Paid and
- * Balance in integer cents over every row (like the table's Totals row; the API's summary has no per-column totals).
+ * The CSV text (CRLF lines, no BOM: `downloadMonthCsv` adds it). The Total line sums Previous balance, Charged, Paid, Rent
+ * paid, Remaining and Balance in integer cents over every row (like the table's Totals row; the API's summary has no per-column totals).
  */
 export function buildMonthCsv(data: RentRollResponse): string {
   const t = rowTotals(data.rows);
-  const total = ["Total", "", "", "", "", "", "", centsToCsv(t.openingCents), centsToCsv(t.chargedCents), centsToCsv(t.paidCents), centsToCsv(t.owedCents - t.creditCents), "", "", "", ""];
+  const sum = (pick: (r: RentRollRow) => string) => data.rows.reduce((n, r) => n + toCents(pick(r)), 0);
+  const total = [
+    "Total", "", "", "", "", "", "",
+    centsToCsv(t.openingCents), centsToCsv(t.chargedCents), centsToCsv(t.paidCents),
+    centsToCsv(sum((r) => r.rentPaid)), centsToCsv(sum((r) => r.remaining)),
+    centsToCsv(t.owedCents - t.creditCents), "", "", "", "",
+  ];
   return csvLines([MONTH_CSV_HEADER, ...data.rows.map(rowCells), total]);
 }
 

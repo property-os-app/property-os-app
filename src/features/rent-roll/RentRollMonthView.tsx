@@ -27,6 +27,8 @@ import type { LeasePageState } from "@/features/leases/LeasePage";
 import {
   collectionBreakdown,
   collectionNote,
+  depositAppliedNote,
+  depositsHeldNote,
   isPastMonth,
   monthFromParam,
   owingCount,
@@ -285,6 +287,7 @@ export function RentRollMonthView() {
               <>
                 {summary?.collectionRate === null ? "Nothing billed yet" : `of ${formatCompactCurrency(summary?.totalRentDue)} due`}
                 {collectedNote && <span className="block">{collectedNote}</span>}
+                {depositAppliedNote(summary?.depositApplied) && <span className="block">{depositAppliedNote(summary?.depositApplied)}</span>}
               </>
             ) : undefined
           }
@@ -306,7 +309,7 @@ export function RentRollMonthView() {
         <KpiCard
           label="Deposits held"
           value={kpi(formatCompactCurrency(summary?.securityDepositsHeld))}
-          note={ready ? `${plural(summary?.activeDepositCount ?? 0, "active lease")}${isCurrent ? "" : ", as of today"}` : undefined}
+          note={ready ? depositsHeldNote(summary?.petDepositsHeld, summary?.activeDepositCount ?? 0, isCurrent) : undefined}
         />
       </RentRollKpiRow>
 

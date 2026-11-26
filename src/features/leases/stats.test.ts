@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canDeleteLease, coTenantEmails, dueState, hasLedger, isOldLease, notDueCaption } from "@/features/leases/stats";
+import { autoRenewEditable, canDeleteLease, coTenantEmails, dueState, hasLedger, isOldLease, notDueCaption } from "@/features/leases/stats";
 import type { Lease } from "@/types/lease";
 
 const TODAY = "2026-10-24";
@@ -76,5 +76,15 @@ describe("old (history-only) lease rules", () => {
     expect(canDeleteLease(draft, 2)).toBe(false);
     expect(canDeleteLease(ended, 0)).toBe(false);
     expect(canDeleteLease(active, 0)).toBe(false);
+  });
+});
+
+describe("autoRenewEditable", () => {
+  it("DRAFT and ACTIVE only, never an old lease", () => {
+    expect(autoRenewEditable({ status: "DRAFT", isHistorical: false })).toBe(true);
+    expect(autoRenewEditable({ status: "ACTIVE", isHistorical: false })).toBe(true);
+    expect(autoRenewEditable({ status: "ENDED", isHistorical: false })).toBe(false);
+    expect(autoRenewEditable({ status: "TERMINATED", isHistorical: false })).toBe(false);
+    expect(autoRenewEditable({ status: "ENDED", isHistorical: true })).toBe(false);
   });
 });

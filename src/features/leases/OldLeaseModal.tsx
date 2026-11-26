@@ -18,7 +18,7 @@ import { useUnits } from "@/features/units/hooks";
 import type { Unit } from "@/types/unit";
 
 export interface OldLeaseModalProps {
-  /** From the unit drawer: the unit is fixed. */
+  /** From the unit page: the unit is fixed. */
   presetUnit?: Unit;
   /** "Unit 4B, Maple Court" for the fixed unit. */
   presetUnitLine?: string;
@@ -204,6 +204,9 @@ export function OldLeaseModal({ presetUnit, presetUnitLine, presetPropertyId, on
         </FormField>
         <FormField label="Security deposit" htmlFor="ol-deposit" help={errors.deposit ? undefined : "Optional."} error={errors.deposit}>
           <CurrencyInput id="ol-deposit" value={values.deposit} disabled={busy} onChange={(v) => set("deposit", v)} />
+        </FormField>
+        <FormField label="Pet deposit" htmlFor="ol-pet-deposit" help={errors.petDeposit ? undefined : "Optional."} error={errors.petDeposit}>
+          <CurrencyInput id="ol-pet-deposit" value={values.petDeposit} disabled={busy} onChange={(v) => set("petDeposit", v)} />
         </FormField>
 
         <FormField label="Notes" htmlFor="ol-notes" error={errors.notes} className="md:col-span-2">

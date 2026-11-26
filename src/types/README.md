@@ -39,10 +39,16 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 ## lease.ts
 - `LeaseStatus`, `SignatureStatus`, `PaymentFrequency`: lease enums.
 - `LeaseTenant`: one tenant on a lease (`isPrimary`; `email` null = none).
-- `Lease`: one row from GET /leases (dates "YYYY-MM-DD", money strings with 2 decimals, `tenants` primary first then by name, `endingSoon`, `balance`, `templateVersionId`, `template`, `isHistorical` true for an old (history-only) lease, `endedOn` the day it actually ended or null, `cancelledOn` set when it was ended before it started).
+- `Lease`: one row from GET /leases (dates "YYYY-MM-DD", money strings with 2 decimals, `tenants` primary first then by name, `endingSoon`, `balance`, `templateVersionId`, `template`, `isHistorical` true for an old (history-only) lease, `endedOn` the day it actually ended or null, `cancelledOn` set when it was ended before it started, `petDeposit` optional money, `depositStatus` HELD / PARTIALLY_RETURNED / RETURNED / KEPT or null).
 - `LeaseTemplateRef`: the lease's embedded template `{ id, name, version, archived }`; `version` is the pinned one.
-- `LeaseCreateBody`: POST /leases body (only `unitId` required; `status` DRAFT or ACTIVE). `LeaseUpdateBody`: PATCH body (never `status`; dates, rent, deposit, rentDueDay, notes, primaryTenantId, templateId may be null; `endedOn` only on a closed lease). Both take `templateId`. `LeaseEndBody`: `{ status?: ENDED | TERMINATED, endedOn? }`.
+- `LeaseCreateBody`: POST /leases body (only `unitId` required; `status` DRAFT or ACTIVE). `LeaseUpdateBody`: PATCH body (never `status`; dates, rent, deposit, rentDueDay, notes, primaryTenantId, templateId may be null; `endedOn` only on a closed lease). Both take `templateId`. `LeaseEndBody`: `{ status?: ENDED | TERMINATED, endedOn?, voidChargesAfterEnd?, deposit? }`; `LeaseEnded`: its answer (the lease plus `voidedCharges` and `depositSettlement` when asked). Create, PATCH and history bodies take `petDeposit` (PATCH: null clears it).
 - `LeaseHistoryBody`: POST /leases/history `data` (unit, start, end, at least one tenant and exactly one primary; `newTenants` are `NewLeaseTenant`s). `OldLeaseCreated`: its answer (the lease plus `document` or null).
+
+## deposit.ts
+- `DepositStatus`, `DepositDeduction`, `DepositSettlement`, `DepositResponse`: GET / PUT /leases/:id/deposit (total held, tracked, status, open balance, `maxApplicable`, `appliedExceedsBalance`, refund proof `documentCount`, the saved settlement and `suggested`).
+- `DepositBody`: the PUT body (also `deposit` on POST /leases/:id/end).
+- `EndPreview`, `EndPreviewCharge`: GET /leases/:id/end-preview (`chargesToVoid`, `otherChargesAfterEnd`, balance now / after the voids, the deposit).
+- `VoidedCharge`, `VoidAfterEndResult`: POST /leases/:id/void-charges-after-end answer (and `voidedCharges` on /end).
 
 ## leaseTemplate.ts
 - `LeaseTemplateListItem`: one row of GET /lease-templates (`defaultTermMonths`, `isDefault`, `archivedAt`, `currentVersion`, `leaseCount`).
@@ -56,14 +62,14 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 - `BillingRunResponse`, `BilledCharge`: POST /settings/billing/run (run day, bill-through date, created count, skipped counts, the created charges).
 
 ## ledger.ts
-- `ChargeType`, `PaymentMethod`, `LedgerEntryKind`: money enums.
+- `ChargeType`, `PaymentMethod`, `LedgerEntryKind`: money enums. `PaymentMethod` includes the system-only `DEPOSIT`; `SelectablePaymentMethod` is the 7 a user can pick (every Method select and request body).
 - `Charge`, `Payment`: POST charge / payment answers (money strings, "YYYY-MM-DD" dates, void fields). `Charge.createdById` / `createdBy` are null on rent billed automatically (show "Auto-billed"). `Payment.documentCount`: its files. `PaymentRecorded`: the POST answer, with `document` or null.
-- `LedgerEntry`, `LedgerResponse`: GET /leases/:id/ledger (entries oldest first; `runningBalance` may be negative; summary with balance, totals, monthly rent). `documentCount`: a payment's files, null on charges.
+- `LedgerEntry`, `LedgerResponse`: GET /leases/:id/ledger (entries oldest first; `runningBalance` may be negative; summary with balance, totals, monthly rent). `documentCount`: a payment's files, null on charges. Also `cards` (`LedgerCard`, `LedgerCardStatus`, `LedgerCardPayment`: one per charge, FIFO, calculated on every read), `paymentAllocations` (`LedgerPaymentAllocation`) and `summary.credit`.
 - `ChargeCreateBody` (`periodMonth` only on RENT), `PaymentCreateBody`, `VoidBody` (`reason`): request bodies. `PaymentCreateBody.documentCategory`: only with a file.
 
 ## rentRoll.ts
 - `RentRollStatus`: `PAID | PARTIAL | UNPAID | OVERDUE | NOT_BILLED`.
-- `RentRollRow`, `RentRollResponse`: GET /rent-roll (rows with `openingBalance`, `charged`, `paid`, `balance`, plus a summary that ignores status and search).
+- `RentRollRow`, `RentRollResponse`: GET /rent-roll (rows with `openingBalance`, `charged`, `paid`, `balance`, plus a summary that ignores status and search). Rows and yearly cells (`RentRollYearCell`) also carry `rentPaid` (applied to the month's charges, whenever paid) and `remaining`; `paid` stays the cash received in the month. The summary also has `petDepositsHeld` and `depositApplied`; `RentRollYearLease` has `endedOn`, `cancelledOn` and `petDeposit`.
 - `RentRollYearResponse` (GET /rent-roll/year): a union told apart by `rowsBy` (`RentRollYearRowsBy`): `"unit"` with `RentRollYearUnitRow`s, `"lease"` with `RentRollYearLeaseRow`s (one per lease plus VACANT_UNIT rows; plain `RentRollYearCell`s, no `leases`). `RentRollYearRow` is either. `RentRollYearUnitRow`, one per unit (`kind` LEASE / VACANT_UNIT, `unit` with market `monthlyRent`, the current `lease` or null, `leases` = `RentRollYearUnitLease`s of the year with `monthsCovered`, 12 merged `RentRollYearUnitCell`s (a `RentRollYearCell` plus `leaseIds` / `leaseId`), totals, `lateFees`, `vacantMonths`, `daysToLeaseEnd`, `renewalAlert`, `nextLease`), `RentRollYearTotals` (per property and grand), `availableYears`. Cell status `RentRollYearCellStatus` adds `FUTURE | VACANT | OUTSIDE_LEASE`; `RenewalAlert` is `ENDED | ENDS_SOON`.
 
 ## vendor.ts

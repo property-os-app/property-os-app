@@ -82,7 +82,7 @@ Links that open the user's own phone and email apps (no backend).
 ## labels.ts
 - One `...Labels` map per enum in ../property-os-api/docs/frontend-handoff/API.md section 2 (`propertyTypeLabels`, `unitTypeLabels` "1 BR", `paymentMethodLabels` "ACH bank transfer" (the API's order, Other last), `chargeTypeLabels`, `rentStatusLabels`, `priorityLabels`, `ticketStatusLabels` (flow order), ...). Status labels come from the design system `statusLabel`.
 - `labelOptions(labels)`: `[{ value, label }]` for a Select.
-- `paymentMethodLabel(method)`: how a method is shown; an unknown value gets a readable fallback. `readableValue(value)`: "APPLE_PAY" -> "Apple pay". `referenceHint(method)`: "Transaction ID (optional)" for Venmo and Zelle.
+- `paymentMethodLabel(method)`: how a method is shown ("Deposit applied" for the system-only DEPOSIT); an unknown value gets a readable fallback. `paymentMethodLabels` lists only the 7 methods a user can pick, so no select ever offers DEPOSIT. `readableValue(value)`: "APPLE_PAY" -> "Apple pay". `referenceHint(method)`: "Transaction ID (optional)" for Venmo and Zelle.
 - `plural(count, singular, plural?)`: "1 unit" / "3 units".
 - `unitLabel(unitNumber)`: how a unit is named everywhere: "Unit " only when the number starts with a digit ("2" -> "Unit 2", "4B" -> "Unit 4B"); otherwise as entered ("Unit 1", "UNIT 1", "House", "Office"), so nothing reads "Unit Unit 1".
 - `unitLayout(unitType, bathrooms)`: "1 bd / 1 ba", "Studio / 1 ba", or "3 bd" when bathrooms is null.

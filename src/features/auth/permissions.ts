@@ -20,6 +20,7 @@ export type Action =
   | "charge.create"
   | "payment.create"
   | "entry.void"
+  | "deposit.settle"
   | "template.manage"
   | "vendor.manage"
   | "expense.record"
@@ -32,6 +33,7 @@ export type Action =
 /**
  * The backend permission key each action needs (API.md, Permissions). null = OWNER only, never a switch.
  * lease.edit also covers activate, end and delete draft, and picking a lease template; charge.create also covers billing a partial month.
+ * deposit.settle (money.record) saves a deposit settlement, also inside End lease; entry.void also covers voiding the rent after the end.
  * template.manage covers every lease template write (create, new version, details, default, archive, delete, live preview).
  * vendor.manage covers create, edit, archive, unarchive and delete. expense.record only gates "Add Expense": every expense
  * button comes from the expense's allowedActions. entry.void (money.void) also voids expenses. ticket.manage only gates
@@ -53,6 +55,7 @@ const ACTION_KEYS: Record<Action, string | null> = {
   "charge.create": "money.record",
   "payment.create": "money.record",
   "entry.void": "money.void",
+  "deposit.settle": "money.record",
   "template.manage": "templates.manage",
   "vendor.manage": "vendors.manage",
   "expense.record": "expenses.record",

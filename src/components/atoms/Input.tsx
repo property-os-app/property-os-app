@@ -135,7 +135,7 @@ export interface ToggleProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonE
   onChange: (checked: boolean) => void;
 }
 
-/** Switch, 40×22. Always give it an aria-label or wrap in a label. */
+/** Switch, 40×22 (44px tap area under md). Always give it an aria-label or wrap in a label. `disabled`: dimmed, no click. */
 export function Toggle({ checked, onChange, className, ...props }: ToggleProps) {
   return (
     <button
@@ -144,7 +144,9 @@ export function Toggle({ checked, onChange, className, ...props }: ToggleProps) 
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative h-[22px] w-10 shrink-0 rounded-pill border-0 transition-colors duration-fast focus-visible:focus-ring",
+        "relative h-[22px] w-10 shrink-0 cursor-pointer rounded-pill border-0 transition-colors duration-fast focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-50",
+        // Phones: the tap area grows to 44×44 around the 40×22 track.
+        "max-md:after:absolute max-md:after:-inset-x-0.5 max-md:after:-inset-y-[11px]",
         checked ? "bg-success" : "bg-border-strong",
         className,
       )}

@@ -1,8 +1,8 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
-import { Building2, Pencil, Plus, Trash2 } from "lucide-react";
-import { Avatar, Button, Caption, Dash, H1, Num, Skeleton, Small } from "@/components/atoms";
-import { Card, CardHeader, EmptyState, InlineError, KebabMenu, KeyValueList, Tabs, toast } from "@/components/molecules";
+import { Building2, CalendarDays, Landmark, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import { Avatar, Button, Caption, H1, Num, Skeleton, Small } from "@/components/atoms";
+import { Card, CardHeader, EmptyState, IconTile, IconTileGrid, InlineError, KebabMenu, SectionCard, Tabs, toast } from "@/components/molecules";
 import { ConfirmDialog } from "@/components/organisms";
 import { usePageTitle } from "@/app/pageTitle";
 import { ApiError, errorText } from "@/lib/api";
@@ -19,14 +19,17 @@ import { PropertyFormModal } from "@/features/properties/PropertyFormModal";
 import { PropertyManagersCard } from "@/features/properties/PropertyManagersCard";
 import { PropertyUnitsTable } from "@/features/properties/PropertyUnitsTable";
 import { activeRentCentsByProperty, buildUnitRows, countUnits, formatAddress, needsAttention, occupancy } from "@/features/properties/stats";
+import { CopyButton } from "@/features/shared/CopyButton";
 import { BackBreadcrumb, Tile } from "@/features/shared/DetailParts";
 import { textLink } from "@/features/shared/linkClass";
 import { useUnits } from "@/features/units/hooks";
-import { UnitDrawer } from "@/features/units/UnitDrawer";
+import { useTabParam } from "@/features/shared/detailNav";
+import type { UnitPageState } from "@/features/units/origin";
 import { UnitFormModal } from "@/features/units/UnitFormModal";
 import type { Property } from "@/types/property";
 
 type Tab = "overview" | "units" | "documents";
+const TABS: Tab[] = ["overview", "units", "documents"];
 
 /** Router state from the Properties list (cards and table): back goes back in history, so its filters and search stay. */
 export interface PropertyPageState {
@@ -105,12 +108,13 @@ function PropertyDetail({ property }: { property: Property }) {
   const del = useDeleteProperty();
   const documents = useDocuments({ owner: "properties", ownerId: property.id });
 
-  const [tab, setTab] = useState<Tab>("overview");
+  // In ?tab=, so Back from a unit page returns to the same tab.
+  const [tab, setTab] = useTabParam(TABS);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [addingUnit, setAddingUnit] = useState(false);
-  const [openUnitId, setOpenUnitId] = useState<string | null>(null);
-  const openUnit = units.data?.find((u) => u.id === openUnitId);
+  const openUnit = (unitId: string) =>
+    void navigate(`/units/${encodeURIComponent(unitId)}`, { state: { from: "property", property: { id: property.id, name: property.name } } satisfies UnitPageState });
   const canAddUnit = can(user, "unit.create");
 
   const rows = useMemo(() => buildUnitRows(units.data ?? [], leases.data ?? []), [units.data, leases.data]);
@@ -235,7 +239,36 @@ function PropertyDetail({ property }: { property: Property }) {
 
       {tab === "overview" ? (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          <Card padding="none" className="self-start lg:col-span-8">
+          <div className="flex min-w-0 flex-col gap-6 lg:col-span-8">
+          <SectionCard
+            title="Property"
+            subtitle="Type, address and purchase"
+            action={
+              can(user, "property.edit") && (
+                <Button size="sm" icon={<Pencil size={14} strokeWidth={1.5} />} onClick={() => setEditing(true)} className="max-md:h-11">
+                  Edit
+                </Button>
+              )
+            }
+          >
+            <IconTileGrid>
+              <IconTile icon={<Building2 strokeWidth={1.5} />} label="Type" value={propertyTypeLabels[property.propertyType]} />
+              <IconTile
+                icon={<MapPin strokeWidth={1.5} />}
+                label="Address"
+                value={formatAddress(property)}
+                action={<CopyButton text={formatAddress(property)} what="address" />}
+              />
+              <IconTile icon={<CalendarDays strokeWidth={1.5} />} label="Acquired" value={acquired} />
+              <IconTile icon={<Landmark strokeWidth={1.5} />} label="Value" value={<Num>{formatCurrency(property.propertyValue)}</Num>} note={`Acquired ${acquired}`} />
+            </IconTileGrid>
+          </SectionCard>
+          {property.description && (
+            <SectionCard title="Description">
+              <div className="rounded-control bg-surface-2 p-4 break-words whitespace-pre-line text-text-primary">{property.description}</div>
+            </SectionCard>
+          )}
+          <Card padding="none" className="self-stretch">
             <div className="px-5 pt-5">
               <CardHeader
                 title="Units needing attention"
@@ -251,7 +284,7 @@ function PropertyDetail({ property }: { property: Property }) {
             <PropertyUnitsTable
               caption="Units needing attention"
               rows={attention}
-              onRowClick={(r) => setOpenUnitId(r.unit.id)}
+              onRowClick={(r) => openUnit(r.unit.id)}
               state={tableState}
               error={tableError}
               empty={
@@ -261,20 +294,8 @@ function PropertyDetail({ property }: { property: Property }) {
               }
             />
           </Card>
-          <div className="flex flex-col gap-6 lg:col-span-4">
-            <Card>
-              <CardHeader title="Details" />
-              <KeyValueList
-                labelWidth={96}
-                items={[
-                  { label: "Type", value: propertyTypeLabels[property.propertyType] },
-                  { label: "Address", value: formatAddress(property) },
-                  { label: "Acquired", value: acquired },
-                  { label: "Value", value: <Num>{formatCurrency(property.propertyValue)}</Num> },
-                  { label: "Description", value: property.description ? <span className="whitespace-pre-line">{property.description}</span> : <Dash /> },
-                ]}
-              />
-            </Card>
+          </div>
+          <div className="flex min-w-0 flex-col gap-6 lg:col-span-4">
             <PropertyManagersCard property={property} canAssign={can(user, "manager.assign")} />
           </div>
         </div>
@@ -285,7 +306,7 @@ function PropertyDetail({ property }: { property: Property }) {
           <PropertyUnitsTable
             caption="Units"
             rows={rows}
-            onRowClick={(r) => setOpenUnitId(r.unit.id)}
+            onRowClick={(r) => openUnit(r.unit.id)}
             state={tableState}
             error={tableError}
             empty={{ title: "No units yet", description: "This property has no units." }}
@@ -295,15 +316,6 @@ function PropertyDetail({ property }: { property: Property }) {
 
       {editing && <PropertyFormModal property={property} onClose={() => setEditing(false)} />}
       {addingUnit && <UnitFormModal defaultPropertyId={property.id} onClose={() => setAddingUnit(false)} />}
-      {openUnit && (
-        <UnitDrawer
-          unit={openUnit}
-          propertyName={property.name}
-          leaseFrom={{ from: "property", property: { id: property.id, name: property.name } }}
-          onClose={() => setOpenUnitId(null)}
-        />
-      )}
-
       <ConfirmDialog
         open={deleting}
         onOpenChange={setDeleting}

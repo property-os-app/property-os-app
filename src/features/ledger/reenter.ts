@@ -3,7 +3,7 @@ import { ApiError, apiFetch, OFFLINE_MESSAGE } from "@/lib/api";
 import { toCents, centsToAmount } from "@/lib/format";
 import { refreshAfterMoneyChange, unclearPayment } from "@/features/ledger/hooks";
 import { isPaymentAnswer } from "@/features/ledger/paymentForm";
-import type { Charge, ChargeCreateBody, ChargeType, LedgerEntry, Payment, PaymentCreateBody, PaymentMethod } from "@/types/ledger";
+import type { Charge, ChargeCreateBody, ChargeType, LedgerEntry, Payment, PaymentCreateBody, SelectablePaymentMethod } from "@/types/ledger";
 
 /**
  * Re-entering a voided charge or payment. Voids stay permanent in the backend: a re-entry is a new entry with a new number.
@@ -24,7 +24,8 @@ export function reentryNote(number: string, originalNotes: string | null | undef
 /** Record Payment prefill (CurrencyInput takes a number). */
 export interface PaymentPrefill {
   amount: number;
-  method: PaymentMethod;
+  /** Never DEPOSIT: a deposit payment is changed through the settlement, never re-entered. */
+  method: SelectablePaymentMethod;
   paymentDate: string;
   referenceNumber: string;
   notes: string;
@@ -40,7 +41,7 @@ export interface ChargePrefill {
 }
 
 /** A voided payment row (or void response) -> the Record Payment values, with the re-entry note. */
-export function paymentPrefill(p: { number: string; amount: string; method: PaymentMethod; paymentDate: string; referenceNumber: string | null; notes: string | null }): PaymentPrefill {
+export function paymentPrefill(p: { number: string; amount: string; method: SelectablePaymentMethod; paymentDate: string; referenceNumber: string | null; notes: string | null }): PaymentPrefill {
   return {
     amount: centsToAmount(toCents(p.amount)),
     method: p.method,
@@ -50,13 +51,17 @@ export function paymentPrefill(p: { number: string; amount: string; method: Paym
   };
 }
 
-/** A voided ledger row -> its prefill. RENT rows have no periodMonth in the ledger: the due date's month is used. Null for a broken row. */
+/**
+ * A voided ledger row -> its prefill. RENT rows have no periodMonth in the ledger: the due date's month is used. Null for a broken
+ * row and for a DEPOSIT payment (the API refuses DEPOSIT on Record Payment; the deposit settlement replaces it).
+ */
 export function prefillFromEntry(e: LedgerEntry): { kind: "PAYMENT"; values: PaymentPrefill } | { kind: "CHARGE"; values: ChargePrefill } | null {
   if (e.kind === "PAYMENT") {
-    if (!e.method) return null;
+    if (!e.method || e.method === "DEPOSIT") return null;
+    const method = e.method;
     return {
       kind: "PAYMENT",
-      values: paymentPrefill({ number: e.number, amount: e.amount, method: e.method, paymentDate: e.date, referenceNumber: e.referenceNumber, notes: e.notes }),
+      values: paymentPrefill({ number: e.number, amount: e.amount, method, paymentDate: e.date, referenceNumber: e.referenceNumber, notes: e.notes }),
     };
   }
   if (!e.type) return null;
@@ -80,7 +85,9 @@ const leasePath = (id: string) => `/leases/${encodeURIComponent(id)}`;
  * retries by itself, and an unclear reply (`unclearPayment`) reloads the ledger too.
  */
 export async function reenterPayment(qc: QueryClient, voided: Payment): Promise<Payment> {
-  const v = paymentPrefill({ ...voided, number: voided.paymentNumber });
+  // A DEPOSIT payment is never voided by the user (409), so it never gets here.
+  if (voided.method === "DEPOSIT") throw new ApiError(409, ["A deposit payment is changed through the deposit settlement."]);
+  const v = paymentPrefill({ ...voided, method: voided.method, number: voided.paymentNumber });
   const body: PaymentCreateBody = {
     amount: v.amount,
     method: v.method,

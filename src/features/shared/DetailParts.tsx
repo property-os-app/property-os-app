@@ -2,7 +2,9 @@ import type { MouseEvent, ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 import { ArrowLeft, ChevronRight, X } from "lucide-react";
 import { Button, Caption, Num, Overline, Skeleton } from "@/components/atoms";
+import { Card } from "@/components/molecules";
 import { cn } from "@/lib/cn";
+import { useGoBack } from "@/features/shared/detailNav";
 import { useEscapeClose } from "@/features/shared/escapeClose";
 import { linkFocus } from "@/features/shared/linkClass";
 
@@ -11,9 +13,6 @@ export interface Crumb {
   label: string;
   to: string;
 }
-
-/** React Router keeps the history index in history.state; above 0 means there is an in-app page to go back to. */
-const hasAppHistory = () => ((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0;
 
 /**
  * One line on top of a detail page: [←] Parent › Current [✕]. The arrow, the Parent crumb, the ✕ and Esc go to the same place:
@@ -24,8 +23,7 @@ const hasAppHistory = () => ((window.history.state as { idx?: number } | null)?.
  */
 export function BackBreadcrumb({ parent, current, backInHistory }: { parent: Crumb; current: ReactNode; backInHistory: boolean }) {
   const navigate = useNavigate();
-  const canGoBack = () => backInHistory && hasAppHistory();
-  const goBack = () => void (canGoBack() ? navigate(-1) : navigate(parent.to));
+  const { goBack, canGoBack } = useGoBack(parent, backInHistory);
   useEscapeClose(goBack);
   // A plain click on the crumb does what the arrow does; ctrl / cmd / middle click keep the link's default.
   const onCrumbClick = (e: MouseEvent<HTMLAnchorElement>) => {
@@ -82,5 +80,30 @@ export function Tile({ label, value, note, loading, className }: { label: string
       {loading ? <Skeleton className="h-7 w-20" /> : <Num className={cn("text-h2 font-bold text-text-primary", className)}>{value}</Num>}
       <Caption>{loading ? " " : note}</Caption>
     </div>
+  );
+}
+
+/** Header card placeholder while the record loads (tenant and unit pages). */
+export function PageSkeleton({ top, tiles }: { top: ReactNode; tiles: number }) {
+  return (
+    <>
+      {top}
+      <Card>
+        <div className="flex flex-col gap-5">
+          <div className="flex items-center gap-4">
+            <Skeleton className="size-14 rounded-pill" />
+            <div className="flex flex-1 flex-col gap-2">
+              <Skeleton className="h-7 w-64 max-w-full" />
+              <Skeleton className="h-4 w-96 max-w-full" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: tiles }).map((_, i) => (
+              <Skeleton key={i} className="h-24" />
+            ))}
+          </div>
+        </div>
+      </Card>
+    </>
   );
 }

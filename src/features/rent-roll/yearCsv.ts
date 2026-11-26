@@ -3,7 +3,9 @@
  * per unit, or per lease "By tenant" (it follows the response's rowsBy).
  * Always the whole year for the selected property (search and chips are ignored), so the API's subtotals and total match.
  */
-import { csvLines, csvMoney, csvText, propertySuffix, saveCsv } from "@/features/rent-roll/rentRollCsv";
+import { leaseEndDate } from "@/features/leases/leaseEnd";
+import { centsToCsv, csvLines, csvMoney, csvText, propertySuffix, saveCsv } from "@/features/rent-roll/rentRollCsv";
+import { toCents } from "@/lib/format";
 import { unitLabel } from "@/lib/labels";
 import { isLeaseEnded, isUnitRow, otherLeases, renewalAlertLabels, renewalText, rowTitle, shortMonth, shownVacantMonths, tenantsWithMonths } from "@/features/rent-roll/yearStats";
 import type { RentRollYearCell, RentRollYearResponse, RentRollYearRow, RentRollYearRowsBy, RentRollYearTotals } from "@/types/rentRoll";
@@ -18,11 +20,19 @@ const LEAD_COLUMNS: Record<RentRollYearRowsBy, string[]> = {
   unit: ["Property", "Unit", "Tenants", "Earlier tenants", "Lease number", "Current rent", "Market rent", "Lease start", "Lease end", "Deposit"],
   lease: ["Property", "Unit", "Tenants", "Lease number", "Rent", "Market rent", "Lease start", "Lease end", "Deposit"],
 };
-const TAIL_COLUMNS = ["Total paid", "Total charged", "Late fees", "Vacant months", "Renewal alert", "Days to lease end", "Next lease"];
+/** The year's sums ("Rent paid 2026" and "Remaining 2026" carry the year), then the renewal columns. */
+const tailColumns = (year: string) => ["Total paid", "Total charged", "Late fees", `Rent paid ${year}`, `Remaining ${year}`, "Vacant months", "Renewal alert", "Days to lease end", "Next lease"];
+/** The tail columns after the money sums (filled only on row lines). */
+const RENEWAL_COLUMNS = 4;
 
 /** Column headers: the fixed columns, "Jan 2026 paid" … "Dec 2026 paid", then the totals and renewal columns. */
 export function yearCsvHeader(months: string[], rowsBy: RentRollYearRowsBy = "unit"): string[] {
-  return [...LEAD_COLUMNS[rowsBy], ...months.map((m) => `${shortMonth(m)} ${m.slice(0, 4)} paid`), ...TAIL_COLUMNS];
+  return [...LEAD_COLUMNS[rowsBy], ...months.map((m) => `${shortMonth(m)} ${m.slice(0, 4)} paid`), ...tailColumns(months[0]?.slice(0, 4) ?? "")];
+}
+
+/** The year's rent paid / remaining of rows, summed over their 12 cells in integer cents. */
+function yearSum(rows: RentRollYearRow[], pick: (c: RentRollYearCell) => string): number {
+  return rows.reduce((n, r) => n + r.months.reduce((m, c) => m + toCents(pick(c)), 0), 0);
 }
 
 function rowCells(row: RentRollYearRow): string[] {
@@ -39,12 +49,14 @@ function rowCells(row: RentRollYearRow): string[] {
     csvMoney(lease?.rent),
     csvMoney(row.unit.monthlyRent),
     lease?.startDate ?? "",
-    lease?.endDate ?? "",
+    (lease && leaseEndDate(lease)) ?? "",
     csvMoney(lease?.deposit),
     ...row.months.map(cellValue),
     csvMoney(row.totalPaid),
     csvMoney(row.totalCharged),
     csvMoney(row.lateFees),
+    centsToCsv(yearSum([row], (c) => c.rentPaid)),
+    centsToCsv(yearSum([row], (c) => c.remaining)),
     String(shownVacantMonths(row).length),
     row.renewalAlert ? renewalAlertLabels[row.renewalAlert] : "",
     // A number only while the lease runs; never negative (the alert column says "Ended").
@@ -53,8 +65,11 @@ function rowCells(row: RentRollYearRow): string[] {
   ];
 }
 
-/** A subtotal or total line: label in Property, the kind in Unit, then the API's per-month paid and the year sums. */
-function totalsCells(property: string, unit: string, totals: RentRollYearTotals, rowsBy: RentRollYearRowsBy): string[] {
+/**
+ * A subtotal or total line: label in Property, the kind in Unit, then the API's per-month paid and the year sums. The
+ * API's totals have no rent paid / remaining: those two are summed (in cents) over the line's `rows`.
+ */
+function totalsCells(property: string, unit: string, totals: RentRollYearTotals, rowsBy: RentRollYearRowsBy, rows: RentRollYearRow[]): string[] {
   const blanks = LEAD_COLUMNS[rowsBy].length - 2;
   return [
     csvText(property),
@@ -64,7 +79,9 @@ function totalsCells(property: string, unit: string, totals: RentRollYearTotals,
     csvMoney(totals.totalPaid),
     csvMoney(totals.totalCharged),
     csvMoney(totals.lateFees),
-    ...Array<string>(TAIL_COLUMNS.length - 3).fill(""),
+    centsToCsv(yearSum(rows, (c) => c.rentPaid)),
+    centsToCsv(yearSum(rows, (c) => c.remaining)),
+    ...Array<string>(RENEWAL_COLUMNS).fill(""),
   ];
 }
 
@@ -76,10 +93,11 @@ export function buildYearCsv(data: RentRollYearResponse): string {
   const lines: string[][] = [yearCsvHeader(data.months, data.rowsBy)];
   const rows: RentRollYearRow[] = data.rows;
   for (const totals of data.propertyTotals) {
-    for (const row of rows) if (row.unit.property.id === totals.property.id) lines.push(rowCells(row));
-    lines.push(totalsCells(totals.property.name, "Subtotal", totals, data.rowsBy));
+    const ofProperty = rows.filter((row) => row.unit.property.id === totals.property.id);
+    for (const row of ofProperty) lines.push(rowCells(row));
+    lines.push(totalsCells(totals.property.name, "Subtotal", totals, data.rowsBy, ofProperty));
   }
-  lines.push(totalsCells("Total", "", data.totals, data.rowsBy));
+  lines.push(totalsCells("Total", "", data.totals, data.rowsBy, rows));
   return csvLines(lines);
 }
 

@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router";
 import { Plus, SearchX, Users } from "lucide-react";
 import { Button, Dash, Select, Skeleton } from "@/components/atoms";
 import { Card, EmptyState, FilterChip, FormField, InlineError, KpiCard, SearchInput } from "@/components/molecules";
@@ -19,8 +20,8 @@ import { ViewToggle } from "@/features/shared/ViewToggle";
 import { useTenants } from "@/features/tenants/hooks";
 import { TenantCard, TenantCardSkeleton } from "@/features/tenants/TenantCard";
 import { TenantDeleteDialog } from "@/features/tenants/TenantDeleteDialog";
-import { TenantDrawer } from "@/features/tenants/TenantDrawer";
 import { TenantFormModal } from "@/features/tenants/TenantFormModal";
+import type { TenantPageState } from "@/features/tenants/origin";
 import { TenantsTable } from "@/features/tenants/TenantsTable";
 import {
   activeLeaseCount,
@@ -77,7 +78,7 @@ export function TenantsPage() {
   const [view, setView] = useListView("tenants", "cards");
   // Phones always get the list cards; the saved Cards / Table choice is kept for wider screens.
   const isMobile = useIsMobile();
-  const [openId, setOpenId] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [formOpen, setFormOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [deleteRow, setDeleteRow] = useState<TenantRow | null>(null);
@@ -147,10 +148,10 @@ export function TenantsPage() {
     <Pagination page={table.page} pageCount={table.pageCount} onPageChange={table.setPage} summary={table.summary} />
   ) : undefined;
 
-  const onOpen = (r: TenantRow) => setOpenId(r.tenant.id);
+  // The tenant page; Back returns here with the filters and search (they live in the URL).
+  const onOpen = (r: TenantRow) => void navigate(`/tenants/${encodeURIComponent(r.tenant.id)}`, { state: { from: "tenants" } satisfies TenantPageState });
   const onEdit = can(user, "tenant.edit") ? (r: TenantRow) => setEditId(r.tenant.id) : undefined;
   const onDelete = can(user, "tenant.delete") ? (r: TenantRow) => setDeleteRow(r) : undefined;
-  const openRow = allRows?.find((r) => r.tenant.id === openId);
   const balanceOn = table.filters.balance === "owed";
 
   const search = <SearchInput placeholder="Search name, unit, phone, email" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />;
@@ -276,7 +277,7 @@ export function TenantsPage() {
               {state === "loading"
                 ? Array.from({ length: 6 }).map((_, i) => <TenantCardSkeleton key={i} />)
                 : table.pageRows.map((row) => (
-                    <TenantCard key={row.tenant.id} row={row} onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} />
+                    <TenantCard key={row.tenant.id} row={row} onEdit={onEdit} onDelete={onDelete} />
                   ))}
             </CardGrid>
             {pagination && <div className="flex items-center justify-between text-small text-text-secondary">{pagination}</div>}
@@ -284,7 +285,6 @@ export function TenantsPage() {
         )}
       </div>
 
-      {openRow && <TenantDrawer row={openRow} onClose={() => setOpenId(null)} />}
       {formOpen && <TenantFormModal onClose={() => setFormOpen(false)} />}
       {editId && <TenantFormModal tenantId={editId} onClose={() => setEditId(null)} />}
       <TenantDeleteDialog tenant={deleteRow?.tenant ?? null} onClose={() => setDeleteRow(null)} />
