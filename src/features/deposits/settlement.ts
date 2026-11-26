@@ -26,6 +26,11 @@ export interface SettlementValues {
   deductions: DeductionRow[];
   appliedToBalance: number | "";
   refundAmount: number | "";
+  /**
+   * The refund follows the rest of the deposit (total held − deductions − applied, never below $0) until the user types in
+   * it; "Refund the rest" turns it back on. Local only, never sent.
+   */
+  refundAuto: boolean;
   /** "" = not set. Only sent with a refund above $0. */
   refundDate: string;
   refundMethod: SelectablePaymentMethod | "";
@@ -73,6 +78,8 @@ export function settlementDefaults(deposit: Pick<DepositResponse, "settlement" |
       deductions: s.deductions.map((d) => newDeduction(d.reason, moneyValue(d.amount))),
       appliedToBalance: moneyValue(s.appliedToBalance),
       refundAmount: moneyValue(s.refundAmount),
+      // A saved settlement always balances, so its refund is the rest: adding a deduction lowers it.
+      refundAuto: true,
       refundDate: s.refundDate ?? "",
       refundMethod: isSelectable(s.refundMethod) ? s.refundMethod : "",
       refundReference: s.refundReference ?? "",
@@ -85,6 +92,7 @@ export function settlementDefaults(deposit: Pick<DepositResponse, "settlement" |
     deductions: (suggested?.deductions ?? []).map((d) => newDeduction(d.reason, moneyValue(d.amount))),
     appliedToBalance: moneyValue(suggested?.appliedToBalance ?? "0.00"),
     refundAmount: moneyValue(suggested?.refundAmount ?? deposit.totalHeld),
+    refundAuto: true,
     refundDate: "",
     refundMethod: "",
     refundReference: "",
@@ -97,6 +105,60 @@ const cents = (v: number | "") => (v === "" ? 0 : toCents(v));
 /** deductions + applied + refund, in cents. */
 export function assignedCents(v: Pick<SettlementValues, "deductions" | "appliedToBalance" | "refundAmount">): number {
   return v.deductions.reduce((sum, d) => sum + cents(d.amount), 0) + cents(v.appliedToBalance) + cents(v.refundAmount);
+}
+
+const deductionsCents = (v: Pick<SettlementValues, "deductions">) => v.deductions.reduce((sum, d) => sum + cents(d.amount), 0);
+
+/** The automatic refund: total held − deductions − applied, in cents, never below 0. */
+export function autoRefundCents(v: Pick<SettlementValues, "deductions" | "appliedToBalance">, totalHeld: string): number {
+  return Math.max(0, toCents(totalHeld) - deductionsCents(v) - cents(v.appliedToBalance));
+}
+
+/** The values with the refund set to the rest of the deposit while `refundAuto` is on; unchanged otherwise. */
+export function withAutoRefund(v: SettlementValues, totalHeld: string): SettlementValues {
+  return v.refundAuto ? { ...v, refundAmount: centsToAmount(autoRefundCents(v, totalHeld)) } : v;
+}
+
+/**
+ * One field changed: typing in the refund stops it following; any other change recalculates it (while it still follows).
+ */
+export function changeSettlement<K extends keyof SettlementValues>(v: SettlementValues, key: K, value: SettlementValues[K], totalHeld: string): SettlementValues {
+  const next = { ...v, [key]: value };
+  if (key === "refundAmount") next.refundAuto = false;
+  return withAutoRefund(next, totalHeld);
+}
+
+/** "Refund the rest ($X)": the refund follows the rest of the deposit again. */
+export const refundTheRest = (v: SettlementValues, totalHeld: string) => withAutoRefund({ ...v, refundAuto: true }, totalHeld);
+
+/** How much deductions + applied go over the deposit, in cents (0 when they fit). */
+export function overDepositCents(v: Pick<SettlementValues, "deductions" | "appliedToBalance">, totalHeld: string): number {
+  return Math.max(0, deductionsCents(v) + cents(v.appliedToBalance) - toCents(totalHeld));
+}
+
+/** Under the deductions when they (with the applied amount) go over the deposit: "Deductions are $X more than the deposit." */
+export function overDepositText(v: Pick<SettlementValues, "deductions" | "appliedToBalance">, totalHeld: string): string | null {
+  const over = overDepositCents(v, totalHeld);
+  if (over === 0) return null;
+  const what = cents(v.appliedToBalance) > 0 ? "Deductions + applied to balance are" : "Deductions are";
+  return `${what} ${formatCurrency(centsToAmount(over))} more than the deposit.`;
+}
+
+/**
+ * What to fix when the sum rule fails, or null when it balances:
+ * over: "Deductions + applied + refund are $1,555.00 more than the $3,125.00 deposit. Lower the refund to $1,570.00."
+ * (or "Lower the deductions or the applied amount by $X." when even a $0 refund is too much);
+ * under: "$X still to assign: add it to the refund, a deduction or the applied amount."
+ */
+export function assignmentProblem(v: SettlementValues, totalHeld: string): string | null {
+  const left = leftToAssignCents(v, totalHeld);
+  if (left === 0) return null;
+  const money = (c: number) => formatCurrency(centsToAmount(c));
+  if (left > 0) return `${money(left)} still to assign: add it to the refund, a deduction or the applied amount.`;
+  const head = `Deductions + applied + refund are ${money(-left)} more than the ${formatCurrency(totalHeld)} deposit.`;
+  const over = overDepositCents(v, totalHeld);
+  if (over > 0) return `${head} Lower the deductions or the applied amount by ${money(over)}${cents(v.refundAmount) > 0 ? " and the refund to $0.00" : ""}.`;
+  return `${head} Lower the refund to ${money(autoRefundCents(v, totalHeld))}.`;
 }
 
 /** totalHeld − (deductions + applied + refund), in cents: 0 = balanced, above 0 = still to assign, below 0 = over. */

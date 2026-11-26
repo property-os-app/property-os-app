@@ -5,14 +5,20 @@ import { FormField } from "@/components/molecules";
 import { cn } from "@/lib/cn";
 import { centsToAmount, formatCurrency, toCents } from "@/lib/format";
 import { labelOptions, paymentMethodLabels, referenceHint } from "@/lib/labels";
+import { textLink } from "@/features/shared/linkClass";
 import {
   MAX_DEDUCTIONS,
   MAX_NOTES,
   MAX_REASON,
   MAX_REFERENCE,
+  assignmentProblem,
+  autoRefundCents,
+  changeSettlement,
   leftToAssignCents,
   leftToAssignView,
   newDeduction,
+  overDepositText,
+  refundTheRest,
   type SettlementContext,
   type SettlementErrors,
   type SettlementValues,
@@ -43,12 +49,15 @@ const toneBox = { success: "border-success/30 bg-success-soft", warning: "border
  */
 export function SettlementForm({ values: v, onChange, ctx, openBalance, securityDeposit, petDeposit, errors, disabled }: SettlementFormProps) {
   const id = useId();
-  const set = <K extends keyof SettlementValues>(key: K, value: SettlementValues[K]) => onChange({ ...v, [key]: value });
+  const set = <K extends keyof SettlementValues>(key: K, value: SettlementValues[K]) => onChange(changeSettlement(v, key, value, ctx.totalHeld));
   const left = leftToAssignCents(v, ctx.totalHeld);
   const counter = leftToAssignView(left);
   const refundOn = v.refundAmount !== "" && toCents(v.refundAmount) > 0;
   const maxCents = toCents(ctx.maxApplicable);
   const owed = toCents(openBalance);
+  const overText = overDepositText(v, ctx.totalHeld);
+  const problem = assignmentProblem(v, ctx.totalHeld);
+  const rest = formatCurrency(centsToAmount(autoRefundCents(v, ctx.totalHeld)));
 
   const setRow = (key: string, part: Partial<{ reason: string; amount: number | "" }>) => set("deductions", v.deductions.map((d) => (d.key === key ? { ...d, ...part } : d)));
 
@@ -98,6 +107,7 @@ export function SettlementForm({ values: v, onChange, ctx, openBalance, security
           );
         })}
         {errors.deductions && <Small className="text-danger">{errors.deductions}</Small>}
+        {overText && <Small className="font-semibold text-danger">{overText}</Small>}
         {v.deductions.length < MAX_DEDUCTIONS && (
           <Button
             size="sm"
@@ -132,12 +142,12 @@ export function SettlementForm({ values: v, onChange, ctx, openBalance, security
           label="Refund amount"
           htmlFor={`${id}-refund`}
           error={errors.refundAmount}
-          help="What goes back to the tenant."
+          help={v.refundAuto ? "The rest of the deposit, kept up to date. Type to change it." : "What goes back to the tenant."}
           action={
-            left > 0 && (
-              <Button size="sm" variant="ghost" disabled={disabled} onClick={() => set("refundAmount", centsToAmount(toCents(v.refundAmount === "" ? 0 : v.refundAmount) + left))}>
-                Refund the rest
-              </Button>
+            !v.refundAuto && (
+              <button type="button" disabled={disabled} onClick={() => onChange(refundTheRest(v, ctx.totalHeld))} className={cn(textLink, "text-caption")}>
+                Refund the rest ({rest})
+              </button>
             )
           }
         >
@@ -182,6 +192,7 @@ export function SettlementForm({ values: v, onChange, ctx, openBalance, security
       <div role="status" aria-live="polite" className={cn("flex flex-wrap items-center justify-between gap-2 rounded-control border px-4 py-3", toneBox[counter.tone])}>
         <Small className="text-text-primary">Left to assign</Small>
         <Num className={cn("font-bold", toneText[counter.tone])}>{counter.text}</Num>
+        {problem && <Small className="basis-full text-text-primary">{problem}</Small>}
       </div>
     </div>
   );
