@@ -13,6 +13,8 @@ import { can } from "@/features/auth/permissions";
 import { DocumentsPanel } from "@/features/documents/DocumentsPanel";
 import { useDocuments } from "@/features/documents/hooks";
 import { useLeases } from "@/features/leases/hooks";
+import { creditAmount } from "@/features/ledger/cards";
+import { useLedger } from "@/features/ledger/hooks";
 import type { LeasePageState } from "@/features/leases/LeasePage";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
 import { OldLeaseModal } from "@/features/leases/OldLeaseModal";
@@ -118,6 +120,9 @@ function UnitDetailView({ unit }: { unit: Unit }) {
   const leaseState: LeasePageState = { from: "unit", unit: { id: unit.id, name } };
   const tenantState: TenantPageState = { from: "unit", unit: { id: unit.id, name } };
   const due = active ? dueState(active) : undefined;
+  // The active lease's ledger for its credit (summary.credit, money paid ahead).
+  const ledger = useLedger(active?.id ?? "", { enabled: Boolean(active) });
+  const credit = creditAmount(ledger.data?.summary);
 
   return (
     <>
@@ -163,7 +168,13 @@ function UnitDetailView({ unit }: { unit: Unit }) {
           {active ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <Tile label="Current rent" loading={false} value={formatCurrency(active.rent)} note={rentDiffNote(active.rent, unit.monthlyRent)} />
-              <Tile label="Balance" loading={false} value={formatCurrency(active.balance)} note={dueNote(due!)} className={cn(due?.kind === "overdue" && "text-danger")} />
+              <Tile
+                label="Balance"
+                loading={false}
+                value={credit ? `Credit ${formatCurrency(credit)}` : formatCurrency(active.balance)}
+                note={credit ? "Paid ahead" : dueNote(due!)}
+                className={cn(credit ? "text-success" : due?.kind === "overdue" && "text-danger")}
+              />
               <Tile label="Lease ends" loading={false} value={formatDate(active.endDate)} note={leaseEndsNote(active)} />
             </div>
           ) : (
@@ -205,7 +216,7 @@ function UnitDetailView({ unit }: { unit: Unit }) {
             ) : leases.isError ? (
               <InlineError title="Couldn't load the lease" description={errorText(leases.error)} onRetry={() => void leases.refetch()} />
             ) : active ? (
-              <UnitCurrentLease lease={active} unit={unit} leaseState={leaseState} tenantState={tenantState} />
+              <UnitCurrentLease lease={active} unit={unit} leaseState={leaseState} tenantState={tenantState} credit={credit} />
             ) : (
               <UnitNoLease unit={unit} onAddLease={canAddLease ? () => setAddingLease(true) : undefined} />
             )}

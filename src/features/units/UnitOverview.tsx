@@ -18,9 +18,21 @@ import type { Unit } from "@/types/unit";
 /**
  * The unit's ACTIVE lease: lease number and period, "Open lease" (with `leaseState`), then tiles for the primary tenant
  * (payment badge, Call / Email / Copy with the phone from GET /tenants; opens the tenant page with `tenantState`),
- * Current rent, Balance and Lease ends.
+ * Current rent, Balance ("Credit $X" from the ledger's summary.credit, `credit`) and Lease ends.
  */
-export function UnitCurrentLease({ lease, unit, leaseState, tenantState }: { lease: Lease; unit: Unit; leaseState: LeasePageState; tenantState: TenantPageState }) {
+export function UnitCurrentLease({
+  lease,
+  unit,
+  leaseState,
+  tenantState,
+  credit,
+}: {
+  lease: Lease;
+  unit: Unit;
+  leaseState: LeasePageState;
+  tenantState: TenantPageState;
+  credit: string | null;
+}) {
   const navigate = useNavigate();
   const tenants = useTenants();
   const tenant = lease.tenants.find((t) => t.isPrimary) ?? lease.tenants[0];
@@ -60,9 +72,9 @@ export function UnitCurrentLease({ lease, unit, leaseState, tenantState }: { lea
         <IconTile
           icon={<Scale strokeWidth={1.5} />}
           label="Balance"
-          value={<Num>{formatCurrency(lease.balance)}</Num>}
-          valueClassName={due.kind === "overdue" ? "text-danger" : undefined}
-          note={dueNote(due)}
+          value={<Num>{credit ? `Credit ${formatCurrency(credit)}` : formatCurrency(lease.balance)}</Num>}
+          valueClassName={credit ? "text-success" : due.kind === "overdue" ? "text-danger" : undefined}
+          note={credit ? "Paid ahead" : dueNote(due)}
         />
         <IconTile icon={<CalendarCheck strokeWidth={1.5} />} label="Lease ends" value={formatDate(lease.endDate)} note={leaseEndsNote(lease)} />
       </IconTileGrid>

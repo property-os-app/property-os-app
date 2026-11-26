@@ -78,6 +78,8 @@ function makeRow(over: Partial<RentRollRow> = {}): RentRollRow {
     openingBalance: "0.00",
     charged: "1000.00",
     paid: "0.00",
+    rentPaid: "0.00",
+    remaining: "1000.00",
     balance: "1000.00",
     oldestUnpaidDueDate: null,
     status: "UNPAID",

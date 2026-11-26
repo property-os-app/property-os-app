@@ -58,12 +58,12 @@ TypeScript types for API responses. Each one is copied from ../property-os-api/d
 ## ledger.ts
 - `ChargeType`, `PaymentMethod`, `LedgerEntryKind`: money enums.
 - `Charge`, `Payment`: POST charge / payment answers (money strings, "YYYY-MM-DD" dates, void fields). `Charge.createdById` / `createdBy` are null on rent billed automatically (show "Auto-billed"). `Payment.documentCount`: its files. `PaymentRecorded`: the POST answer, with `document` or null.
-- `LedgerEntry`, `LedgerResponse`: GET /leases/:id/ledger (entries oldest first; `runningBalance` may be negative; summary with balance, totals, monthly rent). `documentCount`: a payment's files, null on charges.
+- `LedgerEntry`, `LedgerResponse`: GET /leases/:id/ledger (entries oldest first; `runningBalance` may be negative; summary with balance, totals, monthly rent). `documentCount`: a payment's files, null on charges. Also `cards` (`LedgerCard`, `LedgerCardStatus`, `LedgerCardPayment`: one per charge, FIFO, calculated on every read), `paymentAllocations` (`LedgerPaymentAllocation`) and `summary.credit`.
 - `ChargeCreateBody` (`periodMonth` only on RENT), `PaymentCreateBody`, `VoidBody` (`reason`): request bodies. `PaymentCreateBody.documentCategory`: only with a file.
 
 ## rentRoll.ts
 - `RentRollStatus`: `PAID | PARTIAL | UNPAID | OVERDUE | NOT_BILLED`.
-- `RentRollRow`, `RentRollResponse`: GET /rent-roll (rows with `openingBalance`, `charged`, `paid`, `balance`, plus a summary that ignores status and search).
+- `RentRollRow`, `RentRollResponse`: GET /rent-roll (rows with `openingBalance`, `charged`, `paid`, `balance`, plus a summary that ignores status and search). Rows and yearly cells (`RentRollYearCell`) also carry `rentPaid` (applied to the month's charges, whenever paid) and `remaining`; `paid` stays the cash received in the month.
 - `RentRollYearResponse` (GET /rent-roll/year): a union told apart by `rowsBy` (`RentRollYearRowsBy`): `"unit"` with `RentRollYearUnitRow`s, `"lease"` with `RentRollYearLeaseRow`s (one per lease plus VACANT_UNIT rows; plain `RentRollYearCell`s, no `leases`). `RentRollYearRow` is either. `RentRollYearUnitRow`, one per unit (`kind` LEASE / VACANT_UNIT, `unit` with market `monthlyRent`, the current `lease` or null, `leases` = `RentRollYearUnitLease`s of the year with `monthsCovered`, 12 merged `RentRollYearUnitCell`s (a `RentRollYearCell` plus `leaseIds` / `leaseId`), totals, `lateFees`, `vacantMonths`, `daysToLeaseEnd`, `renewalAlert`, `nextLease`), `RentRollYearTotals` (per property and grand), `availableYears`. Cell status `RentRollYearCellStatus` adds `FUTURE | VACANT | OUTSIDE_LEASE`; `RenewalAlert` is `ENDED | ENDS_SOON`.
 
 ## vendor.ts

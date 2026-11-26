@@ -183,10 +183,11 @@ export function cellDisplay(cell: RentRollYearCell): string | null {
 }
 
 /**
- * Tooltip and screen-reader text, e.g. "Mar 2026 · John Smith · Paid $2,000.00 of $2,000.00 · Paid" (exact amounts).
+ * Tooltip and screen-reader text, e.g. "Mar 2026 · John Smith · Charged $2,000.00 · Rent paid $2,000.00 · Cash received
+ * this month $0.00 · Paid" (exact amounts). `rentPaid` is what was applied to the month's own charges whenever it was
+ * paid; `paid` is the cash received in the month. Remaining and balance only when not zero.
  * `tenants`: who the month belongs to ("John Smith → Sarah Lee" when two leases share it; see `cellTenants`).
- * Balance only when not zero; vacant (or reserved) and outside-lease months name what they are. OVERDUE is balance-based
- * (an older month can still be owed), so it says so.
+ * Vacant (or reserved) and outside-lease months name what they are. The status is the month's own (from its ledger cards).
  */
 export function cellDescription(cell: RentRollYearCell, opts: { reserved?: boolean; tenants?: string } = {}): string {
   const month = shortMonthYear(cell.month);
@@ -202,11 +203,16 @@ export function cellDescription(cell: RentRollYearCell, opts: { reserved?: boole
       return `${month}${who} · ${cellStatusLabels[cell.status]}${paid}`;
     }
     default: {
+      const remaining = toCents(cell.remaining) > 0 ? ` · Remaining ${formatCurrency(cell.remaining)}` : "";
       const balance = toCents(cell.balance) !== 0 ? ` · Balance ${formatCurrency(cell.balance)}` : "";
-      const status = cell.status === "OVERDUE" ? "Overdue · balance includes earlier months" : cellStatusLabels[cell.status];
-      return `${month}${who} · Paid ${formatCurrency(cell.paid)} of ${formatCurrency(cell.charged)}${balance} · ${status}`;
+      return `${month}${who} · ${chargedLine(cell)}${remaining}${balance} · ${cellStatusLabels[cell.status]}`;
     }
   }
+}
+
+/** "Charged $X · Rent paid $Y · Cash received this month $Z": a month's money (yearly cell or monthly row). */
+export function chargedLine(m: { charged: string; rentPaid: string; paid: string }): string {
+  return `Charged ${formatCurrency(m.charged)} · Rent paid ${formatCurrency(m.rentPaid)} · Cash received this month ${formatCurrency(m.paid)}`;
 }
 
 /**

@@ -6,7 +6,7 @@ import type { RentRollYearCell, RentRollYearLeaseRow, RentRollYearResponse, Rent
 const MONTHS = Array.from({ length: 12 }, (_, i) => `2026-${String(i + 1).padStart(2, "0")}`);
 
 const cells = (status: RentRollYearCell["status"], paid: string, leaseIds: string[] = []): RentRollYearUnitCell[] =>
-  MONTHS.map((month) => ({ month, status, paid, charged: paid, balance: "0.00", leaseIds, leaseId: leaseIds[leaseIds.length - 1] ?? null }));
+  MONTHS.map((month) => ({ month, status, paid, charged: paid, rentPaid: paid, remaining: "0.00", balance: "0.00", leaseIds, leaseId: leaseIds[leaseIds.length - 1] ?? null }));
 
 function totals(paid: string, year: string, lateFees = "0.00"): RentRollYearTotals {
   return { months: MONTHS.map((month) => ({ month, charged: paid, paid })), totalCharged: year, totalPaid: year, lateFees };
@@ -51,7 +51,7 @@ const vacantRow: RentRollYearUnitRow = {
   unit: { id: "u2", unitNumber: "5", status: "VACANT", monthlyRent: "2700.00", property: { id: "p2", name: "Birch" } },
   lease: null,
   leases: [],
-  months: MONTHS.map((month) => ({ month, status: month <= "2026-11" ? "VACANT" : "FUTURE", paid: "0.00", charged: "0.00", balance: "0.00", leaseIds: [], leaseId: null })),
+  months: MONTHS.map((month) => ({ month, status: month <= "2026-11" ? "VACANT" : "FUTURE", paid: "0.00", charged: "0.00", rentPaid: "0.00", remaining: "0.00", balance: "0.00", leaseIds: [], leaseId: null })),
   totalCharged: "0.00",
   totalPaid: "0.00",
   lateFees: "0.00",
@@ -183,6 +183,9 @@ describe("buildYearCsv", () => {
     expect(r[col("Jan 2026 paid")]).toBe("2850.00");
     expect(r[col("Total paid")]).toBe("34200.00");
     expect(r[col("Late fees")]).toBe("75.00");
+    // The year's rent paid / remaining: the 12 cells summed (here every month was paid in full).
+    expect(r[col("Rent paid 2026")]).toBe("34200.00");
+    expect(r[col("Remaining 2026")]).toBe("0.00");
     expect(r[col("Renewal alert")]).toBe("Ends soon");
     expect(r[col("Days to lease end")]).toBe("42");
     expect(r[col("Next lease")]).toBe("Renewal drafted LSE-2027-001");
@@ -213,6 +216,9 @@ describe("buildYearCsv", () => {
     expect(sub[col("Jan 2026 paid")]).toBe("5700.00");
     expect(sub[col("Total paid")]).toBe("68400.00");
     expect(sub[col("Late fees")]).toBe("75.00");
+    // Not in the API's totals: summed over the property's rows.
+    expect(sub[col("Rent paid 2026")]).toBe(sub[col("Total paid")]);
+    expect(sub[col("Remaining 2026")]).toBe("0.00");
     const total = table[7]!;
     expect(total[col("Total charged")]).toBe("68400.00");
     expect(total[col("Tenants")]).toBe("");
@@ -222,7 +228,7 @@ describe("buildYearCsv", () => {
 /* ---------- By tenant (rows=lease): one line per lease ---------- */
 
 /** A rows=unit cell as rows=lease sends it (no leaseIds / leaseId). */
-const toLeaseCell = (c: RentRollYearCell): RentRollYearCell => ({ month: c.month, charged: c.charged, paid: c.paid, balance: c.balance, status: c.status });
+const toLeaseCell = (c: RentRollYearCell): RentRollYearCell => ({ month: c.month, charged: c.charged, paid: c.paid, rentPaid: c.rentPaid, remaining: c.remaining, balance: c.balance, status: c.status });
 
 /** A rows=unit row as rows=lease sends it: no `leases`, plain cells. */
 function toLeaseRow(r: RentRollYearUnitRow): RentRollYearLeaseRow {
@@ -234,8 +240,8 @@ function toLeaseRow(r: RentRollYearUnitRow): RentRollYearLeaseRow {
 const plainCells = (paidMonths: number[]) =>
   MONTHS.map((month, i) =>
     paidMonths.includes(i)
-      ? { month, status: "PAID" as const, paid: "2850.00", charged: "2850.00", balance: "0.00" }
-      : { month, status: "OUTSIDE_LEASE" as const, paid: "0.00", charged: "0.00", balance: "0.00" },
+      ? { month, status: "PAID" as const, paid: "2850.00", charged: "2850.00", rentPaid: "2850.00", remaining: "0.00", balance: "0.00" }
+      : { month, status: "OUTSIDE_LEASE" as const, paid: "0.00", charged: "0.00", rentPaid: "0.00", remaining: "0.00", balance: "0.00" },
   );
 const leaseBase = toLeaseRow(leaseRow);
 const earlierLeaseRow: RentRollYearLeaseRow = {

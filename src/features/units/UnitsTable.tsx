@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { useMemo } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { Caption, Dash, Num } from "@/components/atoms";
@@ -9,6 +10,7 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { primaryTenantName } from "@/features/properties/stats";
 import { NotSet } from "@/features/shared/Missing";
 import { floorAreaText, type UnitListRow } from "@/features/units/stats";
+import type { UnitPageState } from "@/features/units/origin";
 
 type Props = Pick<DataTableProps<UnitListRow>, "rows" | "state" | "sort" | "onSortChange" | "empty" | "error" | "footer"> & {
   onOpen: (row: UnitListRow) => void;
@@ -107,7 +109,8 @@ export function UnitsTable({ cards, onOpen, onEdit, onDelete, ...props }: Props)
         caption="Units"
         renderCard={(r) => (
           <ListCard
-            onOpen={() => onOpen(r)}
+            href={`/units/${encodeURIComponent(r.unit.id)}`}
+            renderLink={(href, p) => <Link to={href} state={{ from: "units" } satisfies UnitPageState} {...p} />}
             openLabel={`Open ${unitLabel(r.unit.unitNumber)}${r.propertyName ? `, ${r.propertyName}` : ""}`}
             title={`${unitLabel(r.unit.unitNumber)}`}
             subtitle={[r.propertyName, unitLayout(r.unit.unitType, r.unit.bathrooms)].filter(Boolean).join(" · ")}

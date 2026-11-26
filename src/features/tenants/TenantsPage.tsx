@@ -277,7 +277,7 @@ export function TenantsPage() {
               {state === "loading"
                 ? Array.from({ length: 6 }).map((_, i) => <TenantCardSkeleton key={i} />)
                 : table.pageRows.map((row) => (
-                    <TenantCard key={row.tenant.id} row={row} onOpen={onOpen} onEdit={onEdit} onDelete={onDelete} />
+                    <TenantCard key={row.tenant.id} row={row} onEdit={onEdit} onDelete={onDelete} />
                   ))}
             </CardGrid>
             {pagination && <div className="flex items-center justify-between text-small text-text-secondary">{pagination}</div>}

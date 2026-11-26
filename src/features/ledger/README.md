@@ -24,11 +24,24 @@ The lease ledger (lease page, Ledger tab): charges, payments, voids and re-entri
 ## balance.ts
 - `balanceText(value)`: "$1,200.00", or "Credit $150.00" when negative.
 
+## cards.ts
+- `groupCardsByMonth(cards)`, `CardMonth`: the ledger cards by `month`, newest month first, the API order inside a month (rent before that month's late fee); charged / paid / remaining per month without voided cards.
+- `cardLabel(card, year?)`: "Oct rent", "Oct late fee", "Dec 2025 rent" (year only when it differs), an OTHER charge's description.
+- `allocationParts(allocation, cards)`, `allocationText(allocation, cards)`: what a payment paid, "Paid: Oct rent $600.00, Nov rent $600.00 + $50.00 credit"; "Voided: paid nothing"; "Paid ahead: $50.00 credit". `allocationOf(ledger, paymentId)`.
+- `creditAmount(summary)`, `balanceOrCreditText(summary)`: the credit from `summary.credit` (never the balance's sign); "Credit $50.00" or the balance.
+
+## ledgerParam.ts
+- `useLedgerParams()`: the Ledger tab's view in ?ledger= ("entries" = All entries; By month when missing; not ?view=, which the Rent Roll back link uses), `showPayment(id)` (All entries at ?payment=), `showCard(chargeId)` (By month at ?card=), `focusPayment`, `focusCard`. Replaces the URL and keeps the router state. `entryAnchor`, `cardAnchor`: element ids to scroll to.
+
+## LedgerMonths.tsx
+- `LedgerMonths({ ledger, state, empty, error, actionsFor, onShowPayment, focusCard })`: "By month": one bordered group per month (newest first, full width) with the month and "Charged · Paid · Remaining" (voided charges skipped) in its header, then one full-width row per charge in the API order (rent, late fee, other charges), divided by thin lines. From 48rem of group width (a container query) the rows share fixed columns under a column header, like a spreadsheet: invoice number + type badge | description with "Due …" | Amount | Paid | Remaining (red when overdue) | status badge (StatusBadge rent: Paid, Partial, Unpaid, Overdue, Void) | ⋮. Narrower (phones) a row stacks: number and badges, description, Amount / Paid / Remaining with labels. Under each row a subtle line with the payments applied ("Paid by PMT-… · date · method · amount"; the number opens it in All entries) or "No payment applied yet.". VOID rows are muted and struck through with "Void: {reason}". A credit line on top when `summary.credit` > 0. The row asked for (?card=) is scrolled to and highlighted. Loading, empty and error states.
+
 ## LedgerParts.tsx
 - `BalanceText({ value, overdue, caption })`: a balance number, bold when owed and danger only with `overdue` (a balance above $0 isn't late: rent is billed up to 28 days early), success "Credit {amount}" when negative; `caption` ("Due Nov 1") under it, right-aligned. The ledger's running balance passes no `overdue`, so it is never red.
+- `PaidLine({ allocation, cards, onShowCard })`: a payment's "Paid: …" line; with `onShowCard` each charge is a link to its card in By month.
 
 ## LedgerView.tsx
-- `LedgerView({ lease, canVoid, canCharge, canPay })`: compact full-width table newest first (date, description + number, method, charge, payment, running balance). The balance cards are tiles on the lease page now. Voided rows are muted with a strikethrough, a "Voided" badge and the reason. Kebab: "Void charge / payment" on live rows (`canVoid`), "Re-enter charge / payment" on voided rows (`canCharge` / `canPay`), which opens Add charge / Record Payment prefilled. Loading, error and empty states. On phones a `CardList` of the same entries (not tappable): description or "Payment received", number · date · method, Charge / Payment badge (+ Voided), amount (payments green, voided struck through), Balance after, "Reason: …", same kebab. A payment's paperclip (own column; a "Files" fact on phone cards) shows its `documentCount` and opens `PaymentFilesDrawer`, voided payments too; muted without files and then only with `canPay`.
+- `LedgerView({ lease, canVoid, canCharge, canPay })`: compact full-width table newest first (date, description + number, method, charge, payment, running balance). The balance cards are tiles on the lease page now. Voided rows are muted with a strikethrough, a "Voided" badge and the reason. Kebab: "Void charge / payment" on live rows (`canVoid`), "Re-enter charge / payment" on voided rows (`canCharge` / `canPay`), which opens Add charge / Record Payment prefilled. Loading, error and empty states. On phones a `CardList` of the same entries (not tappable): description or "Payment received", number · date · method, Charge / Payment badge (+ Voided), amount (payments green, voided struck through), Balance after, "Reason: …", same kebab. A payment's paperclip (own column; a "Files" fact on phone cards) shows its `documentCount` and opens `PaymentFilesDrawer`, voided payments too; muted without files and then only with `canPay`. A toggle (`SegmentedControl`, ?ledger=) switches between "By month" (`LedgerMonths`, the default) and "All entries" (this table / cards). Payments show their "Paid: …" line (`PaidLine`); the payment asked for (?payment=, from a card) is scrolled to and outlined. Card kebabs reuse the rows' Void / Re-enter.
 
 ## VoidEntryModal.tsx
 - `VoidEntryModal`: Modal with the required Reason (trimmed, max 300) and a danger "Void charge" / "Void payment" button. Errors (409 already voided) stay inside. Toast "Charge INV-... voided" with Undo for 10 seconds: re-creates the entry ("Re-entered as INV-..."), errors in a toast.
@@ -37,7 +50,7 @@ The lease ledger (lease page, Ledger tab): charges, payments, voids and re-entri
 - `AddChargeModal({ leaseId, month, onClose })`: loads the lease (usually cached), then Type (Rent, Late fee, Other) with per-type prefills (description, amount, due date = `dayInMonth(month, rentDueDay)` for Rent, else today), Description, Amount, Due date. Sends `periodMonth = month` only for Rent. When the lease starts or ends inside the month, Rent gets a "Prorated: {amount} ({d} of {n} days)" / "Full month: {rent}" choice (prorated by default when the month's due date is outside the term; then due on the later of the start and the 1st). 409 "Rent for ... already exists" shows under Type. Optional `reentry` ({ from, values }): prefilled from a voided charge (a Rent re-entry uses its due date's month), title "Re-enter charge INV-...", toast "Re-entered as INV-...".
 
 ## RecordPaymentModal.tsx
-- `RecordPaymentModal({ targets, presetLeaseId, onClose })`: Tenant (searchable `Combobox` over name, unit, property and lease number; or read-only when preset) with "Balance due" help, Amount (prefilled with the balance, and checked again when a tenant fills it) with a live note (open / in full / credit), Payment date (today), Method (ACH default), Reference (hint "Transaction ID (optional)" for Venmo and Zelle), Notes. Overpayment allowed. Optional `reentry` ({ from, values }): prefilled from a voided payment with the re-entry note, title "Re-enter payment PMT-...", toast "Re-entered as PMT-...". Optional receipt (`ReceiptField`) in the same request; toast "… with receipt". Locked and not closable while sending. After an unclear reply it stays locked until the ledger has been reloaded, then offers Open ledger (`onOpenLedger`, else the lease page) and Try again / Record again anyway.
+- `RecordPaymentModal({ targets, presetLeaseId, onClose })`: Tenant (searchable `Combobox` over name, unit, property and lease number; or read-only when preset) with "Balance due" help, Amount (prefilled with the balance, and checked again when a tenant fills it) with a live note (open / in full / credit), Payment date (today), Method (ACH default), Reference (hint "Transaction ID (optional)" for Venmo and Zelle), Notes. Overpayment allowed. Optional `reentry` ({ from, values }): prefilled from a voided payment with the re-entry note, title "Re-enter payment PMT-...", toast "Re-entered as PMT-...". Optional receipt (`ReceiptField`) in the same request; toast "… with receipt". Locked and not closable while sending. After an unclear reply it stays locked until the ledger has been reloaded, then offers Open ledger (`onOpenLedger`, else the lease page) and Try again / Record again anyway. Under Amount: "Don't record security deposits here: they would pay rent." (a hint, never blocking).
 - `PaymentTarget`: one choosable lease (`leaseId`, `label`, `unitNumber`, `balance`).
 
 ## ReceiptField.tsx
@@ -47,7 +60,7 @@ The lease ledger (lease page, Ledger tab): charges, payments, voids and re-entri
 - `UnclearPayment({ state })`: "We didn't get an answer..." and what the reloaded ledger says. `UnclearState`: checking, failed, missing, found.
 
 ## PaymentFilesDrawer.tsx
-- `PaymentFilesDrawer({ leaseId, entry, onClose })`: one payment's files: the `DocumentsPanel` in an lg drawer (number, amount, method, date; Voided badge). Opened from the ledger.
+- `PaymentFilesDrawer({ leaseId, entry, allocation, cards, onClose })`: one payment's files: the `DocumentsPanel` in an lg drawer (number, amount, method, date; Voided badge). Opened from the ledger. The header adds what the payment paid (`allocationText`).
 
 ## reenter.ts
 Voids stay permanent; a re-entry is a new entry with a new number. Plain functions, so the toast's Undo works after the void modal closed.
@@ -60,6 +73,7 @@ Voids stay permanent; a re-entry is a new entry with a new number. Plain functio
 - `leasePaymentTarget(lease, balance)`: the one Record Payment target on the lease page.
 
 ## Tests (`npm test`)
+- `cards.test.ts`: grouping by month (newest first, API order inside, totals without voided cards), card labels, the "Paid: …" text (credit, voided, unknown charge) and the credit from `summary.credit`.
 - `proration.test.ts`: `rentProration` (start / end / both inside the month, leap February, half-cent rounding, due date in or outside the term, null cases) and `rentDescription`.
 - `paymentForm.test.ts`: the request with and without a file, the default category, unclear replies, finding the payment in the ledger, receipt errors.
 - `balance.test.ts`: `balanceText` (owed, zero, credit).

@@ -13,6 +13,8 @@ import { can } from "@/features/auth/permissions";
 import { DocumentsPanel } from "@/features/documents/DocumentsPanel";
 import { useDocuments } from "@/features/documents/hooks";
 import { useLeases } from "@/features/leases/hooks";
+import { creditAmount } from "@/features/ledger/cards";
+import { useLedger } from "@/features/ledger/hooks";
 import type { LeasePageState } from "@/features/leases/LeasePage";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
 import { dueNote, dueState, leaseEndsNote } from "@/features/leases/stats";
@@ -109,6 +111,9 @@ function TenantDetailView({ tenant }: { tenant: TenantDetail }) {
   const leaseState: LeasePageState = { from: "tenant", tenant: { id: tenant.id, name: tenant.fullName } };
 
   const due = active ? dueState(active) : undefined;
+  // The active lease's ledger for its credit (summary.credit, money paid ahead).
+  const ledger = useLedger(active?.id ?? "", { enabled: Boolean(active) });
+  const credit = creditAmount(ledger.data?.summary);
   const noLease = <span className="text-text-muted">None</span>;
 
   return (
@@ -151,9 +156,9 @@ function TenantDetailView({ tenant }: { tenant: TenantDetail }) {
             <Tile
               label="Balance"
               loading={leases.isPending}
-              value={active ? formatCurrency(active.balance) : noLease}
-              note={due ? dueNote(due) : "No active lease"}
-              className={cn(due?.kind === "overdue" && "text-danger")}
+              value={active ? (credit ? `Credit ${formatCurrency(credit)}` : formatCurrency(active.balance)) : noLease}
+              note={credit ? "Paid ahead" : due ? dueNote(due) : "No active lease"}
+              className={cn(credit ? "text-success" : due?.kind === "overdue" && "text-danger")}
             />
             <Tile
               label="Lease ends"
@@ -180,7 +185,7 @@ function TenantDetailView({ tenant }: { tenant: TenantDetail }) {
       {tab === "overview" ? (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           <div className={cn("flex min-w-0 flex-col gap-6", tenant.notes?.trim() ? "lg:col-span-8" : "lg:col-span-12")}>
-            {active && <TenantCurrentLease lease={active} leaseState={leaseState} />}
+            {active && <TenantCurrentLease lease={active} leaseState={leaseState} credit={credit} />}
             <TenantContactCard tenant={tenant} onEdit={canEdit ? () => setEditing(true) : undefined} />
             <TenantPersonalCard tenant={tenant} />
             {!tenant.notes?.trim() && <AddedByLine tenant={tenant} />}

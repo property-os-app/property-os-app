@@ -25,8 +25,12 @@ export interface RentRollRow {
   openingBalance: string;
   /** Non-voided charges of any type due in the month. */
   charged: string;
-  /** Non-voided payments dated in the month. */
+  /** Non-voided payments dated in the month (cash received). */
   paid: string;
+  /** Of `charged`, what the payments recorded so far have paid (FIFO, as the ledger cards; a later payment counts). */
+  rentPaid: string;
+  /** charged - rentPaid: still open of the month's charges. */
+  remaining: string;
   /** As of the month's last day; negative = credit. */
   balance: string;
   oldestUnpaidDueDate: string | null;
@@ -72,7 +76,11 @@ export interface RentRollYearCell {
   /** "YYYY-MM". */
   month: string;
   charged: string;
+  /** Cash received in the month. */
   paid: string;
+  /** Of `charged`, what has been paid (whenever). rentPaid + remaining = charged. */
+  rentPaid: string;
+  remaining: string;
   balance: string;
   status: RentRollYearCellStatus;
 }

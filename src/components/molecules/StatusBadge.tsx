@@ -23,7 +23,7 @@ export type ApprovalStatus = "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
 export type TemplateStatus = "DEFAULT" | "ACTIVE" | "ARCHIVED";
 
 export const statusTone = {
-  rent: { PAID: "success", PARTIAL: "warning", UNPAID: "warning", OVERDUE: "danger", NOT_BILLED: "neutral" },
+  rent: { PAID: "success", PARTIAL: "warning", UNPAID: "warning", OVERDUE: "danger", NOT_BILLED: "neutral", VOID: "neutral" },
   lease: { DRAFT: "neutral", ACTIVE: "success", EXPIRING: "warning", ENDED: "neutral", TERMINATED: "danger", CANCELLED: "neutral" },
   esign: { NOT_SENT: "neutral", PENDING: "warning", SIGNED: "success" },
   ticket: { OPEN: "neutral", ASSIGNED: "warning", IN_PROGRESS: "info", RESOLVED: "success", CANCELLED: "neutral", PAST_SLA: "danger" },
@@ -36,7 +36,7 @@ export const statusTone = {
 
 /** Friendly label per enum key. Domains not listed here already use display words as keys. */
 export const statusLabel = {
-  rent: { PAID: "Paid", PARTIAL: "Partial", UNPAID: "Unpaid", OVERDUE: "Overdue", NOT_BILLED: "Not billed" },
+  rent: { PAID: "Paid", PARTIAL: "Partial", UNPAID: "Unpaid", OVERDUE: "Overdue", NOT_BILLED: "Not billed", VOID: "Void" },
   lease: { DRAFT: "Draft", ACTIVE: "Active", EXPIRING: "Expiring", ENDED: "Ended", TERMINATED: "Terminated", CANCELLED: "Cancelled" },
   esign: { NOT_SENT: "Not sent", PENDING: "Pending", SIGNED: "Signed" },
   unit: { VACANT: "Vacant", OCCUPIED: "Occupied", RESERVED: "Reserved", UNDER_MAINTENANCE: "Under maintenance" },

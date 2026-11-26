@@ -290,7 +290,19 @@ export function RecordPaymentModal({ targets, presetLeaseId, reentry, onOpenLedg
             )}
           />
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <FormField label="Amount" htmlFor="pay-amount" required error={errors.amount?.message} help={target ? amountNote(target.balance, amount) : undefined}>
+            <FormField
+              label="Amount"
+              htmlFor="pay-amount"
+              required
+              error={errors.amount?.message}
+              help={
+                <>
+                  {target && <span className="block">{amountNote(target.balance, amount)}</span>}
+                  {/* Not blocking: a deposit recorded here would pay rent (FIFO); deposits get their own step later. */}
+                  <span className="block">Don't record security deposits here: they would pay rent.</span>
+                </>
+              }
+            >
               <Controller
                 control={control}
                 name="amount"

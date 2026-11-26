@@ -90,11 +90,60 @@ export interface LedgerEntry {
   runningBalance: string;
 }
 
-/** GET /leases/:id/ledger. Entries come oldest first. */
+/** Ledger card status (not a DB enum): VOID (voided), PAID (nothing left), OVERDUE (money left, due before UTC today), PARTIAL, UNPAID. */
+export type LedgerCardStatus = "PAID" | "PARTIAL" | "UNPAID" | "OVERDUE" | "VOID";
+
+/** One payment applied to a card, oldest first. */
+export interface LedgerCardPayment {
+  paymentId: string;
+  paymentNumber: string;
+  /** paymentDate, "YYYY-MM-DD". */
+  date: string;
+  method: PaymentMethod;
+  /** Money string: the part of the payment that went to this charge. */
+  appliedAmount: string;
+}
+
+/** One charge as a card (calculated on every read, FIFO; nothing stored). paid + remaining = amount; both "0.00" when VOID. */
+export interface LedgerCard {
+  chargeId: string;
+  invoiceNumber: string;
+  type: ChargeType;
+  description: string;
+  /** "YYYY-MM": periodMonth on RENT, else the dueDate's month. Group by it for a month view. */
+  month: string;
+  dueDate: string;
+  amount: string;
+  paid: string;
+  remaining: string;
+  status: LedgerCardStatus;
+  voidReason: string | null;
+  /** [] when voided or unpaid. */
+  payments: LedgerCardPayment[];
+}
+
+/** One payment and the charges it paid (oldest first). applied + unapplied = amount; [] and "0.00" when voided. */
+export interface LedgerPaymentAllocation {
+  paymentId: string;
+  paymentNumber: string;
+  date: string;
+  method: PaymentMethod;
+  amount: string;
+  voided: boolean;
+  applied: { chargeId: string; invoiceNumber: string; amount: string }[];
+  /** What is left of it (credit). */
+  unapplied: string;
+}
+
+/** GET /leases/:id/ledger. Entries come oldest first; cards in FIFO order (dueDate, then created); allocations in payment order. */
 export interface LedgerResponse {
   leaseId: string;
   leaseNumber: string;
   entries: LedgerEntry[];
+  /** One per charge, voided included. */
+  cards: LedgerCard[];
+  /** One per payment, voided included. */
+  paymentAllocations: LedgerPaymentAllocation[];
   summary: {
     /** The lease's rent (fixed 2), null on DRAFT. */
     monthlyRent: string | null;
@@ -103,6 +152,8 @@ export interface LedgerResponse {
     /** totalCharged - totalPaid; negative = credit. */
     balance: string;
     oldestUnpaidDueDate: string | null;
+    /** Payments no charge has used yet (never negative): show "Credit". */
+    credit: string;
   };
 }
 

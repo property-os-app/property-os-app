@@ -7,6 +7,8 @@ import { cn } from "@/lib/cn";
 import { formatCurrency, formatDate, ordinal, toCents } from "@/lib/format";
 import { labelOptions, paymentFrequencyLabels, signatureStatusLabels } from "@/lib/labels";
 import { balanceText } from "@/features/ledger/balance";
+import { creditAmount } from "@/features/ledger/cards";
+import { useLedger } from "@/features/ledger/hooks";
 import type { FieldName } from "@/features/leases/form";
 import { leaseErrorText, useUpdateLease } from "@/features/leases/hooks";
 import { leaseKeys } from "@/features/leases/keys";
@@ -119,9 +121,13 @@ function FinancialsCard({ lease, onEdit }: { lease: Lease; onEdit?: () => void }
   );
 }
 
-/** The lease's balance with our due wording (`dueState`): "Clear" at $0, red with the Overdue badge when overdue, "Credit $…" below 0. */
+/** The lease's balance with our due wording (`dueState`): "Clear" at $0, red with the Overdue badge when overdue; "Credit $…" from the ledger's `summary.credit`. */
 function BalanceTile({ lease }: { lease: Lease }) {
+  // The lease page has already loaded the ledger (same query): the credit comes from summary.credit.
+  const ledger = useLedger(lease.id, { enabled: lease.status !== "DRAFT" });
+  const credit = creditAmount(ledger.data?.summary);
   const icon = <Scale strokeWidth={1.5} />;
+  if (credit) return <IconTile icon={icon} label="Balance" value={<Num>Credit {formatCurrency(credit)}</Num>} valueClassName="text-success" note="Paid ahead" />;
   if (lease.status === "DRAFT") return <IconTile icon={icon} label="Balance" value={<Num>{formatCurrency(lease.balance)}</Num>} note="No ledger on a draft" />;
   const due = dueState(lease);
   const badge =
