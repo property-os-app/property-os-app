@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoRenewEditable, canDeleteLease, coTenantEmails, dueState, hasLedger, isOldLease, notDueCaption } from "@/features/leases/stats";
+import { autoRenewEditable, balanceTone, balanceToneClass, balanceValueText, canDeleteLease, coTenantEmails, dueState, hasLedger, isOldLease, notDueCaption } from "@/features/leases/stats";
 import type { Lease } from "@/types/lease";
 
 const TODAY = "2026-10-24";
@@ -86,5 +86,27 @@ describe("autoRenewEditable", () => {
     expect(autoRenewEditable({ status: "ENDED", isHistorical: false })).toBe(false);
     expect(autoRenewEditable({ status: "TERMINATED", isHistorical: false })).toBe(false);
     expect(autoRenewEditable({ status: "ENDED", isHistorical: true })).toBe(false);
+  });
+});
+
+describe("balance colour and text (lease page, tenant and unit pages, Current lease cards)", () => {
+  const tone = (balance: string, due: string | null, credit: string | null = null) => balanceTone(dueState(lease(balance, due), TODAY), credit);
+
+  it("$0.00 and a credit are green, owed but not late orange, overdue red", () => {
+    expect(tone("0.00", null)).toBe("success");
+    expect(tone("1200.00", "2026-11-01")).toBe("warning");
+    expect(tone("1200.00", TODAY)).toBe("warning");
+    expect(tone("1200.00", "2026-10-01")).toBe("danger");
+    expect(tone("-150.00", null)).toBe("success");
+    expect(tone("0.00", null, "150.00")).toBe("success");
+    expect(balanceToneClass).toEqual({ success: "text-success", warning: "text-warning", danger: "text-danger" });
+  });
+
+  it("shows a credit as \"Credit $X\" and money owed without a sign", () => {
+    expect(balanceValueText("1200.00")).toBe("$1,200.00");
+    expect(balanceValueText("0.00")).toBe("$0.00");
+    expect(balanceValueText("-6440.00")).toBe("Credit $6,440.00");
+    expect(balanceValueText("-6440.00", "6440.00")).toBe("Credit $6,440.00");
+    expect(balanceValueText("0.00", "0.00")).toBe("$0.00");
   });
 });

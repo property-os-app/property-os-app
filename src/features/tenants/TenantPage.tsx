@@ -17,7 +17,7 @@ import { creditAmount } from "@/features/ledger/cards";
 import { useLedger } from "@/features/ledger/hooks";
 import type { LeasePageState } from "@/features/leases/LeasePage";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
-import { dueNote, dueState, leaseEndsNote } from "@/features/leases/stats";
+import { balanceTone, balanceToneClass, balanceValueText, dueNote, dueState, leaseEndsNote } from "@/features/leases/stats";
 import { BackBreadcrumb, PageSkeleton, Tile } from "@/features/shared/DetailParts";
 import { useGoBack, useTabParam } from "@/features/shared/detailNav";
 import { textLink } from "@/features/shared/linkClass";
@@ -27,6 +27,8 @@ import { currentLease } from "@/features/tenants/stats";
 import { TenantDeleteDialog } from "@/features/tenants/TenantDeleteDialog";
 import { TenantFormModal } from "@/features/tenants/TenantFormModal";
 import { TenantLeasesTab } from "@/features/tenants/TenantLeasesTab";
+import { LeaseholdersCard } from "@/features/leases/LeaseholdersCard";
+import { TermCard } from "@/features/leases/TermCard";
 import { AddedByLine, TenantContactCard, TenantCurrentLease, TenantNotesCard, TenantPersonalCard } from "@/features/tenants/TenantOverview";
 import { RentStatusBadge, TenantLeaseBadge } from "@/features/tenants/TenantParts";
 import type { TenantDetail } from "@/types/tenant";
@@ -156,9 +158,9 @@ function TenantDetailView({ tenant }: { tenant: TenantDetail }) {
             <Tile
               label="Balance"
               loading={leases.isPending}
-              value={active ? (credit ? `Credit ${formatCurrency(credit)}` : formatCurrency(active.balance)) : noLease}
+              value={active ? balanceValueText(active.balance, credit) : noLease}
               note={credit ? "Paid ahead" : due ? dueNote(due) : "No active lease"}
-              className={cn(credit ? "text-success" : due?.kind === "overdue" && "text-danger")}
+              className={due ? balanceToneClass[balanceTone(due, credit)] : undefined}
             />
             <Tile
               label="Lease ends"
@@ -185,7 +187,13 @@ function TenantDetailView({ tenant }: { tenant: TenantDetail }) {
       {tab === "overview" ? (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           <div className={cn("flex min-w-0 flex-col gap-6", tenant.notes?.trim() ? "lg:col-span-8" : "lg:col-span-12")}>
-            {active && <TenantCurrentLease lease={active} leaseState={leaseState} credit={credit} />}
+            {active && (
+              <>
+                <TenantCurrentLease lease={active} leaseState={leaseState} credit={credit} />
+                <TermCard lease={active} canEdit={false} canVoid={false} />
+                <LeaseholdersCard lease={active} tenantState={{ from: "tenant", tenant: { id: tenant.id, name: tenant.fullName } }} currentTenantId={tenant.id} />
+              </>
+            )}
             <TenantContactCard tenant={tenant} onEdit={canEdit ? () => setEditing(true) : undefined} />
             <TenantPersonalCard tenant={tenant} />
             {!tenant.notes?.trim() && <AddedByLine tenant={tenant} />}

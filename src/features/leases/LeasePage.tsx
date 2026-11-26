@@ -24,9 +24,9 @@ import { LeaseEndModal } from "@/features/leases/LeaseEndModal";
 import { LeaseBadge } from "@/features/leases/LeaseParts";
 import { TenantsTab } from "@/features/leases/LeaseTabs";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
-import { canDeleteLease, dueNote, dueState, isClosed, isOldLease, leasePeriod, primaryTenant } from "@/features/leases/stats";
+import { balanceTone, balanceToneClass, balanceValueText, canDeleteLease, dueNote, dueState, isClosed, isOldLease, leasePeriod, primaryTenant } from "@/features/leases/stats";
 import { AddChargeModal } from "@/features/ledger/AddChargeModal";
-import { balanceOrCreditText, creditAmount } from "@/features/ledger/cards";
+import { creditAmount } from "@/features/ledger/cards";
 import { useLedger } from "@/features/ledger/hooks";
 import { balanceSplit, type BalanceSplit } from "@/features/ledger/overdue";
 import { LedgerView } from "@/features/ledger/LedgerView";
@@ -416,10 +416,10 @@ function LeaseDetail({ lease }: { lease: Lease }) {
               label="Current balance"
               loading={ledger.isPending}
               // A credit comes from summary.credit (money paid ahead), never from the balance's sign.
-              value={summary ? balanceOrCreditText(summary) : <Dash />}
+              value={summary ? balanceValueText(summary.balance, creditAmount(summary)) : <Dash />}
               note={ledger.isError ? ledgerRetry : creditAmount(summary) ? "Paid ahead" : balanceNote(dueNote(due), split, balanceCents)}
-              // Red only when part of it is overdue: a balance above $0 can be rent billed early.
-              className={summary ? (due.kind === "overdue" ? "text-danger" : balanceCents > 0 ? undefined : "text-success") : undefined}
+              // Green at $0 or a credit, orange when owed but not late yet (rent billed early), red when overdue.
+              className={summary ? balanceToneClass[balanceTone(due, creditAmount(summary))] : undefined}
             />
             <Tile
               label="Monthly rent"

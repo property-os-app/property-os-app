@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  assignmentProblem,
+  autoRefundCents,
   canSaveSettlement,
+  changeSettlement,
+  overDepositText,
+  refundTheRest,
   leftToAssignCents,
   leftToAssignView,
   newDeduction,
@@ -21,6 +26,7 @@ function values(over: Partial<SettlementValues> = {}): SettlementValues {
     deductions: [],
     appliedToBalance: 0,
     refundAmount: 3000,
+    refundAuto: false,
     refundDate: "",
     refundMethod: "",
     refundReference: "",
@@ -183,5 +189,58 @@ describe("splitSettlementErrors", () => {
       "Refund date, refundMethod and refundReference need a refundAmount above 0",
       "Lease LSE-2026-006 has no deposit to settle",
     ]);
+  });
+});
+
+describe("automatic refund", () => {
+  const start = () => settlementDefaults(unsettled, "2026-11-26");
+
+  it("starts on, for a new and a saved settlement", () => {
+    expect(start().refundAuto).toBe(true);
+  });
+
+  it("follows deductions and the applied amount while the user hasn't typed in it", () => {
+    let v = changeSettlement(start(), "deductions", [newDeduction("Cleaning", 100)], "3000.00");
+    expect(v.refundAmount).toBe(2900);
+    v = changeSettlement(v, "appliedToBalance", 50, "3000.00");
+    expect(v.refundAmount).toBe(2850);
+    expect(leftToAssignCents(v, "3000.00")).toBe(0);
+  });
+
+  it("stops following once the refund is typed in", () => {
+    let v = changeSettlement(start(), "refundAmount", 2500, "3000.00");
+    expect(v.refundAuto).toBe(false);
+    v = changeSettlement(v, "deductions", [newDeduction("Cleaning", 100)], "3000.00");
+    expect(v.refundAmount).toBe(2500);
+    expect(leftToAssignCents(v, "3000.00")).toBe(40000);
+  });
+
+  it("\"Refund the rest\" puts it back to the automatic value", () => {
+    const typed = changeSettlement(changeSettlement(start(), "refundAmount", 3000, "3000.00"), "deductions", [newDeduction("Keys", 75.5)], "3000.00");
+    expect(typed.refundAmount).toBe(3000);
+    const back = refundTheRest(typed, "3000.00");
+    expect(back).toMatchObject({ refundAuto: true, refundAmount: 2924.5 });
+    expect(changeSettlement(back, "deductions", [], "3000.00").refundAmount).toBe(3000);
+  });
+
+  it("stays at $0.00 when deductions go over the deposit, and says by how much", () => {
+    const v = changeSettlement(start(), "deductions", [newDeduction("Damage", 3200)], "3000.00");
+    expect(v.refundAmount).toBe(0);
+    expect(autoRefundCents(v, "3000.00")).toBe(0);
+    expect(overDepositText(v, "3000.00")).toBe("Deductions are $200.00 more than the deposit.");
+    expect(overDepositText(changeSettlement(start(), "deductions", [newDeduction("Damage", 2990)], "3000.00"), "3000.00")).toBeNull();
+    expect(overDepositText({ deductions: [newDeduction("x", 2990)], appliedToBalance: 20 }, "3000.00")).toBe("Deductions + applied to balance are $10.00 more than the deposit.");
+  });
+});
+
+describe("assignmentProblem", () => {
+  it("says what to lower when over, how much is left when under, nothing when balanced", () => {
+    const over = values({ deductions: [newDeduction("Damage", 1555)], refundAmount: 3125 });
+    expect(assignmentProblem(over, "3125.00")).toBe("Deductions + applied + refund are $1,555.00 more than the $3,125.00 deposit. Lower the refund to $1,570.00.");
+    expect(assignmentProblem(values({ refundAmount: 2900 }), "3000.00")).toBe("$100.00 still to assign: add it to the refund, a deduction or the applied amount.");
+    expect(assignmentProblem(values(), "3000.00")).toBeNull();
+    expect(assignmentProblem(values({ deductions: [newDeduction("Damage", 3200)], refundAmount: 0 }), "3000.00")).toBe(
+      "Deductions + applied + refund are $200.00 more than the $3,000.00 deposit. Lower the deductions or the applied amount by $200.00.",
+    );
   });
 });

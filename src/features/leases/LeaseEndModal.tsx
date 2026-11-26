@@ -12,6 +12,7 @@ import { BalanceLine, PreviewList } from "@/features/deposits/EndPreviewParts";
 import { useEndPreview } from "@/features/deposits/hooks";
 import { SettlementForm } from "@/features/deposits/SettlementForm";
 import {
+  assignmentProblem,
   canSaveSettlement,
   settlementBody,
   settlementDefaults,
@@ -81,7 +82,7 @@ export function LeaseEndModal({ lease, onClose }: { lease: Lease; onClose: () =>
     if (settling) {
       setSubmitted(true);
       if (!canSaveSettlement(settlement, ctx)) {
-        setError("Finish the deposit settlement first: every dollar must be assigned ($0.00 left).");
+        setError(assignmentProblem(settlement, ctx.totalHeld) ?? "Check the deposit settlement below.");
         return;
       }
     }

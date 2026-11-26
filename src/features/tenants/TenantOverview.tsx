@@ -7,7 +7,7 @@ import { paymentFrequencyLabels, tenantTypeLabels } from "@/lib/labels";
 import { roleLabel } from "@/features/auth/permissions";
 import type { LeasePageState } from "@/features/leases/LeasePage";
 import { LeaseBadge } from "@/features/leases/LeaseParts";
-import { dueNote, dueState, leaseEndsNote, leasePeriod } from "@/features/leases/stats";
+import { balanceTone, balanceToneClass, balanceValueText, dueNote, dueState, leaseEndsNote, leasePeriod } from "@/features/leases/stats";
 import { ContactActions } from "@/features/shared/ContactActions";
 import { NotProvided } from "@/features/shared/Missing";
 import { preferredContactText, unitLine } from "@/features/tenants/stats";
@@ -41,8 +41,8 @@ export function TenantCurrentLease({ lease, leaseState, credit }: { lease: Lease
         <IconTile
           icon={<Scale strokeWidth={1.5} />}
           label="Balance"
-          value={<Num>{credit ? `Credit ${formatCurrency(credit)}` : formatCurrency(lease.balance)}</Num>}
-          valueClassName={credit ? "text-success" : due.kind === "overdue" ? "text-danger" : undefined}
+          value={<Num>{balanceValueText(lease.balance, credit)}</Num>}
+          valueClassName={balanceToneClass[balanceTone(due, credit)]}
           note={credit ? "Paid ahead" : dueNote(due)}
         />
         <IconTile icon={<CalendarCheck strokeWidth={1.5} />} label="Lease ends" value={formatDate(lease.endDate)} note={leaseEndsNote(lease)} />

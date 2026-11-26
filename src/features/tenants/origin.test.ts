@@ -21,6 +21,16 @@ describe("tenantParent", () => {
   });
 });
 
+describe("tenantParent from another tenant", () => {
+  it("names that tenant and links back to them", () => {
+    expect(tenantParent({ from: "tenant", tenant: { id: "t 2", name: "Ana Reyes" } })).toEqual({
+      parent: { label: "Ana Reyes", to: "/tenants/t%202" },
+      nav: "tenants",
+      backInHistory: true,
+    });
+  });
+});
+
 describe("tenantFromLease", () => {
   it("builds the link", () => {
     expect(tenantFromLease("t1", { id: "l1", leaseNumber: "LSE-1" })).toEqual({ to: "/tenants/t1", state: { from: "lease", lease: { id: "l1", number: "LSE-1" } } });
