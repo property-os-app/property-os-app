@@ -32,7 +32,7 @@ export interface DocumentsPanelProps {
   emptyText?: string;
 }
 
-/** Table View / Download: icon-only squares (like Delete) while the panel is under 48rem wide, so the drawer tables don't scroll sideways. */
+/** Table View / Download: icon-only squares (like Delete) while the panel is under 48rem wide, so narrow tables don't scroll sideways. */
 const NARROW_ICON_ONLY = "@max-3xl:w-8 @max-3xl:px-0";
 
 /**
@@ -89,7 +89,7 @@ export function DocumentsPanel({ target, leaseState, onOpenLedger, emptyText = "
       cell: (d) => (
         <div className="flex min-w-0 items-center gap-3 py-1.5">
           <FileKindIcon kind={fileKind(d.contentType)} />
-          {/* Capped in narrow panels (drawers) so long names and labels truncate instead of widening the table. */}
+          {/* Capped in narrow panels (the payment files drawer) so long names and labels truncate instead of widening the table. */}
           <div className="flex min-w-0 flex-col gap-1 @max-3xl:max-w-[180px]">
             <span className="truncate font-semibold text-text-primary" title={d.name}>
               {d.name}
@@ -163,7 +163,7 @@ export function DocumentsPanel({ target, leaseState, onOpenLedger, emptyText = "
   ];
 
   return (
-    // A size container: in narrow places (the tenant and unit drawers) View and Download show only their icons.
+    // A size container: in narrow places (the payment files drawer, small screens) View and Download show only their icons.
     <div className="@container flex flex-col gap-4">
       {canManage && (
         <Card className="flex flex-col gap-4">

@@ -20,7 +20,7 @@ type Props = Pick<DataTableProps<TenantRow>, "rows" | "state" | "sort" | "onSort
 
 /**
  * The Table view of the tenants directory (from md up); on phones the same rows as cards. Row or card opens the
- * tenant drawer; Tenant and Balance sort.
+ * tenant page; Tenant and Balance sort.
  */
 export function TenantsTable({ onOpen, onEdit, onDelete, ...props }: Props) {
   const isMobile = useIsMobile();

@@ -33,19 +33,24 @@ import { RecordPaymentModal } from "@/features/ledger/RecordPaymentModal";
 import { leasePaymentTarget } from "@/features/ledger/targets";
 import { BackBreadcrumb, Tile, type Crumb } from "@/features/shared/DetailParts";
 import { linkFocus, textLink } from "@/features/shared/linkClass";
+import type { UnitPageState } from "@/features/units/origin";
 import type { Lease } from "@/types/lease";
 
 type Tab = "ledger" | "details" | "tenants" | "documents";
 const TABS: Tab[] = ["ledger", "details", "tenants", "documents"];
 
 /** Where an in-app click came from: names the first crumb (the place the back arrow goes) and picks the Sidebar item. */
-export type LeaseOrigin = "leases" | "rent-roll" | "dashboard" | "tenants" | "units" | "property";
+export type LeaseOrigin = "leases" | "rent-roll" | "dashboard" | "tenants" | "units" | "property" | "tenant" | "unit";
 
 /** Router state from every link into the lease page. Without `from` (pasted link, new tab) the parent is Leases (or the Rent Roll month from the URL). */
 export interface LeasePageState {
   from?: LeaseOrigin;
-  /** With from "property" (the Unit drawer on a property page): the crumb names it and links to it. */
+  /** With from "property": the crumb names it and links to it. */
   property?: { id: string; name: string };
+  /** With from "tenant" (the tenant page): the crumb names the tenant and links to the page. */
+  tenant?: { id: string; name: string };
+  /** With from "unit" (the unit page): the crumb "Unit 4B, Maple Court" links to it. */
+  unit?: { id: string; name: string };
   /** A failed kebab Activate on the Leases list, shown under the header. */
   activateError?: ActivateError;
 }
@@ -74,6 +79,12 @@ function useParent(): { parent: Crumb; nav: ModuleKey; backInHistory: boolean } 
   if (from === "dashboard") return { parent: { label: "Dashboard", to: "/" }, nav: "dashboard", backInHistory };
   if (from === "tenants") return { parent: { label: "Tenants", to: "/tenants" }, nav: "tenants", backInHistory };
   if (from === "units") return { parent: { label: "Units", to: "/units" }, nav: "units", backInHistory };
+  if (from === "tenant" && state?.tenant) {
+    return { parent: { label: state.tenant.name, to: `/tenants/${encodeURIComponent(state.tenant.id)}?tab=leases` }, nav: "tenants", backInHistory };
+  }
+  if (from === "unit" && state?.unit) {
+    return { parent: { label: state.unit.name, to: `/units/${encodeURIComponent(state.unit.id)}?tab=history` }, nav: "units", backInHistory };
+  }
   if (from === "property" && state?.property) {
     return { parent: { label: state.property.name, to: `/properties/${encodeURIComponent(state.property.id)}` }, nav: "properties", backInHistory };
   }
@@ -158,11 +169,22 @@ export function LeasePage() {
   return <LeaseDetail key={lease.data.id} lease={lease.data} />;
 }
 
-/** "Unit 4B, Maple Court · Nov 1, 2026 to Oct 31, 2027 · LSE-2026-001" (`leasePeriod`); a DRAFT without both dates shows "Draft". */
-function subtitle(lease: Lease): string {
+/**
+ * "Unit 4B, Maple Court · Nov 1, 2026 to Oct 31, 2027 · LSE-2026-001" (`leasePeriod`); a DRAFT without both dates shows
+ * "Draft". The unit links to its page (Back returns to this lease).
+ */
+function Subtitle({ lease }: { lease: Lease }) {
   const unit = `${unitLabel(lease.unit.unitNumber)}, ${lease.unit.property.name}`;
   const dates = lease.startDate && lease.endDate ? leasePeriod(lease) : lease.status === "DRAFT" ? "Draft" : formatDate(leaseEndDate(lease));
-  return [unit, dates, lease.leaseNumber].join(" · ");
+  const state: UnitPageState = { from: "lease", lease: { id: lease.id, number: lease.leaseNumber } };
+  return (
+    <>
+      <Link to={`/units/${encodeURIComponent(lease.unit.id)}`} state={state} className={cn("text-text-secondary underline-offset-2 hover:text-text-primary hover:underline", linkFocus)}>
+        {unit}
+      </Link>
+      {` · ${[dates, lease.leaseNumber].join(" · ")}`}
+    </>
+  );
 }
 
 /** "in 12 days", "today", "ended 3 days ago", or Dash without an end date. */
@@ -331,7 +353,9 @@ function LeaseDetail({ lease }: { lease: Lease }) {
               <Avatar name={primary?.fullName ?? "-"} size={56} />
               <div className="flex min-w-0 flex-col gap-1">
                 <H1 className="truncate">{primary?.fullName ?? "No tenant yet"}</H1>
-                <Small className="block">{subtitle(lease)}</Small>
+                <Small className="block">
+                  <Subtitle lease={lease} />
+                </Small>
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <LeaseBadge lease={lease} />
                   <StatusBadge domain="esign" status={lease.signatureStatus} />

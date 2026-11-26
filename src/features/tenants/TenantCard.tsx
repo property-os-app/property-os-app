@@ -26,7 +26,7 @@ export interface TenantCardProps {
 }
 
 /**
- * Compact clickable card for the Cards view; opens the tenant drawer. The kebab and the email / phone links and copy
+ * Compact clickable card for the Cards view; opens the tenant page. The kebab and the email / phone links and copy
  * buttons (ContactLink) stop the click from opening it.
  * Red left strip: behind on rent only (the Rent status badge says "Overdue").
  */

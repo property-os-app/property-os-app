@@ -46,9 +46,9 @@ type SubmitKind = "draft" | "activate" | "save";
 export interface LeaseWizardProps {
   /** Edit this lease; without it the wizard creates one. */
   lease?: Lease;
-  /** Create: preset unit (unit drawer). */
+  /** Create: preset unit (unit page). */
   presetUnit?: Unit;
-  /** Create: preset primary tenant (tenant drawer). */
+  /** Create: preset primary tenant (tenant page). */
   presetTenantId?: string;
   /** Open at the step that has this field (default: the first step). */
   startAt?: FieldName;

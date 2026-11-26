@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router";
 import { Plus } from "lucide-react";
 import { Button, Dash, Select, Skeleton } from "@/components/atoms";
 import { FormField, KpiCard, SearchInput, SegmentedControl } from "@/components/molecules";
@@ -20,7 +21,7 @@ import { useListView } from "@/features/shared/listView";
 import { ViewToggle } from "@/features/shared/ViewToggle";
 import { NoProperties } from "@/features/shared/NoProperties";
 import { UnitDeleteDialog } from "@/features/units/UnitDeleteDialog";
-import { UnitDrawer } from "@/features/units/UnitDrawer";
+import type { UnitPageState } from "@/features/units/origin";
 import { UnitFormModal } from "@/features/units/UnitFormModal";
 import { UnitsTable } from "@/features/units/UnitsTable";
 import { useUnits } from "@/features/units/hooks";
@@ -47,7 +48,7 @@ const sortOptions: SortOption[] = [
   { key: "current", label: "Current rent", kind: "money" },
 ];
 
-/** /units: KPIs, toolbar (the Property select is the sidebar scope) and the units table. Row click opens the unit drawer. */
+/** /units: KPIs, toolbar (the Property select is the sidebar scope) and the units table. Row click opens the unit page. */
 export function UnitsPage() {
   const { me } = useAuth();
   const user = me!;
@@ -62,7 +63,7 @@ export function UnitsPage() {
   const units = useUnits({ propertyId: scope ?? undefined });
   const leases = useLeases({ status: "ACTIVE", propertyId: scope ?? undefined });
 
-  const [openId, setOpenId] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [formOpen, setFormOpen] = useState(false);
   const [editUnit, setEditUnit] = useState<Unit | null>(null);
   const [deleteRow, setDeleteRow] = useState<UnitListRow | null>(null);
@@ -114,8 +115,6 @@ export function UnitsPage() {
       }
     : { title: "No units match your filters", description: "Try another search or status.", action: <Button onClick={table.clearFilters}>Clear filters</Button> };
   const error = { title: "Couldn't load units", description: failed ? errorText(failed.error) : undefined, onRetry: retry };
-
-  const openRow = rows?.find((r) => r.unit.id === openId);
 
   const search = <SearchInput placeholder="Search unit, property or tenant" value={table.search} onChange={(e) => table.setSearch(e.target.value)} />;
   const propertySelect = (id?: string) => (
@@ -223,13 +222,13 @@ export function UnitsPage() {
               <Pagination page={table.page} pageCount={table.pageCount} onPageChange={table.setPage} summary={table.summary} />
             ) : undefined
           }
-          onOpen={(r) => setOpenId(r.unit.id)}
+          // The unit page; Back returns here with the filters and search (they live in the URL).
+          onOpen={(r) => void navigate(`/units/${encodeURIComponent(r.unit.id)}`, { state: { from: "units" } satisfies UnitPageState })}
           onEdit={can(user, "unit.edit") ? (r) => setEditUnit(r.unit) : undefined}
           onDelete={can(user, "unit.delete") ? (r) => setDeleteRow(r) : undefined}
         />
       </div>
 
-      {openRow && <UnitDrawer unit={openRow.unit} propertyName={openRow.propertyName} leaseFrom={{ from: "units" }} onClose={() => setOpenId(null)} />}
       {formOpen && <UnitFormModal defaultPropertyId={scope} onClose={() => setFormOpen(false)} />}
       {editUnit && <UnitFormModal unit={editUnit} onClose={() => setEditUnit(null)} />}
       <UnitDeleteDialog unit={deleteRow?.unit ?? null} propertyName={deleteRow?.propertyName} onClose={() => setDeleteRow(null)} />

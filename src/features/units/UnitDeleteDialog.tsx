@@ -10,7 +10,7 @@ export interface UnitDeleteDialogProps {
   unit: Unit | null;
   propertyName?: string;
   onClose: () => void;
-  /** After a successful delete (e.g. close the drawer). */
+  /** After a successful delete (e.g. leave the unit page). */
   onDeleted?: () => void;
 }
 

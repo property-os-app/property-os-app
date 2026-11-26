@@ -23,11 +23,13 @@ import { CopyButton } from "@/features/shared/CopyButton";
 import { BackBreadcrumb, Tile } from "@/features/shared/DetailParts";
 import { textLink } from "@/features/shared/linkClass";
 import { useUnits } from "@/features/units/hooks";
-import { UnitDrawer } from "@/features/units/UnitDrawer";
+import { useTabParam } from "@/features/shared/detailNav";
+import type { UnitPageState } from "@/features/units/origin";
 import { UnitFormModal } from "@/features/units/UnitFormModal";
 import type { Property } from "@/types/property";
 
 type Tab = "overview" | "units" | "documents";
+const TABS: Tab[] = ["overview", "units", "documents"];
 
 /** Router state from the Properties list (cards and table): back goes back in history, so its filters and search stay. */
 export interface PropertyPageState {
@@ -106,12 +108,13 @@ function PropertyDetail({ property }: { property: Property }) {
   const del = useDeleteProperty();
   const documents = useDocuments({ owner: "properties", ownerId: property.id });
 
-  const [tab, setTab] = useState<Tab>("overview");
+  // In ?tab=, so Back from a unit page returns to the same tab.
+  const [tab, setTab] = useTabParam(TABS);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [addingUnit, setAddingUnit] = useState(false);
-  const [openUnitId, setOpenUnitId] = useState<string | null>(null);
-  const openUnit = units.data?.find((u) => u.id === openUnitId);
+  const openUnit = (unitId: string) =>
+    void navigate(`/units/${encodeURIComponent(unitId)}`, { state: { from: "property", property: { id: property.id, name: property.name } } satisfies UnitPageState });
   const canAddUnit = can(user, "unit.create");
 
   const rows = useMemo(() => buildUnitRows(units.data ?? [], leases.data ?? []), [units.data, leases.data]);
@@ -281,7 +284,7 @@ function PropertyDetail({ property }: { property: Property }) {
             <PropertyUnitsTable
               caption="Units needing attention"
               rows={attention}
-              onRowClick={(r) => setOpenUnitId(r.unit.id)}
+              onRowClick={(r) => openUnit(r.unit.id)}
               state={tableState}
               error={tableError}
               empty={
@@ -303,7 +306,7 @@ function PropertyDetail({ property }: { property: Property }) {
           <PropertyUnitsTable
             caption="Units"
             rows={rows}
-            onRowClick={(r) => setOpenUnitId(r.unit.id)}
+            onRowClick={(r) => openUnit(r.unit.id)}
             state={tableState}
             error={tableError}
             empty={{ title: "No units yet", description: "This property has no units." }}
@@ -313,15 +316,6 @@ function PropertyDetail({ property }: { property: Property }) {
 
       {editing && <PropertyFormModal property={property} onClose={() => setEditing(false)} />}
       {addingUnit && <UnitFormModal defaultPropertyId={property.id} onClose={() => setAddingUnit(false)} />}
-      {openUnit && (
-        <UnitDrawer
-          unit={openUnit}
-          propertyName={property.name}
-          leaseFrom={{ from: "property", property: { id: property.id, name: property.name } }}
-          onClose={() => setOpenUnitId(null)}
-        />
-      )}
-
       <ConfirmDialog
         open={deleting}
         onOpenChange={setDeleting}

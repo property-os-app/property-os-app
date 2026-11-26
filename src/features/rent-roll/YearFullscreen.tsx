@@ -21,7 +21,7 @@ export interface YearFullscreenProps {
  * the colour key (from xl) and "Exit full screen". Also asks the browser for real full screen on the document, so its bars
  * hide too; if that's refused or unsupported, the in-app layer stays. Focus starts on ✕; Esc or ✕ closes; if the browser
  * leaves full screen by itself (fullscreenchange) the layer closes too. The app behind is inert and doesn't scroll.
- * Drawers opened from the table portal to <body> above the layer (z-40/50), so they show in full screen too.
+ * Menus and modals opened from the table portal to <body> above the layer (z-40/50), so they show in full screen too.
  */
 export function YearFullscreen({ year, onClose, children }: YearFullscreenProps) {
   const closeRef = useRef<HTMLButtonElement>(null);

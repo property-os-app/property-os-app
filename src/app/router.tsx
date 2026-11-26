@@ -27,6 +27,8 @@ const propertiesHandle: RouteHandle = { title: "Properties", nav: "properties" }
 const propertyHandle: RouteHandle = { title: "Property", nav: "properties" };
 // The lease page replaces this title with "Lease {leaseNumber}".
 const leaseHandle: RouteHandle = { title: "Lease", nav: "leases" };
+const tenantHandle: RouteHandle = { title: "Tenant", nav: "tenants" };
+const unitHandle: RouteHandle = { title: "Unit", nav: "units" };
 
 /**
  * A route whose page is downloaded the first time it opens (its own JS file). `fallback` shows while it downloads on the
@@ -74,7 +76,9 @@ export const router = createBrowserRouter([
                     ...lazyPage(() => import("@/features/properties/PropertyDetailPage").then((m) => m.PropertyDetailPage)),
                   },
                   { path: "units", handle: unitsHandle, ...lazyPage(() => import("@/features/units/UnitsPage").then((m) => m.UnitsPage)) },
+                  { path: "units/:id", handle: unitHandle, ...lazyPage(() => import("@/features/units/UnitPage").then((m) => m.UnitPage)) },
                   { path: "tenants", handle: tenantsHandle, ...lazyPage(() => import("@/features/tenants/TenantsPage").then((m) => m.TenantsPage)) },
+                  { path: "tenants/:id", handle: tenantHandle, ...lazyPage(() => import("@/features/tenants/TenantPage").then((m) => m.TenantPage)) },
                   { path: "leases", handle: leasesHandle, ...lazyPage(() => import("@/features/leases/LeasesPage").then((m) => m.LeasesPage)) },
                   { path: "leases/:id", handle: leaseHandle, ...lazyPage(() => import("@/features/leases/LeasePage").then((m) => m.LeasePage)) },
                   { path: "rent-roll", handle: rentRollHandle, ...lazyPage(() => import("@/features/rent-roll/RentRollPage").then((m) => m.RentRollPage)) },

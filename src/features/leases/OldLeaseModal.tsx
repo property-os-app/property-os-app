@@ -18,7 +18,7 @@ import { useUnits } from "@/features/units/hooks";
 import type { Unit } from "@/types/unit";
 
 export interface OldLeaseModalProps {
-  /** From the unit drawer: the unit is fixed. */
+  /** From the unit page: the unit is fixed. */
   presetUnit?: Unit;
   /** "Unit 4B, Maple Court" for the fixed unit. */
   presetUnitLine?: string;

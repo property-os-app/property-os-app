@@ -25,7 +25,7 @@ function EndsText({ active }: { active: UnitListRow["active"] }) {
   return active?.endDate ? <span className={active.endingSoon ? "font-semibold text-warning" : undefined}>{formatDate(active.endDate)}</span> : <Dash />;
 }
 
-/** The Units list: a table from md up (or cards in a grid with `cards`), cards on phones. Row / card opens the unit drawer; the kebab has Edit and Delete when allowed. */
+/** The Units list: a table from md up (or cards in a grid with `cards`), cards on phones. Row / card opens the unit page; the kebab has Edit and Delete when allowed. */
 export function UnitsTable({ cards, onOpen, onEdit, onDelete, ...props }: Props) {
   const isMobile = useIsMobile();
   const menu = useMemo(
