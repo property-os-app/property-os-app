@@ -4,19 +4,20 @@ import { IconTile, IconTileGrid, SectionCard } from "@/components/molecules";
 import { plural } from "@/lib/labels";
 import { ContactActions } from "@/features/shared/ContactActions";
 import { useTenants } from "@/features/tenants/hooks";
-import { tenantFromLease } from "@/features/tenants/origin";
+import { tenantFromLease, type TenantPageState } from "@/features/tenants/origin";
 import type { Lease } from "@/types/lease";
 
 /**
- * Details tab "Leaseholders" card: a tile per tenant on the lease (primary first) with Call / Email / Copy (phones from
- * GET /tenants). A tile opens the tenant page; Back returns to this lease.
+ * "Leaseholders" card (lease Details tab, tenant and unit pages): a tile per tenant on the lease (primary first) with
+ * Call / Email / Copy (phones from GET /tenants). A tile opens the tenant page with `tenantState` (default: from this lease,
+ * so Back returns to it). `currentTenantId` (the tenant page): that tile reads "This tenant" and doesn't link.
  */
-export function LeaseholdersCard({ lease }: { lease: Lease }) {
+export function LeaseholdersCard({ lease, tenantState, currentTenantId }: { lease: Lease; tenantState?: TenantPageState; currentTenantId?: string }) {
   const tenants = useTenants();
   const navigate = useNavigate();
   const open = (tenantId: string) => {
-    const { to, state } = tenantFromLease(tenantId, lease);
-    void navigate(to, { state });
+    const link = tenantFromLease(tenantId, lease);
+    void navigate(link.to, { state: tenantState ?? link.state });
   };
 
   return (
@@ -26,6 +27,7 @@ export function LeaseholdersCard({ lease }: { lease: Lease }) {
       ) : (
         <IconTileGrid>
           {lease.tenants.map((t) => {
+            const self = t.id === currentTenantId;
             return (
               <IconTile
                 key={t.id}
@@ -34,13 +36,20 @@ export function LeaseholdersCard({ lease }: { lease: Lease }) {
                 label="Tenant"
                 value={t.fullName}
                 badge={
-                  <Badge tone={t.isPrimary ? "info" : "neutral"} dot={false}>
-                    {t.isPrimary ? "Primary" : "Co-tenant"}
-                  </Badge>
+                  <>
+                    <Badge tone={t.isPrimary ? "info" : "neutral"} dot={false}>
+                      {t.isPrimary ? "Primary" : "Co-tenant"}
+                    </Badge>
+                    {self && (
+                      <Badge tone="success" dot={false}>
+                        This tenant
+                      </Badge>
+                    )}
+                  </>
                 }
                 action={<ContactActions name={t.fullName} phone={tenants.data?.find((x) => x.id === t.id)?.phone} email={t.email} />}
-                onOpen={() => open(t.id)}
-                openLabel={`Open tenant ${t.fullName}`}
+                onOpen={self ? undefined : () => open(t.id)}
+                openLabel={self ? undefined : `Open tenant ${t.fullName}`}
               />
             );
           })}

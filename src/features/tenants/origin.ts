@@ -2,7 +2,7 @@
 import type { ModuleKey } from "@/components/organisms";
 import type { Crumb } from "@/features/shared/DetailParts";
 
-export type TenantOrigin = "tenants" | "lease" | "unit";
+export type TenantOrigin = "tenants" | "lease" | "unit" | "tenant";
 
 /** Router state from every link into /tenants/:id. Without `from` (pasted link, new tab) the parent is Tenants. */
 export interface TenantPageState {
@@ -11,6 +11,8 @@ export interface TenantPageState {
   lease?: { id: string; number: string };
   /** With from "unit": the crumb "Unit 4B, Maple Court" links to it. */
   unit?: { id: string; name: string };
+  /** With from "tenant" (a co-tenant's page, Leaseholders card): the crumb names that tenant and links to it. */
+  tenant?: { id: string; name: string };
 }
 
 /** The first crumb, the Sidebar item, and whether Back goes back in history (opened from inside the app). */
@@ -21,6 +23,9 @@ export function tenantParent(state: TenantPageState | null | undefined): { paren
   }
   if (state?.from === "unit" && state.unit) {
     return { parent: { label: state.unit.name, to: `/units/${encodeURIComponent(state.unit.id)}` }, nav: "units", backInHistory };
+  }
+  if (state?.from === "tenant" && state.tenant) {
+    return { parent: { label: state.tenant.name, to: `/tenants/${encodeURIComponent(state.tenant.id)}` }, nav: "tenants", backInHistory };
   }
   return { parent: { label: "Tenants", to: "/tenants" }, nav: "tenants", backInHistory };
 }

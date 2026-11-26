@@ -30,6 +30,8 @@ import { unitName, unitParent, type UnitPageState } from "@/features/units/origi
 import { UnitDeleteDialog } from "@/features/units/UnitDeleteDialog";
 import { UnitFormModal } from "@/features/units/UnitFormModal";
 import { UnitLeaseHistory } from "@/features/units/UnitLeaseHistory";
+import { LeaseholdersCard } from "@/features/leases/LeaseholdersCard";
+import { TermCard } from "@/features/leases/TermCard";
 import { UnitCurrentLease, UnitDescriptionCard, UnitInfoCard, UnitNoLease } from "@/features/units/UnitOverview";
 import { rentDiffNote, unitSummary } from "@/features/units/stats";
 import type { Unit } from "@/types/unit";
@@ -216,7 +218,11 @@ function UnitDetailView({ unit }: { unit: Unit }) {
             ) : leases.isError ? (
               <InlineError title="Couldn't load the lease" description={errorText(leases.error)} onRetry={() => void leases.refetch()} />
             ) : active ? (
-              <UnitCurrentLease lease={active} unit={unit} leaseState={leaseState} tenantState={tenantState} credit={credit} />
+              <>
+                <UnitCurrentLease lease={active} unit={unit} leaseState={leaseState} tenantState={tenantState} credit={credit} />
+                <TermCard lease={active} canEdit={false} canVoid={false} />
+                <LeaseholdersCard lease={active} tenantState={tenantState} />
+              </>
             ) : (
               <UnitNoLease unit={unit} onAddLease={canAddLease ? () => setAddingLease(true) : undefined} />
             )}
