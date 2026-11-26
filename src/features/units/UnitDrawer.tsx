@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { FileText, History, Plus } from "lucide-react";
-import { Avatar, Badge, Button, Caption, Dash, H3, Num, Skeleton } from "@/components/atoms";
-import { Card, EmptyState, InlineError, KeyValueList, ListCard, StatusBadge, Tabs } from "@/components/molecules";
+import { Bath, CalendarCheck, CalendarClock, DoorOpen, FileText, History, Layers, Pencil, Plus, Ruler, Scale, Tag } from "lucide-react";
+import { Avatar, Badge, Button, Caption, Dash, Num, Skeleton } from "@/components/atoms";
+import { Card, EmptyState, IconTile, IconTileGrid, InlineError, ListCard, SectionCard, StatusBadge, Tabs } from "@/components/molecules";
 import { CardList, DataTable, Drawer, type Column } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -14,12 +14,13 @@ import { DocumentsPanel } from "@/features/documents/DocumentsPanel";
 import { useDocuments } from "@/features/documents/hooks";
 import { useLeases } from "@/features/leases/hooks";
 import type { LeasePageState } from "@/features/leases/LeasePage";
-import { LeaseBadge, StatCard } from "@/features/leases/LeaseParts";
+import { LeaseBadge } from "@/features/leases/LeaseParts";
 import { LeaseWizard } from "@/features/leases/LeaseWizard";
 import { OldLeaseModal } from "@/features/leases/OldLeaseModal";
 import { dueNote, dueState, leaseEndsNote, leasePeriod } from "@/features/leases/stats";
-import { ContactLink } from "@/features/shared/ContactLink";
+import { ContactActions } from "@/features/shared/ContactActions";
 import { NotSet } from "@/features/shared/Missing";
+import { useTenants } from "@/features/tenants/hooks";
 import { primaryTenantName } from "@/features/properties/stats";
 import { UnitDeleteDialog } from "@/features/units/UnitDeleteDialog";
 import { UnitFormModal } from "@/features/units/UnitFormModal";
@@ -47,7 +48,7 @@ export interface UnitDrawerProps {
 }
 
 /**
- * One unit (lg drawer): Tenant tab (active lease, rent/balance/end cards, details) and Lease history tab (GET /leases?unitId=).
+ * One unit (lg drawer): Tenant tab ("Current lease" card, "Unit" card with Edit unit, Description) and Lease history tab (GET /leases?unitId=).
  * "Open lease" and a history row click go to /leases/:id.
  * Footer: Delete (OWNER) and Edit unit. Mount it only while open; it closes itself after a delete.
  */
@@ -138,20 +139,31 @@ export function UnitDrawer({ unit, propertyName, leaseFrom, onClose }: UnitDrawe
               </Card>
             )}
 
-            <div className="flex flex-col gap-3">
-              <H3>Details</H3>
-              <KeyValueList
-                labelWidth={112}
-                items={[
-                  { label: "Type", value: unitTypeLabels[unit.unitType] },
-                  { label: "Bathrooms", value: unit.bathrooms ?? <Dash /> },
-                  { label: "Floor", value: unit.floor ?? <Dash /> },
-                  { label: "Floor area", value: unit.floorArea === null ? <NotSet /> : <Num>{floorAreaText(unit.floorArea)}</Num> },
-                  { label: "Listed rent", value: unit.monthlyRent === null ? <NotSet /> : <Num>{formatCurrency(unit.monthlyRent)}</Num> },
-                  { label: "Description", value: unit.description ? <span className="whitespace-pre-line">{unit.description}</span> : <Dash /> },
-                ]}
-              />
-            </div>
+            <SectionCard
+              padding="compact"
+              title="Unit"
+              subtitle="Layout and listing"
+              action={
+                canEdit && (
+                  <Button size="sm" icon={<Pencil size={14} strokeWidth={1.5} />} onClick={() => setEditing(true)} className="max-md:h-11">
+                    Edit unit
+                  </Button>
+                )
+              }
+            >
+              <IconTileGrid>
+                <IconTile icon={<DoorOpen strokeWidth={1.5} />} label="Type" value={unitTypeLabels[unit.unitType]} />
+                <IconTile icon={<Bath strokeWidth={1.5} />} label="Bathrooms" value={unit.bathrooms ?? <NotSet />} />
+                <IconTile icon={<Layers strokeWidth={1.5} />} label="Floor" value={unit.floor ?? <NotSet />} />
+                <IconTile icon={<Ruler strokeWidth={1.5} />} label="Floor area" value={unit.floorArea === null ? <NotSet /> : <Num>{floorAreaText(unit.floorArea)}</Num>} />
+                <IconTile icon={<Tag strokeWidth={1.5} />} label="Listed rent" value={unit.monthlyRent === null ? <NotSet /> : <Num>{formatCurrency(unit.monthlyRent)}</Num>} />
+              </IconTileGrid>
+            </SectionCard>
+            {unit.description && (
+              <SectionCard padding="compact" title="Description">
+                <div className="rounded-control bg-surface-2 p-4 break-words whitespace-pre-line text-text-primary">{unit.description}</div>
+              </SectionCard>
+            )}
           </>
         ) : tab === "documents" ? (
           <DocumentsPanel
@@ -222,51 +234,55 @@ export function UnitDrawer({ unit, propertyName, leaseFrom, onClose }: UnitDrawe
   );
 }
 
-/** Tenant tab with an ACTIVE lease: tenant card with the payment badge, then rent / balance / lease end cards. */
+/**
+ * Tenant tab with an ACTIVE lease: "Current lease" card (lease number and period, Open lease) with the primary tenant tile
+ * (payment badge, Call / Email / Copy; the phone from GET /tenants), then Rent / Balance / Lease ends tiles.
+ */
 function ActiveLease({ lease, unit, leaseFrom }: { lease: Lease; unit: Unit; leaseFrom: LeasePageState }) {
   const navigate = useNavigate();
+  const tenants = useTenants();
   const tenant = lease.tenants.find((t) => t.isPrimary) ?? lease.tenants[0];
   const due = dueState(lease);
   const period = leasePeriod(lease);
 
   return (
-    <div className="flex flex-col gap-3">
-      <Card padding="compact" className="flex items-center gap-3">
-        <Avatar name={tenant?.fullName ?? "-"} size={40} />
-        <div className="min-w-0 flex-1">
-          <div className="truncate font-semibold text-text-primary">{tenant?.fullName ?? "No primary tenant"}</div>
-          <Caption className="block truncate">
-            {[`Lease ${lease.leaseNumber}`, period].filter(Boolean).join(" · ")}
-            {tenant?.email && (
-              <>
-                {" · "}
-                <ContactLink kind="email" value={tenant.email} />
-              </>
-            )}
-          </Caption>
-        </div>
-        {due.kind === "overdue" ? (
-          <StatusBadge domain="rent" status="OVERDUE" />
-        ) : due.kind === "today" ? (
-          <Badge tone="warning">Due today</Badge>
-        ) : (
-          <LeaseBadge lease={lease} />
-        )}
-        <Button size="sm" variant="ghost" onClick={() => void navigate(leasePath(lease), { state: leaseFrom })}>
+    <SectionCard
+      padding="compact"
+      title="Current lease"
+      subtitle={[`Lease ${lease.leaseNumber}`, period].filter(Boolean).join(" · ")}
+      action={
+        <Button size="sm" onClick={() => void navigate(leasePath(lease), { state: leaseFrom })} className="max-md:h-11">
           Open lease
         </Button>
-      </Card>
-
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <StatCard label="Current rent" value={formatCurrency(lease.rent)} note={rentDiffNote(lease.rent, unit.monthlyRent)} />
-        <StatCard
-          label="Balance"
-          value={formatCurrency(lease.balance)}
-          note={dueNote(due)}
-          className={due.kind === "overdue" ? "text-danger" : undefined}
+      }
+    >
+      <IconTileGrid>
+        <IconTile
+          bareIcon
+          icon={<Avatar name={tenant?.fullName ?? "-"} size={40} />}
+          label="Primary tenant"
+          value={tenant?.fullName ?? <NotSet />}
+          badge={
+            due.kind === "overdue" ? (
+              <StatusBadge domain="rent" status="OVERDUE" />
+            ) : due.kind === "today" ? (
+              <Badge tone="warning">Due today</Badge>
+            ) : (
+              <LeaseBadge lease={lease} />
+            )
+          }
+          action={tenant && <ContactActions name={tenant.fullName} phone={tenants.data?.find((x) => x.id === tenant.id)?.phone} email={tenant.email} />}
         />
-        <StatCard label="Lease ends" value={formatDate(lease.endDate)} note={leaseEndsNote(lease)} />
-      </div>
-    </div>
+        <IconTile icon={<CalendarClock strokeWidth={1.5} />} label="Current rent" value={<Num>{formatCurrency(lease.rent)}</Num>} note={rentDiffNote(lease.rent, unit.monthlyRent)} />
+        <IconTile
+          icon={<Scale strokeWidth={1.5} />}
+          label="Balance"
+          value={<Num>{formatCurrency(lease.balance)}</Num>}
+          valueClassName={due.kind === "overdue" ? "text-danger" : undefined}
+          note={dueNote(due)}
+        />
+        <IconTile icon={<CalendarCheck strokeWidth={1.5} />} label="Lease ends" value={formatDate(lease.endDate)} note={leaseEndsNote(lease)} />
+      </IconTileGrid>
+    </SectionCard>
   );
 }

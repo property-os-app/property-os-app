@@ -1,8 +1,8 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
-import { Building2, Pencil, Plus, Trash2 } from "lucide-react";
-import { Avatar, Button, Caption, Dash, H1, Num, Skeleton, Small } from "@/components/atoms";
-import { Card, CardHeader, EmptyState, InlineError, KebabMenu, KeyValueList, Tabs, toast } from "@/components/molecules";
+import { Building2, CalendarDays, Landmark, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import { Avatar, Button, Caption, H1, Num, Skeleton, Small } from "@/components/atoms";
+import { Card, CardHeader, EmptyState, IconTile, IconTileGrid, InlineError, KebabMenu, SectionCard, Tabs, toast } from "@/components/molecules";
 import { ConfirmDialog } from "@/components/organisms";
 import { usePageTitle } from "@/app/pageTitle";
 import { ApiError, errorText } from "@/lib/api";
@@ -19,6 +19,7 @@ import { PropertyFormModal } from "@/features/properties/PropertyFormModal";
 import { PropertyManagersCard } from "@/features/properties/PropertyManagersCard";
 import { PropertyUnitsTable } from "@/features/properties/PropertyUnitsTable";
 import { activeRentCentsByProperty, buildUnitRows, countUnits, formatAddress, needsAttention, occupancy } from "@/features/properties/stats";
+import { CopyButton } from "@/features/shared/CopyButton";
 import { BackBreadcrumb, Tile } from "@/features/shared/DetailParts";
 import { textLink } from "@/features/shared/linkClass";
 import { useUnits } from "@/features/units/hooks";
@@ -235,7 +236,36 @@ function PropertyDetail({ property }: { property: Property }) {
 
       {tab === "overview" ? (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          <Card padding="none" className="self-start lg:col-span-8">
+          <div className="flex min-w-0 flex-col gap-6 lg:col-span-8">
+          <SectionCard
+            title="Property"
+            subtitle="Type, address and purchase"
+            action={
+              can(user, "property.edit") && (
+                <Button size="sm" icon={<Pencil size={14} strokeWidth={1.5} />} onClick={() => setEditing(true)} className="max-md:h-11">
+                  Edit
+                </Button>
+              )
+            }
+          >
+            <IconTileGrid>
+              <IconTile icon={<Building2 strokeWidth={1.5} />} label="Type" value={propertyTypeLabels[property.propertyType]} />
+              <IconTile
+                icon={<MapPin strokeWidth={1.5} />}
+                label="Address"
+                value={formatAddress(property)}
+                action={<CopyButton text={formatAddress(property)} what="address" />}
+              />
+              <IconTile icon={<CalendarDays strokeWidth={1.5} />} label="Acquired" value={acquired} />
+              <IconTile icon={<Landmark strokeWidth={1.5} />} label="Value" value={<Num>{formatCurrency(property.propertyValue)}</Num>} note={`Acquired ${acquired}`} />
+            </IconTileGrid>
+          </SectionCard>
+          {property.description && (
+            <SectionCard title="Description">
+              <div className="rounded-control bg-surface-2 p-4 break-words whitespace-pre-line text-text-primary">{property.description}</div>
+            </SectionCard>
+          )}
+          <Card padding="none" className="self-stretch">
             <div className="px-5 pt-5">
               <CardHeader
                 title="Units needing attention"
@@ -261,20 +291,8 @@ function PropertyDetail({ property }: { property: Property }) {
               }
             />
           </Card>
-          <div className="flex flex-col gap-6 lg:col-span-4">
-            <Card>
-              <CardHeader title="Details" />
-              <KeyValueList
-                labelWidth={96}
-                items={[
-                  { label: "Type", value: propertyTypeLabels[property.propertyType] },
-                  { label: "Address", value: formatAddress(property) },
-                  { label: "Acquired", value: acquired },
-                  { label: "Value", value: <Num>{formatCurrency(property.propertyValue)}</Num> },
-                  { label: "Description", value: property.description ? <span className="whitespace-pre-line">{property.description}</span> : <Dash /> },
-                ]}
-              />
-            </Card>
+          </div>
+          <div className="flex min-w-0 flex-col gap-6 lg:col-span-4">
             <PropertyManagersCard property={property} canAssign={can(user, "manager.assign")} />
           </div>
         </div>

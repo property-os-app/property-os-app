@@ -38,6 +38,12 @@ Files (PDF, images, Word, Excel, OpenDocument, CSV, text; max 20 MB) attached to
 ## FileKindIcon.tsx
 - `FileKindIcon({ kind, className })`: the kind's icon in a soft square, with the kind as tooltip and label.
 
+## signed.ts
+- `SIGNED_LEASE_CATEGORY`, `signedCopies(docs)`: a lease's own SIGNED_LEASE documents (not a payment's files), newest first. Used by the lease page's "Lease" card.
+
+## useDocumentActions.ts
+- `useDocumentActions()`: `onView(doc)` (blank tab opened in the click, then the signed `inline=true` link; blocked tab or error as a toast), `onDownload(doc)` (toast on error), `viewingId`, `downloadingId`. Used by `DocumentsPanel` and the lease's signed copy.
+
 ## source.ts
 - `ownerOfDocument(doc, list)`: the record a row belongs to (its category list, permission and delete path): its payment, else the source lease, else the list's record.
 - `sourceText(doc, list)`: "Unit", "Lease LSE-2026-021", "Lease … · Payment PMT-…" in a unit's list, "Payment PMT-…" in a lease's, or null. `source.test.ts` covers both.
@@ -46,7 +52,7 @@ Files (PDF, images, Word, Excel, OpenDocument, CSV, text; max 20 MB) attached to
 - `DocumentsPanel({ target, leaseState, onOpenLedger, emptyText })`: "Upload a document" ("Add a file" on a payment) card (only with `canManageDocuments`) and the list: DataTable from md (icon by type, name, category badge (`categoryLabel`), size, uploaded date and email, View, Download, Delete), CardList on phones (card tap views; kebab View / Download / Delete). A type the browser can't show (`canViewInBrowser`) has no View, and its card tap downloads. The panel is a size container: under 48rem wide (the tenant and unit drawers) View and Download are icon-only (name in aria-label and title) and the name and uploader email are capped and truncate, so the table never scrolls sideways. View errors and a blocked tab show as a toast "Couldn't open {name}". 5 states. Each row shows its source (a link to the lease, its Ledger tab for a payment's file; `onOpenLedger` on the lease page), takes its label from its own record's categories and deletes through that record with that record's permission.
 
 ## DocumentUpload.tsx
-- `DocumentUpload({ target })`: drop zone + "Choose file" (one file), Category (that owner type's list from `useDocumentCategories`, API order, required; "Loading categories…" and disabled while loading; on error an InlineError with Retry and Upload disabled until it loads), Name (optional, file name as placeholder), "Uploading..." state, backend errors about the file (`isFileError`) under it, the others in an InlineError, toast "Uploaded {name}". The file is checked first with `checkFile(DOCUMENT_RULE)`.
+- `DocumentUpload({ target, defaultCategory, onUploaded, onCancel })`: drop zone + "Choose file" (one file), Category (that owner type's list from `useDocumentCategories`, API order, required; "Loading categories…" and disabled while loading; on error an InlineError with Retry and Upload disabled until it loads), Name (optional, file name as placeholder), "Uploading..." state, backend errors about the file (`isFileError`) under it, the others in an InlineError, toast "Uploaded {name}". `defaultCategory` preselects a category ("Upload signed lease": SIGNED_LEASE; reset to it after a save), `onUploaded` runs after a save, `onCancel` adds a Cancel button (in a modal). The file is checked first with `checkFile(DOCUMENT_RULE)`.
 - `PickedFile({ file, onRemove, disabled })`: the chosen file with its icon (by extension), its size and a Remove button (also used by the Add old lease and Record Payment forms).
 
 ## DocumentDeleteDialog.tsx
@@ -55,5 +61,6 @@ Files (PDF, images, Word, Excel, OpenDocument, CSV, text; max 20 MB) attached to
 ## Tests (`npm test`)
 - `categories.test.ts`: each owner type's list in API order, the same value with different labels per owner, the fallback while loading and for unknown values (never blank).
 - `fileKind.test.ts`: the kind of every document type, picked files by extension, which types open in a tab.
+- `signed.test.ts`: only the lease's own signed leases (not other categories, not a payment's files), newest first.
 - `form.test.ts`: the multipart fields (blank name left out, trimmed), photo form, `isFileError`, `nameError` limits.
 - `view.test.ts`: the `inline=true` query, the blank tab (opener cut, placeholder text, blocked tab), the tab pointed at the link, the failure path (tab closed, error rethrown) and a new link on each call.

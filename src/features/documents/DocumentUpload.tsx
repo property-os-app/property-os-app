@@ -34,16 +34,27 @@ export function PickedFile({ file, onRemove, disabled }: { file: File; onRemove:
 
 /**
  * Upload one document: drop zone + "Choose file", category (that owner type's list from GET /documents/categories, in the
- * API order; required), optional display name. Upload waits for the category list (loading: disabled; error: Retry).
+ * API order; required; `defaultCategory` preselects one), optional display name. `onUploaded` runs after a save; `onCancel` adds a
+ * Cancel button (in a modal). Upload waits for the category list (loading: disabled; error: Retry).
  * The type and size are checked here before sending. Backend errors about the file (400 empty, 413, 415) show under it, the
  * others (400, 403, 404, 409) on top, as they are.
  */
-export function DocumentUpload({ target }: { target: DocumentRef }) {
+export function DocumentUpload({
+  target,
+  defaultCategory = "",
+  onUploaded,
+  onCancel,
+}: {
+  target: DocumentRef;
+  defaultCategory?: string;
+  onUploaded?: () => void;
+  onCancel?: () => void;
+}) {
   const upload = useUploadDocument();
   const id = useId();
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState(defaultCategory);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [serverError, setServerError] = useState<string | null>(null);
@@ -73,8 +84,9 @@ export function DocumentUpload({ target }: { target: DocumentRef }) {
         onSuccess: (doc) => {
           toast.success(`Uploaded ${doc.name}`);
           setFile(null);
-          setCategory("");
+          setCategory(defaultCategory);
           setName("");
+          onUploaded?.();
         },
         onError: (err) => {
           if (err instanceof ApiError && err.messages.length > 0) {
@@ -162,8 +174,13 @@ export function DocumentUpload({ target }: { target: DocumentRef }) {
           />
         </FormField>
       </div>
-      <div className="flex justify-end">
-        <Button type="submit" disabled={busy || !categoriesReady} aria-busy={busy || undefined} className="max-md:h-11 max-md:w-full">
+      <div className="flex flex-wrap justify-end gap-3">
+        {onCancel && (
+          <Button type="button" variant="ghost" onClick={onCancel} disabled={busy} className="max-md:h-11 max-md:flex-1">
+            Cancel
+          </Button>
+        )}
+        <Button type="submit" disabled={busy || !categoriesReady} aria-busy={busy || undefined} className={onCancel ? "max-md:h-11 max-md:flex-1" : "max-md:h-11 max-md:w-full"}>
           {busy ? "Uploading..." : target.owner === "payments" ? "Add file" : "Upload"}
         </Button>
       </div>

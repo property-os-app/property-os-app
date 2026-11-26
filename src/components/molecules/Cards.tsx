@@ -108,6 +108,110 @@ export function HeroStatCard({ label, value, note, tone = "neutral", className }
   );
 }
 
+/**
+ * Titled card: title (H3), a short subtitle under it and an optional action at the top right (wraps under the title on
+ * narrow widths), then the content. A `<section>` named by its title.
+ */
+export function SectionCard({
+  title,
+  subtitle,
+  action,
+  padding = "default",
+  className,
+  children,
+}: {
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  action?: React.ReactNode;
+  padding?: CardProps["padding"];
+  className?: string;
+  children?: React.ReactNode;
+}) {
+  const titleId = React.useId();
+  return (
+    <Card as="section" padding={padding} aria-labelledby={titleId} className={cn("flex min-w-0 flex-col gap-4", className)}>
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+        <div className="min-w-0">
+          <h3 id={titleId} className="m-0 text-h3 break-words text-text-primary">
+            {title}
+          </h3>
+          {subtitle && <Small className="mt-0.5 block">{subtitle}</Small>}
+        </div>
+        {action && <div className="flex shrink-0 flex-wrap items-center gap-2">{action}</div>}
+      </div>
+      {children}
+    </Card>
+  );
+}
+
+export interface IconTileProps {
+  /** A 16px icon (shown in a small soft box), or an Avatar with `bareIcon`. */
+  icon: React.ReactNode;
+  /** No box around `icon` (an Avatar has its own circle). */
+  bareIcon?: boolean;
+  label: React.ReactNode;
+  /** Bold. Long values wrap. Pass a "Not set" style text for a missing value, never a bare dash. */
+  value: React.ReactNode;
+  /** Classes on the value (`font-mono`, `text-danger`). */
+  valueClassName?: string;
+  /** Small text under the value. */
+  note?: React.ReactNode;
+  /** Next to the value (a Badge). */
+  badge?: React.ReactNode;
+  /** Right side: small buttons (Copy, Call, Remove); they stay clickable above `onOpen`. */
+  action?: React.ReactNode;
+  /** The whole tile opens something (a stretched button named `openLabel`). */
+  onOpen?: () => void;
+  openLabel?: string;
+  className?: string;
+}
+
+/** Bordered tile: icon box, small label, bold value with an optional badge, optional note and action. Put several in an `IconTileGrid`. */
+export function IconTile({ icon, bareIcon, label, value, valueClassName, note, badge, action, onOpen, openLabel, className }: IconTileProps) {
+  return (
+    <div
+      className={cn(
+        // The action drops to its own line (right-aligned) when the tile is too narrow for it and an 11rem value.
+        "relative flex min-w-0 flex-wrap items-center gap-3 rounded-control border border-border-subtle bg-surface-1 p-3",
+        onOpen && "transition-colors duration-fast hover:bg-surface-3",
+        className,
+      )}
+    >
+      {onOpen && (
+        <button
+          type="button"
+          aria-label={openLabel}
+          onClick={onOpen}
+          className="absolute inset-0 cursor-pointer rounded-control focus-visible:focus-ring-tight focus-visible:[outline-offset:-2px]"
+        />
+      )}
+      <div className={cn("relative flex min-w-[min(100%,11rem)] flex-1 items-center gap-3", onOpen && "pointer-events-none")}>
+        {bareIcon ? (
+          <span className="shrink-0">{icon}</span>
+        ) : (
+          <span aria-hidden className="inline-flex size-9 shrink-0 items-center justify-center rounded-control bg-surface-3 text-text-muted [&_svg]:size-4">
+            {icon}
+          </span>
+        )}
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-caption text-text-secondary">{label}</span>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <span className={cn("min-w-0 font-bold break-words text-text-primary [overflow-wrap:anywhere]", valueClassName)}>{value}</span>
+            {badge}
+          </div>
+          {note && <Caption className="block break-words">{note}</Caption>}
+        </div>
+      </div>
+      {action && <div className="pointer-events-auto relative ml-auto flex shrink-0 items-center gap-1">{action}</div>}
+    </div>
+  );
+}
+
+/** IconTiles: one per row on phones, two per row from sm (640px) up. */
+export function IconTileGrid({ className, children }: { className?: string; children: React.ReactNode }) {
+  return <div className={cn("grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2", className)}>{children}</div>;
+}
+
 /** Amber-soft internal note, labeled "Internal, not visible to tenant". */
 export function InternalNote({ author, date, children, className }: { author?: string; date?: string; children: React.ReactNode; className?: string }) {
   return (

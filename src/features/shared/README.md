@@ -31,10 +31,13 @@ Pieces of the detail pages (`/properties/:id`, `/leases/:id`).
 - `NotSet`: muted "Not set" (a unit's null rent or floor area). `NotProvided({ what })`: muted "Not provided", or "Email not provided" where there is no label.
 
 ## ContactActions.tsx
-- `ContactActions({ name, phone, email })`: `ContactLink` as icon buttons: call (`tel:`), email (`mailto:`) and a ⋮ menu with "Copy phone number" / "Copy email". What is missing is left out; a phone without digits can only be copied. 44px on phones; sits on top of a row's stretched button. Used by the lease page's People card. `ContactActionsProps`.
+- `ContactActions({ name, phone, email })`: `ContactLink` as icon buttons: call (`tel:`), email (`mailto:`) and a ⋮ menu with "Copy phone number" / "Copy email". What is missing is left out; a phone without digits can only be copied. 44px on phones; sits on top of a row's stretched button. Used by the lease page's Leaseholders card, the unit drawer's primary tenant tile and the tenant drawer's Contact card. `ContactActionsProps`.
+
+## CopyButton.tsx
+- `CopyButton({ text, what })`: icon-only "Copy {what}" button (32px, 44px on phones) with the copy toast. For an `IconTile` action: lease number, property address, manager email.
 
 ## copyToast.ts
-- `copyWithToast(text, what, anchor?)`: `copyText`, then an "Email copied" toast, or how to copy it by hand. Used by `ContactLink`, `ContactActions` and the lease number.
+- `copyWithToast(text, what, anchor?)`: `copyText`, then an "Email copied" toast, or how to copy it by hand. Used by `ContactLink`, `ContactActions` and `CopyButton`.
 
 ## linkClass.ts
 - `linkFocus`: rounded keyboard-only focus ring with no offset (`focus-ring-tight`), so it doesn't touch the next word. For inline links and link-style buttons.

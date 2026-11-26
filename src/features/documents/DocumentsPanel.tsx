@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { Download, Eye, Trash2 } from "lucide-react";
 import { Badge, Button, Caption, H3, Small } from "@/components/atoms";
-import { Card, KebabMenu, ListCard, toast } from "@/components/molecules";
+import { Card, KebabMenu, ListCard } from "@/components/molecules";
 import { CardList, DataTable, type Column } from "@/components/organisms";
 import { errorText } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -16,9 +16,9 @@ import { DocumentUpload } from "@/features/documents/DocumentUpload";
 import { FileKindIcon } from "@/features/documents/FileKindIcon";
 import { categoryLabel } from "@/features/documents/categories";
 import { canViewInBrowser, fileKind } from "@/features/documents/fileKind";
-import { useDocumentCategories, useDocuments, useDownloadDocument, useViewDocument } from "@/features/documents/hooks";
+import { useDocumentCategories, useDocuments } from "@/features/documents/hooks";
 import { ownerOfDocument, sourceText } from "@/features/documents/source";
-import { openBlankTab, POPUP_BLOCKED_MESSAGE } from "@/features/documents/view";
+import { useDocumentActions } from "@/features/documents/useDocumentActions";
 import { textLink } from "@/features/shared/linkClass";
 import type { DocumentRef, ListedDocument } from "@/types/document";
 
@@ -72,32 +72,10 @@ export function DocumentsPanel({ target, leaseState, onOpenLedger, emptyText = "
     }
     return text;
   };
-  const download = useDownloadDocument();
-  const view = useViewDocument();
+  const { onView, onDownload, viewingId, downloadingId: pendingId } = useDocumentActions();
   const isMobile = useIsMobile();
   const [deleting, setDeleting] = useState<ListedDocument | null>(null);
 
-  const onDownload = (doc: ListedDocument) => download.mutate(doc.id, { onError: (err) => toast.error(`Couldn't download ${doc.name}`, { description: errorText(err) }) });
-  const pendingId = download.isPending ? download.variables : null;
-
-  // The tab must open in the click itself (before any await) or popup blockers stop it.
-  const onView = (doc: ListedDocument) => {
-    const tab = openBlankTab();
-    if (!tab) {
-      toast.error(`Couldn't open ${doc.name}`, { description: POPUP_BLOCKED_MESSAGE });
-      return;
-    }
-    view.mutate(
-      { docId: doc.id, tab },
-      {
-        onError: (err) => {
-          tab.close(); // showInTab already closes it; this also covers any other failure (closing twice is harmless).
-          toast.error(`Couldn't open ${doc.name}`, { description: errorText(err) });
-        },
-      },
-    );
-  };
-  const viewingId = view.isPending ? view.variables?.docId : null;
 
   const state = docs.isError ? "error" : docs.isPending ? "loading" : docs.data.length === 0 ? "empty" : "ideal";
   const empty = { title: ofPayment ? "No files" : "No documents", description: canManage ? `${emptyText} ${ofPayment ? "Add" : "Upload"} one above.` : emptyText };

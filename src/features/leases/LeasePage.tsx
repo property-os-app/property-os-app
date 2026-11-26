@@ -423,7 +423,7 @@ function LeaseDetail({ lease }: { lease: Lease }) {
           <LedgerView lease={lease} canVoid={canVoid} canCharge={canCharge} canPay={canPay} />
         )
       ) : tab === "details" ? (
-        <DetailsTab lease={lease} canEdit={canEdit} onEdit={setEditing} />
+        <DetailsTab lease={lease} canEdit={canEdit} onEdit={setEditing} onOpenDocuments={() => setTab("documents")} />
       ) : tab === "documents" ? (
         <DocumentsPanel target={{ owner: "leases", ownerId: lease.id }} onOpenLedger={() => setTab("ledger")} emptyText="No documents on this lease yet." />
       ) : (
